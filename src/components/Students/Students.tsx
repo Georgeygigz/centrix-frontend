@@ -1,6 +1,6 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaUserEdit, FaTimes, FaUser, FaGraduationCap, FaVenusMars, FaCalendar, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 
@@ -14,7 +14,18 @@ const Students: React.FC = () => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom');
+  const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState<Partial<Student>>({
+    admissionNumber: '',
+    fullName: '',
+    class: '',
+    gender: 'Male',
+    dateOfBirth: '',
+    parentName: '',
+    contactInfo: '',
+    address: '',
+    dateOfAdmission: ''
+  });
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +107,52 @@ const Students: React.FC = () => {
     setCurrentPage(prev => Math.min(prev + 1, totalPages));
   };
 
+  const openAddDrawer = () => {
+    setIsAddDrawerOpen(true);
+  };
+
+  const closeAddDrawer = () => {
+    setIsAddDrawerOpen(false);
+    setNewStudent({
+      admissionNumber: '',
+      fullName: '',
+      class: '',
+      gender: 'Male',
+      dateOfBirth: '',
+      parentName: '',
+      contactInfo: '',
+      address: '',
+      dateOfAdmission: ''
+    });
+  };
+
+  const handleAddStudent = () => {
+    if (newStudent.fullName && newStudent.admissionNumber) {
+      const studentToAdd: Student = {
+        id: (students.length + 1).toString(),
+        admissionNumber: newStudent.admissionNumber,
+        fullName: newStudent.fullName,
+        class: newStudent.class || '',
+        gender: newStudent.gender || 'Male',
+        dateOfBirth: newStudent.dateOfBirth || '',
+        parentName: newStudent.parentName || '',
+        contactInfo: newStudent.contactInfo || '',
+        address: newStudent.address || '',
+        dateOfAdmission: newStudent.dateOfAdmission || ''
+      };
+      
+      setStudents(prev => [...prev, studentToAdd]);
+      closeAddDrawer();
+    }
+  };
+
+  const handleNewStudentInputChange = (field: keyof Student, value: string) => {
+    setNewStudent(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleSort = (column: string) => {
     if (sortBy === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -147,9 +204,6 @@ const Students: React.FC = () => {
       // If there's not enough space below, position above
       if (buttonRect.bottom + dropdownHeight > viewportHeight) {
         y = buttonRect.top - dropdownHeight - 4;
-        setDropdownPosition('top');
-      } else {
-        setDropdownPosition('bottom');
       }
       
       // Ensure dropdown doesn't go off-screen horizontally
@@ -288,6 +342,14 @@ const Students: React.FC = () => {
                   <option value="gender">Gender</option>
                   <option value="dateOfAdmission">Date of Admission</option>
                 </select>
+
+                {/* Add New Student Button */}
+                <button
+                  onClick={openAddDrawer}
+                  className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                >
+                  + Add Student
+                </button>
               </div>
             </div>
           </div>
@@ -638,6 +700,179 @@ const Students: React.FC = () => {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Add Student Drawer */}
+      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
+        isAddDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+      }`}>
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out ${
+          isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          <>
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New Student</h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">Enter student information</p>
+              </div>
+              <button
+                onClick={closeAddDrawer}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="p-6 overflow-y-auto h-full">
+              <div className="space-y-6">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Full name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newStudent.fullName}
+                    onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                {/* Admission Number */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Admission number *
+                  </label>
+                  <input
+                    type="text"
+                    value={newStudent.admissionNumber}
+                    onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    placeholder="Enter admission number"
+                  />
+                </div>
+
+                {/* Class */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Class
+                  </label>
+                  <input
+                    type="text"
+                    value={newStudent.class}
+                    onChange={(e) => handleNewStudentInputChange('class', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    placeholder="Enter class"
+                  />
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Gender
+                  </label>
+                  <select
+                    value={newStudent.gender}
+                    onChange={(e) => handleNewStudentInputChange('gender', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Date of birth
+                  </label>
+                  <input
+                    type="date"
+                    value={newStudent.dateOfBirth}
+                    onChange={(e) => handleNewStudentInputChange('dateOfBirth', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                  />
+                </div>
+
+                {/* Parent Name */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Parent name
+                  </label>
+                  <input
+                    type="text"
+                    value={newStudent.parentName}
+                    onChange={(e) => handleNewStudentInputChange('parentName', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    placeholder="Enter parent name"
+                  />
+                </div>
+
+                {/* Contact Info */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Contact info
+                  </label>
+                  <input
+                    type="tel"
+                    value={newStudent.contactInfo}
+                    onChange={(e) => handleNewStudentInputChange('contactInfo', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    placeholder="Enter contact number"
+                  />
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Address
+                  </label>
+                  <textarea
+                    value={newStudent.address}
+                    onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                    placeholder="Enter address"
+                  />
+                </div>
+
+                {/* Date of Admission */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Date of admission
+                  </label>
+                  <input
+                    type="date"
+                    value={newStudent.dateOfAdmission}
+                    onChange={(e) => handleNewStudentInputChange('dateOfAdmission', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100">
+              <button
+                onClick={closeAddDrawer}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddStudent}
+                disabled={!newStudent.fullName || !newStudent.admissionNumber}
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+              >
+                Add Student
+              </button>
+            </div>
+          </>
         </div>
       </div>
       
