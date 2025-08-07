@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaUserEdit } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 
@@ -10,6 +10,8 @@ const Students: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('admission');
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Mock data
   const students: Student[] = [
@@ -117,6 +119,36 @@ const Students: React.FC = () => {
     setSelectedStudent(null);
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const toggleDropdown = (studentId: string) => {
+    setOpenDropdownId(openDropdownId === studentId ? null : studentId);
+  };
+
+  const handleEditStudent = (student: Student) => {
+    console.log('Edit student:', student);
+    setOpenDropdownId(null);
+    // TODO: Implement edit functionality
+  };
+
+  const handleDeleteStudent = (student: Student) => {
+    console.log('Delete student:', student);
+    setOpenDropdownId(null);
+    // TODO: Implement delete functionality
+  };
+
   const getSortIcon = (column: string) => {
     if (sortBy !== column) return null;
     return sortDirection === 'asc' ? FaChevronUp({ className: "w-5 h-5" }) : FaChevronDown({ className: "w-5 h-5" });
@@ -128,10 +160,10 @@ const Students: React.FC = () => {
         {/* Header with tabs, search and filters */}
         <div className="bg-white rounded-md shadow-sm p-4 mb-4">
           {/* Tabs and Controls Row */}
-          <div className="border-b border-gray-200 mb-4">
+          <div className="mb-4">
             <div className="flex items-center justify-between">
               {/* Tabs */}
-              <nav className="-mb-px flex space-x-6">
+              <nav className="flex space-x-6">
                 <button 
                   onClick={() => setActiveTab('admission')}
                   className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
@@ -274,12 +306,47 @@ const Students: React.FC = () => {
                         {student.dateOfAdmission}
                       </td>
                       <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        <button
-                          onClick={() => openStudentModal(student)}
-                          className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
-                        >
-                          {FaEye({ className: "w-3 h-3" })}
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => openStudentModal(student)}
+                            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+                            title="View Details"
+                          >
+                            {FaEye({ className: "w-3 h-3" })}
+                          </button>
+                          
+                          {/* Dropdown Menu */}
+                          <div className="relative" ref={dropdownRef}>
+                            <button
+                              onClick={() => toggleDropdown(student.id)}
+                              className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                              title="More Options"
+                            >
+                              {FaEllipsisV({ className: "w-3 h-3" })}
+                            </button>
+                            
+                            {openDropdownId === student.id && (
+                              <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                                <div className="py-1">
+                                  <button
+                                    onClick={() => handleEditStudent(student)}
+                                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                                  >
+                                    {FaEdit({ className: "w-3 h-3 mr-2" })}
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteStudent(student)}
+                                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                                  >
+                                    {FaTrash({ className: "w-3 h-3 mr-2" })}
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}
