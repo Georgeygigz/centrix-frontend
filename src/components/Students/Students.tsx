@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FaSearch, FaFilter, FaEye, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 
@@ -16,66 +16,65 @@ const Students: React.FC = () => {
     {
       id: '1',
       admissionNumber: 'ADM001',
-      fullName: 'John Doe',
+      fullName: 'John Smith',
       class: 'Class 10A',
       gender: 'Male',
-      dateOfBirth: '15 March 2006',
-      parentName: 'Michael Doe',
-      contactInfo: '+1 234-567-8900',
-      address: '123 Main Street, City, State 12345',
-      dateOfAdmission: '1 September 2023'
+      dateOfBirth: '2005-03-15',
+      parentName: 'Michael Smith',
+      contactInfo: '+1234567890',
+      address: '123 Main St, City, State',
+      dateOfAdmission: '2020-09-01',
     },
     {
       id: '2',
       admissionNumber: 'ADM002',
-      fullName: 'Jane Smith',
+      fullName: 'Sarah Johnson',
       class: 'Class 9B',
       gender: 'Female',
-      dateOfBirth: '22 July 2007',
-      parentName: 'Robert Smith',
-      contactInfo: '+1 234-567-8901',
-      address: '456 Oak Avenue, City, State 12345',
-      dateOfAdmission: '1 September 2023'
+      dateOfBirth: '2006-07-22',
+      parentName: 'David Johnson',
+      contactInfo: '+1234567891',
+      address: '456 Oak Ave, City, State',
+      dateOfAdmission: '2020-09-01',
     },
     {
       id: '3',
       admissionNumber: 'ADM003',
-      fullName: 'Mike Johnson',
+      fullName: 'Michael Brown',
       class: 'Class 11C',
       gender: 'Male',
-      dateOfBirth: '8 November 2005',
-      parentName: 'David Johnson',
-      contactInfo: '+1 234-567-8902',
-      address: '789 Pine Road, City, State 12345',
-      dateOfAdmission: '1 September 2023'
+      dateOfBirth: '2004-11-08',
+      parentName: 'Robert Brown',
+      contactInfo: '+1234567892',
+      address: '789 Pine Rd, City, State',
+      dateOfAdmission: '2020-09-01',
     },
     {
       id: '4',
       admissionNumber: 'ADM004',
-      fullName: 'Sarah Wilson',
+      fullName: 'Emily Davis',
       class: 'Class 10A',
       gender: 'Female',
-      dateOfBirth: '3 April 2006',
-      parentName: 'James Wilson',
-      contactInfo: '+1 234-567-8903',
-      address: '321 Elm Street, City, State 12345',
-      dateOfAdmission: '1 September 2023'
+      dateOfBirth: '2005-01-30',
+      parentName: 'James Davis',
+      contactInfo: '+1234567893',
+      address: '321 Elm St, City, State',
+      dateOfAdmission: '2020-09-01',
     },
     {
       id: '5',
       admissionNumber: 'ADM005',
-      fullName: 'Alex Brown',
+      fullName: 'Daniel Wilson',
       class: 'Class 9B',
       gender: 'Male',
-      dateOfBirth: '17 December 2007',
-      parentName: 'Thomas Brown',
-      contactInfo: '+1 234-567-8904',
-      address: '654 Maple Drive, City, State 12345',
-      dateOfAdmission: '1 September 2023'
-    }
+      dateOfBirth: '2006-05-12',
+      parentName: 'Thomas Wilson',
+      contactInfo: '+1234567894',
+      address: '654 Maple Dr, City, State',
+      dateOfAdmission: '2020-09-01',
+    },
   ];
 
-  // Filter and sort students
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter(student =>
       student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -120,11 +119,11 @@ const Students: React.FC = () => {
 
   const getSortIcon = (column: string) => {
     if (sortBy !== column) return null;
-    return sortDirection === 'asc' ? FaChevronUp({ className: "w-4 h-4" }) : FaChevronDown({ className: "w-4 h-4" });
+    return sortDirection === 'asc' ? FaChevronUp({ className: "w-5 h-5" }) : FaChevronDown({ className: "w-5 h-5" });
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       <div className="p-6">
         {/* Header with tabs, search and filters */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
@@ -212,8 +211,6 @@ const Students: React.FC = () => {
               </div>
             </div>
           </div>
-
-
         </div>
 
         {/* Tab Content */}
@@ -338,19 +335,20 @@ const Students: React.FC = () => {
         )}
 
         {/* Pagination */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mt-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing result 1-{filteredAndSortedStudents.length} of {filteredAndSortedStudents.length} Entries
-            </div>
-            <div className="flex space-x-2">
-              <button className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200">
-                Previous
-              </button>
-              <button className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors duration-200">
-                Next
-              </button>
-            </div>
+        <div className="flex items-center justify-between mt-8">
+          <div className="text-sm text-gray-700">
+            Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">5</span> results
+          </div>
+          <div className="flex items-center space-x-2">
+            <button className="px-4 py-3 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+              Previous
+            </button>
+            <button className="px-4 py-3 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+              1
+            </button>
+            <button className="px-4 py-3 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+              Next
+            </button>
           </div>
         </div>
       </div>
