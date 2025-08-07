@@ -1,11 +1,13 @@
 import React from 'react';
-import { FaGlobe, FaTh, FaBell, FaUser } from 'react-icons/fa';
+import { FaGlobe, FaTh, FaBell, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 
 interface TopNavigationProps {
   pageTitle: string;
 }
 
 const TopNavigation: React.FC<TopNavigationProps> = ({ pageTitle }) => {
+  const { logout } = useAuth();
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-3">
       <div className="flex items-center justify-between">
@@ -43,6 +45,15 @@ const TopNavigation: React.FC<TopNavigationProps> = ({ pageTitle }) => {
             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
               {FaUser({ className: "w-4 h-4 text-white" })}
             </div>
+            
+            {/* Logout Button */}
+            <button 
+              onClick={logout}
+              className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200"
+              title="Logout"
+            >
+              {FaSignOutAlt({ className: "w-4 h-4" })}
+            </button>
           </div>
         </div>
       </div>
