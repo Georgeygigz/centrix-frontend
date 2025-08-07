@@ -3,7 +3,11 @@ import { FaUser, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import LoginIllustration from './LoginIllustration';
 
-const LoginForm: React.FC = () => {
+interface LoginFormProps {
+  onSwitchToRegister: () => void;
+}
+
+const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const [school, setSchool] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -120,6 +124,7 @@ const LoginForm: React.FC = () => {
               Don't have account?{' '}
               <button
                 type="button"
+                onClick={onSwitchToRegister}
                 className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition-colors duration-200"
                 disabled={isLoading}
               >
