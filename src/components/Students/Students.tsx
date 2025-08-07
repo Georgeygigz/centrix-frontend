@@ -124,17 +124,17 @@ const Students: React.FC = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="p-6">
+      <div className="p-4">
         {/* Header with tabs, search and filters */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-md shadow-sm p-4 mb-4">
           {/* Tabs and Controls Row */}
-          <div className="border-b border-gray-200 mb-6">
+          <div className="border-b border-gray-200 mb-4">
             <div className="flex items-center justify-between">
               {/* Tabs */}
-              <nav className="-mb-px flex space-x-8">
+              <nav className="-mb-px flex space-x-6">
                 <button 
                   onClick={() => setActiveTab('admission')}
-                  className={`border-b-2 py-2 px-1 text-sm font-medium transition-colors duration-200 ${
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'admission' 
                       ? 'border-blue-500 text-blue-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -144,7 +144,7 @@ const Students: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => setActiveTab('academic')}
-                  className={`border-b-2 py-2 px-1 text-sm font-medium transition-colors duration-200 ${
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'academic' 
                       ? 'border-blue-500 text-blue-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -154,7 +154,7 @@ const Students: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => setActiveTab('financial')}
-                  className={`border-b-2 py-2 px-1 text-sm font-medium transition-colors duration-200 ${
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'financial' 
                       ? 'border-blue-500 text-blue-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -164,7 +164,7 @@ const Students: React.FC = () => {
                 </button>
                 <button 
                   onClick={() => setActiveTab('attendance')}
-                  className={`border-b-2 py-2 px-1 text-sm font-medium transition-colors duration-200 ${
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'attendance' 
                       ? 'border-blue-500 text-blue-600' 
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -175,7 +175,7 @@ const Students: React.FC = () => {
               </nav>
 
               {/* Search, Filter, and Sort Controls */}
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 {/* Search */}
                 <div className="relative">
                   <input
@@ -183,15 +183,15 @@ const Students: React.FC = () => {
                     placeholder="Search students..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
                   />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    {FaSearch({ className: "h-4 w-4 text-gray-400" })}
+                  <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                    {FaSearch({ className: "h-3 w-3 text-gray-400" })}
                   </div>
                 </div>
 
                 {/* Filter */}
-                <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                <button className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
                   Filter
                 </button>
 
@@ -199,7 +199,7 @@ const Students: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                 >
                   <option value="">Sort by</option>
                   <option value="admissionNumber">Admission Number</option>
@@ -215,42 +215,42 @@ const Students: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'admission' && (
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-md shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
                       <div className="flex items-center space-x-1">
                         <span>Admn Number</span>
                         {getSortIcon('admissionNumber')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
                       <div className="flex items-center space-x-1">
                         <span>Full Name</span>
                         {getSortIcon('fullName')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
                       <div className="flex items-center space-x-1">
                         <span>Class</span>
                         {getSortIcon('class')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
                       <div className="flex items-center space-x-1">
                         <span>Gender</span>
                         {getSortIcon('gender')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
                       <div className="flex items-center space-x-1">
                         <span>Date of Admission</span>
                         {getSortIcon('dateOfAdmission')}
                       </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -258,27 +258,27 @@ const Students: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredAndSortedStudents.map((student, index) => (
                     <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                         {student.admissionNumber}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                         {student.fullName}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                         {student.class}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                         {student.gender}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                         {student.dateOfAdmission}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                         <button
                           onClick={() => openStudentModal(student)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                          className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
                         >
-                          {FaEye({ className: "w-4 h-4" })}
+                          {FaEye({ className: "w-3 h-3" })}
                         </button>
                       </td>
                     </tr>
@@ -291,45 +291,45 @@ const Students: React.FC = () => {
 
         {/* Academic Tab */}
         {activeTab === 'academic' && (
-          <div className="bg-white rounded-lg shadow-sm p-8">
+          <div className="bg-white rounded-md shadow-sm p-6">
             <div className="text-center">
-              <div className="text-gray-400 mb-4">
-                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="text-gray-400 mb-3">
+                <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Academic Information</h3>
-              <p className="text-gray-500">Academic data will be displayed here.</p>
+              <h3 className="text-sm font-medium text-gray-900 mb-1">Academic Information</h3>
+              <p className="text-xs text-gray-500">Academic data will be displayed here.</p>
             </div>
           </div>
         )}
 
         {/* Financial Tab */}
         {activeTab === 'financial' && (
-          <div className="bg-white rounded-lg shadow-sm p-8">
+          <div className="bg-white rounded-md shadow-sm p-6">
             <div className="text-center">
-              <div className="text-gray-400 mb-4">
-                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="text-gray-400 mb-3">
+                <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Financial Information</h3>
-              <p className="text-gray-500">Financial data will be displayed here.</p>
+              <h3 className="text-sm font-medium text-gray-900 mb-1">Financial Information</h3>
+              <p className="text-xs text-gray-500">Financial data will be displayed here.</p>
             </div>
           </div>
         )}
 
         {/* Attendance Tab */}
         {activeTab === 'attendance' && (
-          <div className="bg-white rounded-lg shadow-sm p-8">
+          <div className="bg-white rounded-md shadow-sm p-6">
             <div className="text-center">
-              <div className="text-gray-400 mb-4">
-                <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="text-gray-400 mb-3">
+                <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Attendance Information</h3>
-              <p className="text-gray-500">Attendance data will be displayed here.</p>
+              <h3 className="text-sm font-medium text-gray-900 mb-1">Attendance Information</h3>
+              <p className="text-xs text-gray-500">Attendance data will be displayed here.</p>
             </div>
           </div>
         )}
