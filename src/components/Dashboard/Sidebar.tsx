@@ -1,6 +1,7 @@
 import React from 'react';
-import { FaBook, FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown } from 'react-icons/fa';
+import { FaBook, FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding } from 'react-icons/fa';
 import { NavigationItem } from '../../types/dashboard';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   currentPage: string;
@@ -8,15 +9,11 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
+  const { logout } = useAuth();
   const navigationItems: NavigationItem[] = [
     {
-      id: 'ebook',
-      label: 'EBook',
-      icon: FaBook,
-    },
-    {
-      id: 'enrollments',
-      label: 'Enrollments',
+      id: 'students',
+      label: 'Students',
       icon: FaUserGraduate,
     },
     {
@@ -28,11 +25,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       id: 'users',
       label: 'Users',
       icon: FaUsers,
-    },
-    {
-      id: 'students',
-      label: 'Students',
-      icon: FaUserGraduate,
     },
     {
       id: 'customer-support',
@@ -54,7 +46,16 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
     <div className="w-56 bg-white h-screen shadow-lg border-r border-gray-200">
       {/* Logo/Brand */}
       <div className="p-4 border-b border-gray-200">
-        <h1 className="text-lg font-bold text-gray-800">Centrix</h1>
+        <button 
+          onClick={logout}
+          className="flex items-center space-x-2 hover:bg-gray-50 rounded-lg p-2 transition-all duration-200 group"
+          title="Click to logout"
+        >
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            {FaBuilding({ className: "w-5 h-5 text-white" })}
+          </div>
+          <h1 className="text-lg font-bold text-gray-800 group-hover:text-blue-600 transition-colors duration-200">Centrix</h1>
+        </button>
       </div>
 
       {/* Navigation */}

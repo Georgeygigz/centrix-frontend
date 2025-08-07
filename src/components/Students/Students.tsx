@@ -308,37 +308,37 @@ const Students: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
                       <div className="flex items-center space-x-1">
-                        <span>Admn Number</span>
+                        <span>Admn number</span>
                         {getSortIcon('admissionNumber')}
                       </div>
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
                       <div className="flex items-center space-x-1">
-                        <span>Full Name</span>
+                        <span>Full name</span>
                         {getSortIcon('fullName')}
                       </div>
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
                       <div className="flex items-center space-x-1">
                         <span>Class</span>
                         {getSortIcon('class')}
                       </div>
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
                       <div className="flex items-center space-x-1">
                         <span>Gender</span>
                         {getSortIcon('gender')}
                       </div>
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
                       <div className="flex items-center space-x-1">
-                        <span>Date of Admission</span>
+                        <span>Date of admission</span>
                         {getSortIcon('dateOfAdmission')}
                       </div>
                     </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                       Actions
                     </th>
                   </tr>
