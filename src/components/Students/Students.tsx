@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaUserEdit } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaUserEdit, FaTimes, FaUser, FaGraduationCap, FaVenusMars, FaCalendar, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 
@@ -11,7 +11,8 @@ const Students: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('admission');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
 
   // Mock data
   const students: Student[] = [
@@ -122,7 +123,8 @@ const Students: React.FC = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Element;
+      if (!target.closest('.dropdown-menu')) {
         setOpenDropdownId(null);
       }
     };
@@ -138,9 +140,9 @@ const Students: React.FC = () => {
   };
 
   const handleEditStudent = (student: Student) => {
-    console.log('Edit student:', student);
+    setEditingStudent(student);
+    setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
-    // TODO: Implement edit functionality
   };
 
   const handleDeleteStudent = (student: Student) => {
@@ -149,9 +151,33 @@ const Students: React.FC = () => {
     // TODO: Implement delete functionality
   };
 
+  const closeEditDrawer = () => {
+    setIsEditDrawerOpen(false);
+    setEditingStudent(null);
+  };
+
+  const handleSaveStudent = () => {
+    // TODO: Implement save functionality
+    console.log('Saving student:', editingStudent);
+    closeEditDrawer();
+  };
+
+  const handleInputChange = (field: keyof Student, value: string) => {
+    if (editingStudent) {
+      setEditingStudent({
+        ...editingStudent,
+        [field]: value
+      });
+    }
+  };
+
   const getSortIcon = (column: string) => {
-    if (sortBy !== column) return null;
-    return sortDirection === 'asc' ? FaChevronUp({ className: "w-5 h-5" }) : FaChevronDown({ className: "w-5 h-5" });
+    if (sortBy !== column) {
+      return null;
+    }
+    return sortDirection === 'asc' ? 
+      FaChevronUp({ className: "w-3 h-3" }) : 
+      FaChevronDown({ className: "w-3 h-3" });
   };
 
   return (
@@ -315,37 +341,43 @@ const Students: React.FC = () => {
                             {FaEye({ className: "w-3 h-3" })}
                           </button>
                           
-                          {/* Dropdown Menu */}
-                          <div className="relative" ref={dropdownRef}>
-                            <button
-                              onClick={() => toggleDropdown(student.id)}
-                              className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                              title="More Options"
-                            >
-                              {FaEllipsisV({ className: "w-3 h-3" })}
-                            </button>
-                            
-                            {openDropdownId === student.id && (
-                              <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-10">
-                                <div className="py-1">
-                                  <button
-                                    onClick={() => handleEditStudent(student)}
-                                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-                                  >
-                                    {FaEdit({ className: "w-3 h-3 mr-2" })}
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteStudent(student)}
-                                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
-                                  >
-                                    {FaTrash({ className: "w-3 h-3 mr-2" })}
-                                    Delete
-                                  </button>
-                                </div>
+                                                  {/* Dropdown Menu */}
+                        <div className="relative dropdown-menu">
+                          <button
+                            onClick={() => toggleDropdown(student.id)}
+                            className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                            title="More Options"
+                          >
+                            {FaEllipsisV({ className: "w-3 h-3" })}
+                          </button>
+                          
+                          {openDropdownId === student.id && (
+                            <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                              <div className="py-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditStudent(student);
+                                  }}
+                                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                                >
+                                  {FaEdit({ className: "w-3 h-3 mr-2" })}
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteStudent(student);
+                                  }}
+                                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                                >
+                                  {FaTrash({ className: "w-3 h-3 mr-2" })}
+                                  Delete
+                                </button>
                               </div>
-                            )}
-                          </div>
+                            </div>
+                          )}
+                        </div>
                         </div>
                       </td>
                     </tr>
@@ -421,11 +453,183 @@ const Students: React.FC = () => {
       </div>
 
       {/* Student Modal */}
-      <StudentModal
-        student={selectedStudent}
-        isOpen={isModalOpen}
-        onClose={closeStudentModal}
-      />
+      {isModalOpen && selectedStudent && (
+        <StudentModal student={selectedStudent} isOpen={isModalOpen} onClose={closeStudentModal} />
+      )}
+
+            {/* Edit Drawer */}
+      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
+        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+      }`}>
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out ${
+          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          {editingStudent && (
+            <>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Edit Student</h2>
+                  <p className="text-xs text-gray-500 mt-1">Update student information</p>
+                </div>
+                <button
+                  onClick={closeEditDrawer}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                >
+                  {FaTimes({ className: "w-4 h-4" })}
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="p-6 overflow-y-auto h-full">
+                <div className="space-y-6">
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Full name
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.fullName}
+                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter full name"
+                    />
+                  </div>
+
+                  {/* Admission Number */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Admission number
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.admissionNumber}
+                      onChange={(e) => handleInputChange('admissionNumber', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter admission number"
+                    />
+                  </div>
+
+                  {/* Class */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Class
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.class}
+                      onChange={(e) => handleInputChange('class', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter class"
+                    />
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Gender
+                    </label>
+                    <select
+                      value={editingStudent.gender}
+                      onChange={(e) => handleInputChange('gender', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date of birth
+                    </label>
+                    <input
+                      type="date"
+                      value={editingStudent.dateOfBirth}
+                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    />
+                  </div>
+
+                  {/* Parent Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Parent name
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.parentName}
+                      onChange={(e) => handleInputChange('parentName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter parent name"
+                    />
+                  </div>
+
+                  {/* Contact Info */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Contact info
+                    </label>
+                    <input
+                      type="tel"
+                      value={editingStudent.contactInfo}
+                      onChange={(e) => handleInputChange('contactInfo', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter contact number"
+                    />
+                  </div>
+
+                  {/* Address */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Address
+                    </label>
+                    <textarea
+                      value={editingStudent.address}
+                      onChange={(e) => handleInputChange('address', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                      placeholder="Enter address"
+                    />
+                  </div>
+
+                  {/* Date of Admission */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date of admission
+                    </label>
+                    <input
+                      type="date"
+                      value={editingStudent.dateOfAdmission}
+                      onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100">
+                <button
+                  onClick={closeEditDrawer}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveStudent}
+                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
