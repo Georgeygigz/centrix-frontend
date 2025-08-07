@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaUserEdit, FaTimes, FaUser, FaGraduationCap, FaVenusMars, FaCalendar, FaPhone, FaMapMarkerAlt } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
@@ -13,6 +14,8 @@ const Students: React.FC = () => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom');
+  const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
 
   // Mock data
   const students: Student[] = [
@@ -124,7 +127,8 @@ const Students: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest('.dropdown-menu')) {
+      // Close dropdown if clicking outside both the dropdown menu and the portal dropdown
+      if (!target.closest('.dropdown-menu') && !target.closest('[data-portal-dropdown]')) {
         setOpenDropdownId(null);
       }
     };
@@ -135,8 +139,34 @@ const Students: React.FC = () => {
     };
   }, []);
 
-  const toggleDropdown = (studentId: string) => {
-    setOpenDropdownId(openDropdownId === studentId ? null : studentId);
+  const toggleDropdown = (studentId: string, event: React.MouseEvent) => {
+    if (openDropdownId === studentId) {
+      setOpenDropdownId(null);
+    } else {
+      const button = event.currentTarget as HTMLElement;
+      const buttonRect = button.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const dropdownHeight = 80; // Approximate height of dropdown
+      
+      // Calculate position
+      let x = buttonRect.right - 128; // 128px is dropdown width
+      let y = buttonRect.bottom + 4; // 4px margin
+      
+      // If there's not enough space below, position above
+      if (buttonRect.bottom + dropdownHeight > viewportHeight) {
+        y = buttonRect.top - dropdownHeight - 4;
+        setDropdownPosition('top');
+      } else {
+        setDropdownPosition('bottom');
+      }
+      
+      // Ensure dropdown doesn't go off-screen horizontally
+      if (x < 0) x = 0;
+      if (x + 128 > window.innerWidth) x = window.innerWidth - 128;
+      
+      setDropdownCoords({ x, y });
+      setOpenDropdownId(studentId);
+    }
   };
 
   const handleEditStudent = (student: Student) => {
@@ -273,7 +303,7 @@ const Students: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'admission' && (
-          <div className="bg-white rounded-md shadow-sm overflow-hidden">
+          <div className="bg-white rounded-md shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -344,39 +374,12 @@ const Students: React.FC = () => {
                                                   {/* Dropdown Menu */}
                         <div className="relative dropdown-menu">
                           <button
-                            onClick={() => toggleDropdown(student.id)}
+                            onClick={(e) => toggleDropdown(student.id, e)}
                             className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
                             title="More Options"
                           >
                             {FaEllipsisV({ className: "w-3 h-3" })}
                           </button>
-                          
-                          {openDropdownId === student.id && (
-                            <div className="absolute right-0 mt-1 w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50">
-                              <div className="py-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditStudent(student);
-                                  }}
-                                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-                                >
-                                  {FaEdit({ className: "w-3 h-3 mr-2" })}
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteStudent(student);
-                                  }}
-                                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
-                                >
-                                  {FaTrash({ className: "w-3 h-3 mr-2" })}
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          )}
                         </div>
                         </div>
                       </td>
@@ -468,10 +471,10 @@ const Students: React.FC = () => {
             <>
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">Edit Student</h2>
-                  <p className="text-xs text-gray-500 mt-1">Update student information</p>
-                </div>
+                              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit Student</h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">Update student information</p>
+              </div>
                 <button
                   onClick={closeEditDrawer}
                   className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
@@ -630,6 +633,50 @@ const Students: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Portal-based Dropdown */}
+      {openDropdownId && createPortal(
+        <div 
+          className="fixed w-32 bg-white rounded-md shadow-lg border border-gray-200 z-[9999]"
+          data-portal-dropdown
+          style={{
+            left: `${dropdownCoords.x}px`,
+            top: `${dropdownCoords.y}px`
+          }}
+        >
+          <div className="py-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const student = students.find(s => s.id === openDropdownId);
+                if (student) {
+                  handleEditStudent(student);
+                  setOpenDropdownId(null); // Close dropdown after clicking
+                }
+              }}
+              className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+            >
+              {FaEdit({ className: "w-3 h-3 mr-2" })}
+              Edit
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const student = students.find(s => s.id === openDropdownId);
+                if (student) {
+                  handleDeleteStudent(student);
+                  setOpenDropdownId(null); // Close dropdown after clicking
+                }
+              }}
+              className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+            >
+              {FaTrash({ className: "w-3 h-3 mr-2" })}
+              Delete
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
