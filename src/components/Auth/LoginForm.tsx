@@ -15,15 +15,18 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Illustration */}
-      <div className="hidden lg:flex lg:w-1/2">
-        <LoginIllustration />
-      </div>
+    <div className="min-h-screen bg-white flex items-center justify-center p-8">
+      {/* Floating Card with Illustration and Form */}
+      <div className="w-3/4 h-3/4 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+        <div className="flex">
+          {/* Left Side - Illustration */}
+          <div className="hidden lg:flex lg:w-1/2">
+            <LoginIllustration />
+          </div>
 
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+          {/* Right Side - Login Form */}
+          <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+            <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Login</h1>
@@ -123,6 +126,8 @@ const LoginForm: React.FC = () => {
                 Let's Get Started For Free
               </button>
             </p>
+          </div>
+            </div>
           </div>
         </div>
       </div>
