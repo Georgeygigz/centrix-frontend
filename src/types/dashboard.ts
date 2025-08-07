@@ -1,10 +1,11 @@
+import { IconType } from 'react-icons';
+
 export interface NavigationItem {
   id: string;
   label: string;
-  icon: string;
-  isActive: boolean;
-  hasSubItems?: boolean;
-  subItems?: NavigationItem[];
+  icon: IconType;
+  href?: string;
+  children?: NavigationItem[];
 }
 
 export interface Student {
@@ -12,7 +13,7 @@ export interface Student {
   admissionNumber: string;
   fullName: string;
   class: string;
-  gender: 'Male' | 'Female';
+  gender: string;
   dateOfBirth: string;
   parentName: string;
   contactInfo: string;
@@ -22,7 +23,5 @@ export interface Student {
 
 export interface DashboardState {
   currentPage: string;
-  searchQuery: string;
-  sortBy: string;
-  filterBy: string;
+  sidebarCollapsed: boolean;
 } 
