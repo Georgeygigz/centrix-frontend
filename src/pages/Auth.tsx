@@ -5,14 +5,17 @@ import RegisterForm from '../components/Auth/RegisterForm';
 type AuthMode = 'login' | 'register';
 
 const Auth: React.FC = () => {
-  const [mode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>('login');
+
+  const switchToLogin = () => setMode('login');
+  const switchToRegister = () => setMode('register');
 
   return (
     <div>
       {mode === 'login' ? (
-        <LoginForm />
+        <LoginForm onSwitchToRegister={switchToRegister} />
       ) : (
-        <RegisterForm />
+        <RegisterForm onSwitchToLogin={switchToLogin} />
       )}
     </div>
   );
