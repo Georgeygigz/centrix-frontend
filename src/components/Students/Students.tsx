@@ -16,70 +16,32 @@ const Students: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'top' | 'bottom'>('bottom');
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
-  // Mock data
-  const students: Student[] = [
-    {
-      id: '1',
-      admissionNumber: 'ADM001',
-      fullName: 'John Smith',
-      class: 'Class 10A',
-      gender: 'Male',
-      dateOfBirth: '2005-03-15',
-      parentName: 'Michael Smith',
-      contactInfo: '+1234567890',
-      address: '123 Main St, City, State',
-      dateOfAdmission: '2020-09-01',
-    },
-    {
-      id: '2',
-      admissionNumber: 'ADM002',
-      fullName: 'Sarah Johnson',
-      class: 'Class 9B',
-      gender: 'Female',
-      dateOfBirth: '2006-07-22',
-      parentName: 'David Johnson',
-      contactInfo: '+1234567891',
-      address: '456 Oak Ave, City, State',
-      dateOfAdmission: '2020-09-01',
-    },
-    {
-      id: '3',
-      admissionNumber: 'ADM003',
-      fullName: 'Michael Brown',
-      class: 'Class 11C',
-      gender: 'Male',
-      dateOfBirth: '2004-11-08',
-      parentName: 'Robert Brown',
-      contactInfo: '+1234567892',
-      address: '789 Pine Rd, City, State',
-      dateOfAdmission: '2020-09-01',
-    },
-    {
-      id: '4',
-      admissionNumber: 'ADM004',
-      fullName: 'Emily Davis',
-      class: 'Class 10A',
-      gender: 'Female',
-      dateOfBirth: '2005-01-30',
-      parentName: 'James Davis',
-      contactInfo: '+1234567893',
-      address: '321 Elm St, City, State',
-      dateOfAdmission: '2020-09-01',
-    },
-    {
-      id: '5',
-      admissionNumber: 'ADM005',
-      fullName: 'Daniel Wilson',
-      class: 'Class 9B',
-      gender: 'Male',
-      dateOfBirth: '2006-05-12',
-      parentName: 'Thomas Wilson',
-      contactInfo: '+1234567894',
-      address: '654 Maple Dr, City, State',
-      dateOfAdmission: '2020-09-01',
-    },
-  ];
+  // Load students data from JSON file
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const response = await fetch('/students.json');
+        if (!response.ok) {
+          throw new Error('Failed to load students data');
+        }
+        const data = await response.json();
+        setStudents(data);
+      } catch (error) {
+        console.error('Error loading students:', error);
+        // Fallback to empty array if loading fails
+        setStudents([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStudents();
+  }, []);
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter(student =>
@@ -103,6 +65,36 @@ const Students: React.FC = () => {
 
     return filtered;
   }, [students, searchQuery, sortBy, sortDirection]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
+
+  // Debug pagination
+  console.log('Pagination Debug:', {
+    totalStudents: students.length,
+    filteredStudents: filteredAndSortedStudents.length,
+    currentPage,
+    totalPages,
+    startIndex,
+    endIndex,
+    paginatedStudentsCount: paginatedStudents.length
+  });
+
+  // Reset to first page when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -304,90 +296,97 @@ const Students: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'admission' && (
           <div className="bg-white rounded-md shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Admn number</span>
-                        {getSortIcon('admissionNumber')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Full name</span>
-                        {getSortIcon('fullName')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Class</span>
-                        {getSortIcon('class')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Gender</span>
-                        {getSortIcon('gender')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Date of admission</span>
-                        {getSortIcon('dateOfAdmission')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAndSortedStudents.map((student, index) => (
-                    <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                        {student.admissionNumber}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {student.fullName}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {student.class}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {student.gender}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {student.dateOfAdmission}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading students...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('admissionNumber')}>
                         <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => openStudentModal(student)}
-                            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
-                            title="View Details"
-                          >
-                            {FaEye({ className: "w-3 h-3" })}
-                          </button>
-                          
-                                                  {/* Dropdown Menu */}
-                        <div className="relative dropdown-menu">
-                          <button
-                            onClick={(e) => toggleDropdown(student.id, e)}
-                            className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                            title="More Options"
-                          >
-                            {FaEllipsisV({ className: "w-3 h-3" })}
-                          </button>
+                          <span>Admn number</span>
+                          {getSortIcon('admissionNumber')}
                         </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('fullName')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Full name</span>
+                          {getSortIcon('fullName')}
                         </div>
-                      </td>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('class')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Class</span>
+                          {getSortIcon('class')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('gender')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Gender</span>
+                          {getSortIcon('gender')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dateOfAdmission')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Date of admission</span>
+                          {getSortIcon('dateOfAdmission')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedStudents.map((student, index) => (
+                      <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                          {student.admissionNumber}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {student.fullName}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {student.class}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {student.gender}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {student.dateOfAdmission}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => openStudentModal(student)}
+                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+                              title="View Details"
+                            >
+                              {FaEye({ className: "w-3 h-3" })}
+                            </button>
+                            
+                                                    {/* Dropdown Menu */}
+                          <div className="relative dropdown-menu">
+                            <button
+                              onClick={(e) => toggleDropdown(student.id, e)}
+                              className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
+                              title="More Options"
+                            >
+                              {FaEllipsisV({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -439,16 +438,24 @@ const Students: React.FC = () => {
         {/* Pagination */}
         <div className="flex items-center justify-between mt-8">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">1</span> to <span className="font-medium">5</span> of <span className="font-medium">5</span> results
+            Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredAndSortedStudents.length)}</span> of <span className="font-medium">{filteredAndSortedStudents.length}</span> results
           </div>
           <div className="flex items-center space-x-2">
-            <button className="px-4 py-3 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <button 
+              onClick={handlePreviousPage}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Previous
             </button>
-            <button className="px-4 py-3 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 transition-colors duration-200">
-              1
-            </button>
-            <button className="px-4 py-3 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+            <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+              Page {currentPage} of {totalPages} ({totalPages > 1 ? `${totalPages} pages` : '1 page'})
+            </span>
+            <button 
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               Next
             </button>
           </div>
