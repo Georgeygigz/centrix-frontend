@@ -4,6 +4,41 @@ import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTra
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 
+// Collapsible Section Component
+interface CollapsibleSectionProps {
+  title: string;
+  children: React.ReactNode;
+  defaultExpanded?: boolean;
+}
+
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
+  title, 
+  children, 
+  defaultExpanded = true 
+}) => {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 transition-colors duration-200 rounded-t-lg"
+      >
+        <span>{title}</span>
+        {isExpanded ? 
+          FaChevronUp({ className: "w-4 h-4 text-gray-500" }) : 
+          FaChevronDown({ className: "w-4 h-4 text-gray-500" })
+        }
+      </button>
+      {isExpanded && (
+        <div className="p-4 space-y-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Students: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('');
@@ -16,15 +51,27 @@ const Students: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
+    // Basic Info (Required)
     admissionNumber: '',
     fullName: '',
-    class: '',
-    gender: 'Male',
     dateOfBirth: '',
-    parentName: '',
-    contactInfo: '',
+    gender: 'Male',
+    dateOfAdmission: '',
+    
+    // Academic Info (Required)
+    classOnAdmission: '',
+    
+    // Parent Info (Partial optional)
+    guardianName: '',
+    guardianContact: '',
+    alternativeContact: '',
+    
+    // Others (Optional)
     address: '',
-    dateOfAdmission: ''
+    lastSchoolAttended: '',
+    boardingStatus: '',
+    exemptedFromReligiousInstruction: false,
+    dateOfLeaving: ''
   });
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [students, setStudents] = useState<Student[]>([]);
@@ -58,7 +105,7 @@ const Students: React.FC = () => {
     let filtered = students.filter(student =>
       student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.class.toLowerCase().includes(searchQuery.toLowerCase())
+      (student.classOnAdmission || student.class || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     if (sortBy) {
@@ -130,15 +177,27 @@ const Students: React.FC = () => {
     if (newStudent.fullName && newStudent.admissionNumber) {
       const studentToAdd: Student = {
         id: (students.length + 1).toString(),
+        // Basic Info (Required)
         admissionNumber: newStudent.admissionNumber,
         fullName: newStudent.fullName,
-        class: newStudent.class || '',
-        gender: newStudent.gender || 'Male',
         dateOfBirth: newStudent.dateOfBirth || '',
-        parentName: newStudent.parentName || '',
-        contactInfo: newStudent.contactInfo || '',
-        address: newStudent.address || '',
-        dateOfAdmission: newStudent.dateOfAdmission || ''
+        gender: newStudent.gender || 'Male',
+        dateOfAdmission: newStudent.dateOfAdmission || '',
+        
+        // Academic Info (Required)
+        classOnAdmission: newStudent.classOnAdmission || '',
+        
+        // Parent Info (Partial optional)
+        guardianName: newStudent.guardianName || '',
+        guardianContact: newStudent.guardianContact || '',
+        alternativeContact: newStudent.alternativeContact,
+        
+        // Others (Optional)
+        address: newStudent.address,
+        lastSchoolAttended: newStudent.lastSchoolAttended,
+        boardingStatus: newStudent.boardingStatus,
+        exemptedFromReligiousInstruction: newStudent.exemptedFromReligiousInstruction,
+        dateOfLeaving: newStudent.dateOfLeaving
       };
       
       setStudents(prev => [...prev, studentToAdd]);
@@ -146,7 +205,7 @@ const Students: React.FC = () => {
     }
   };
 
-  const handleNewStudentInputChange = (field: keyof Student, value: string) => {
+  const handleNewStudentInputChange = (field: keyof Student, value: string | boolean) => {
     setNewStudent(prev => ({
       ...prev,
       [field]: value
@@ -238,7 +297,7 @@ const Students: React.FC = () => {
     closeEditDrawer();
   };
 
-  const handleInputChange = (field: keyof Student, value: string) => {
+  const handleInputChange = (field: keyof Student, value: string | boolean) => {
     if (editingStudent) {
       setEditingStudent({
         ...editingStudent,
@@ -413,7 +472,7 @@ const Students: React.FC = () => {
                           {student.fullName}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          {student.class}
+                          {student.classOnAdmission || student.class || ''}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                           {student.gender}
@@ -533,13 +592,13 @@ const Students: React.FC = () => {
       <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
         isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
       }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out ${
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
           isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           {editingStudent && (
             <>
               {/* Drawer Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
                               <div>
                 <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit Student</h2>
                 <p className="text-xs text-gray-500 mt-1 font-modern">Update student information</p>
@@ -552,27 +611,15 @@ const Students: React.FC = () => {
                 </button>
               </div>
 
-              {/* Drawer Content */}
-              <div className="p-6 overflow-y-auto h-full">
-                <div className="space-y-6">
-                  {/* Full Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Full name
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter full name"
-                    />
-                  </div>
-
+                          {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-4">
+                {/* Basic Info Section */}
+                <CollapsibleSection title="Basic Information *" defaultExpanded={true}>
                   {/* Admission Number */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Admission number
+                      Admission Number *
                     </label>
                     <input
                       type="text"
@@ -583,24 +630,37 @@ const Students: React.FC = () => {
                     />
                   </div>
 
-                  {/* Class */}
+                  {/* Full Name */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Class
+                      Full Names *
                     </label>
                     <input
                       type="text"
-                      value={editingStudent.class}
-                      onChange={(e) => handleInputChange('class', e.target.value)}
+                      value={editingStudent.fullName}
+                      onChange={(e) => handleInputChange('fullName', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter class"
+                      placeholder="Enter full names"
+                    />
+                  </div>
+
+                  {/* Date of Birth */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date Of Birth *
+                    </label>
+                    <input
+                      type="date"
+                      value={editingStudent.dateOfBirth}
+                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     />
                   </div>
 
                   {/* Gender */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Gender
+                      Gender *
                     </label>
                     <select
                       value={editingStudent.gender}
@@ -613,47 +673,84 @@ const Students: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Date of Birth */}
+                  {/* Date of Admission */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date of birth
+                      Date Of Admission *
                     </label>
                     <input
                       type="date"
-                      value={editingStudent.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                      value={editingStudent.dateOfAdmission}
+                      onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     />
                   </div>
+                </CollapsibleSection>
 
-                  {/* Parent Name */}
+                {/* Academic Info Section */}
+                <CollapsibleSection title="Academic Information *" defaultExpanded={true}>
+                  {/* Class On Admission */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Parent name
+                      Class On Admission *
                     </label>
                     <input
                       type="text"
-                      value={editingStudent.parentName}
-                      onChange={(e) => handleInputChange('parentName', e.target.value)}
+                      value={editingStudent.classOnAdmission}
+                      onChange={(e) => handleInputChange('classOnAdmission', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter parent name"
+                      placeholder="Enter class on admission"
+                    />
+                  </div>
+                </CollapsibleSection>
+
+                {/* Parent Info Section */}
+                <CollapsibleSection title="Parent Information" defaultExpanded={false}>
+                  {/* Guardian Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Guardian Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.guardianName}
+                      onChange={(e) => handleInputChange('guardianName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter guardian name"
                     />
                   </div>
 
-                  {/* Contact Info */}
+                  {/* Guardian Contact */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Contact info
+                      Guardian Contact *
                     </label>
                     <input
                       type="tel"
-                      value={editingStudent.contactInfo}
-                      onChange={(e) => handleInputChange('contactInfo', e.target.value)}
+                      value={editingStudent.guardianContact}
+                      onChange={(e) => handleInputChange('guardianContact', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter contact number"
+                      placeholder="Enter guardian contact"
                     />
                   </div>
 
+                  {/* Alternative Contact */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Alternative Contact
+                    </label>
+                    <input
+                      type="tel"
+                      value={editingStudent.alternativeContact}
+                      onChange={(e) => handleInputChange('alternativeContact', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter alternative contact"
+                    />
+                  </div>
+                </CollapsibleSection>
+
+                {/* Others Section */}
+                <CollapsibleSection title="Other Information" defaultExpanded={false}>
                   {/* Address */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -668,23 +765,70 @@ const Students: React.FC = () => {
                     />
                   </div>
 
-                  {/* Date of Admission */}
+                  {/* Last School Attended */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date of admission
+                      Last School Attended
+                    </label>
+                    <input
+                      type="text"
+                      value={editingStudent.lastSchoolAttended}
+                      onChange={(e) => handleInputChange('lastSchoolAttended', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter last school attended"
+                    />
+                  </div>
+
+                  {/* Boarding Status */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Boarding Status
+                    </label>
+                    <select
+                      value={editingStudent.boardingStatus}
+                      onChange={(e) => handleInputChange('boardingStatus', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    >
+                      <option value="">Select boarding status</option>
+                      <option value="Day">Day</option>
+                      <option value="Boarding">Boarding</option>
+                    </select>
+                  </div>
+
+                  {/* Exempted From Religious Instruction */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Exempted From Religious Instruction
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={editingStudent.exemptedFromReligiousInstruction}
+                        onChange={(e) => handleInputChange('exemptedFromReligiousInstruction', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                    </div>
+                  </div>
+
+                  {/* Date of Leaving */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date of Leaving
                     </label>
                     <input
                       type="date"
-                      value={editingStudent.dateOfAdmission}
-                      onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
+                      value={editingStudent.dateOfLeaving}
+                      onChange={(e) => handleInputChange('dateOfLeaving', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     />
                   </div>
-                </div>
+                </CollapsibleSection>
               </div>
+            </div>
 
               {/* Drawer Footer */}
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100">
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
                 <button
                   onClick={closeEditDrawer}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
@@ -707,12 +851,12 @@ const Students: React.FC = () => {
       <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
         isAddDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
       }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out ${
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
           isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           <>
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New Student</h2>
                 <p className="text-xs text-gray-500 mt-1 font-modern">Enter student information</p>
@@ -726,138 +870,223 @@ const Students: React.FC = () => {
             </div>
 
             {/* Drawer Content */}
-            <div className="p-6 overflow-y-auto h-full">
-              <div className="space-y-6">
-                {/* Full Name */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Full name *
-                  </label>
-                  <input
-                    type="text"
-                    value={newStudent.fullName}
-                    onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    placeholder="Enter full name"
-                  />
-                </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-4">
+                {/* Basic Info Section */}
+                <CollapsibleSection title="Basic Information *" defaultExpanded={true}>
+                  {/* Admission Number */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Admission Number *
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.admissionNumber}
+                      onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter admission number"
+                    />
+                  </div>
 
-                {/* Admission Number */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Admission number *
-                  </label>
-                  <input
-                    type="text"
-                    value={newStudent.admissionNumber}
-                    onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    placeholder="Enter admission number"
-                  />
-                </div>
+                  {/* Full Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Full Names *
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.fullName}
+                      onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter full names"
+                    />
+                  </div>
 
-                {/* Class */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Class
-                  </label>
-                  <input
-                    type="text"
-                    value={newStudent.class}
-                    onChange={(e) => handleNewStudentInputChange('class', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    placeholder="Enter class"
-                  />
-                </div>
+                  {/* Date of Birth */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date Of Birth *
+                    </label>
+                    <input
+                      type="date"
+                      value={newStudent.dateOfBirth}
+                      onChange={(e) => handleNewStudentInputChange('dateOfBirth', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    />
+                  </div>
 
-                {/* Gender */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Gender
-                  </label>
-                  <select
-                    value={newStudent.gender}
-                    onChange={(e) => handleNewStudentInputChange('gender', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
+                  {/* Gender */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Gender *
+                    </label>
+                    <select
+                      value={newStudent.gender}
+                      onChange={(e) => handleNewStudentInputChange('gender', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
 
-                {/* Date of Birth */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Date of birth
-                  </label>
-                  <input
-                    type="date"
-                    value={newStudent.dateOfBirth}
-                    onChange={(e) => handleNewStudentInputChange('dateOfBirth', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                  />
-                </div>
+                  {/* Date of Admission */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date Of Admission *
+                    </label>
+                    <input
+                      type="date"
+                      value={newStudent.dateOfAdmission}
+                      onChange={(e) => handleNewStudentInputChange('dateOfAdmission', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    />
+                  </div>
+                </CollapsibleSection>
 
-                {/* Parent Name */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Parent name
-                  </label>
-                  <input
-                    type="text"
-                    value={newStudent.parentName}
-                    onChange={(e) => handleNewStudentInputChange('parentName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    placeholder="Enter parent name"
-                  />
-                </div>
+                {/* Academic Info Section */}
+                <CollapsibleSection title="Academic Information *" defaultExpanded={true}>
+                  {/* Class On Admission */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Class On Admission *
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.classOnAdmission}
+                      onChange={(e) => handleNewStudentInputChange('classOnAdmission', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter class on admission"
+                    />
+                  </div>
+                </CollapsibleSection>
 
-                {/* Contact Info */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Contact info
-                  </label>
-                  <input
-                    type="tel"
-                    value={newStudent.contactInfo}
-                    onChange={(e) => handleNewStudentInputChange('contactInfo', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    placeholder="Enter contact number"
-                  />
-                </div>
+                {/* Parent Info Section */}
+                <CollapsibleSection title="Parent Information" defaultExpanded={false}>
+                  {/* Guardian Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Guardian Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.guardianName}
+                      onChange={(e) => handleNewStudentInputChange('guardianName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter guardian name"
+                    />
+                  </div>
 
-                {/* Address */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Address
-                  </label>
-                  <textarea
-                    value={newStudent.address}
-                    onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
-                    placeholder="Enter address"
-                  />
-                </div>
+                  {/* Guardian Contact */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Guardian Contact *
+                    </label>
+                    <input
+                      type="tel"
+                      value={newStudent.guardianContact}
+                      onChange={(e) => handleNewStudentInputChange('guardianContact', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter guardian contact"
+                    />
+                  </div>
 
-                {/* Date of Admission */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                    Date of admission
-                  </label>
-                  <input
-                    type="date"
-                    value={newStudent.dateOfAdmission}
-                    onChange={(e) => handleNewStudentInputChange('dateOfAdmission', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                  />
-                </div>
+                  {/* Alternative Contact */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Alternative Contact
+                    </label>
+                    <input
+                      type="tel"
+                      value={newStudent.alternativeContact}
+                      onChange={(e) => handleNewStudentInputChange('alternativeContact', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter alternative contact"
+                    />
+                  </div>
+                </CollapsibleSection>
+
+                {/* Others Section */}
+                <CollapsibleSection title="Other Information" defaultExpanded={false}>
+                  {/* Address */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Address
+                    </label>
+                    <textarea
+                      value={newStudent.address}
+                      onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                      placeholder="Enter address"
+                    />
+                  </div>
+
+                  {/* Last School Attended */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Last School Attended
+                    </label>
+                    <input
+                      type="text"
+                      value={newStudent.lastSchoolAttended}
+                      onChange={(e) => handleNewStudentInputChange('lastSchoolAttended', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter last school attended"
+                    />
+                  </div>
+
+                  {/* Boarding Status */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Boarding Status
+                    </label>
+                    <select
+                      value={newStudent.boardingStatus}
+                      onChange={(e) => handleNewStudentInputChange('boardingStatus', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    >
+                      <option value="">Select boarding status</option>
+                      <option value="Day">Day</option>
+                      <option value="Boarding">Boarding</option>
+                    </select>
+                  </div>
+
+                  {/* Exempted From Religious Instruction */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Exempted From Religious Instruction
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={newStudent.exemptedFromReligiousInstruction}
+                        onChange={(e) => handleNewStudentInputChange('exemptedFromReligiousInstruction', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                    </div>
+                  </div>
+
+                  {/* Date of Leaving */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Date of Leaving
+                    </label>
+                    <input
+                      type="date"
+                      value={newStudent.dateOfLeaving}
+                      onChange={(e) => handleNewStudentInputChange('dateOfLeaving', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                    />
+                  </div>
+                </CollapsibleSection>
               </div>
             </div>
 
             {/* Drawer Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100">
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={closeAddDrawer}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
