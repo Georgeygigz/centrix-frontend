@@ -10,15 +10,32 @@ export interface NavigationItem {
 
 export interface Student {
   id: string;
+  // Basic Info (Required)
   admissionNumber: string;
   fullName: string;
-  class: string;
-  gender: string;
   dateOfBirth: string;
-  parentName: string;
-  contactInfo: string;
-  address: string;
+  gender: string;
   dateOfAdmission: string;
+  
+  // Academic Info (Required)
+  classOnAdmission: string;
+  
+  // Parent Info (Partial optional)
+  guardianName: string;
+  guardianContact: string;
+  alternativeContact?: string;
+  
+  // Others (Optional)
+  address?: string;
+  lastSchoolAttended?: string;
+  boardingStatus?: string;
+  exemptedFromReligiousInstruction?: boolean;
+  dateOfLeaving?: string;
+  
+  // Legacy fields for backward compatibility
+  class?: string;
+  parentName?: string;
+  contactInfo?: string;
 }
 
 export interface DashboardState {
