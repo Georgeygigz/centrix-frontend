@@ -8,14 +8,14 @@ interface LoginFormProps {
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
-  const [school, setSchool] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, error } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await login({ email: school, password });
+    await login({ email, password });
   };
 
   return (
@@ -45,19 +45,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* School/Username Field */}
+            {/* Email Field */}
             <div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   {FaUser({ className: "h-5 w-5 text-gray-400" })}
                 </div>
                 <input
-                  id="school"
-                  type="text"
-                  value={school}
-                  onChange={(e) => setSchool(e.target.value)}
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-4 bg-transparent border-b border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-400 transition-all duration-200"
-                  placeholder="school"
+                  placeholder="Email address"
                   required
                   disabled={isLoading}
                 />

@@ -10,8 +10,18 @@ export interface RegisterCredentials extends LoginCredentials {
 
 export interface AuthUser {
   id: string;
-  name: string;
   email: string;
+  username: string;
+  is_pin_set: boolean;
+}
+
+export interface LoginResponse {
+  data: {
+    email: string;
+    token: string;
+    is_pin_set: boolean;
+  };
+  status: string;
 }
 
 export interface AuthState {

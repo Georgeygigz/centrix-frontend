@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { AuthState, AuthUser, LoginCredentials, RegisterCredentials } from '../types/auth';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { AuthState, AuthUser, LoginCredentials, RegisterCredentials, LoginResponse } from '../types/auth';
+import { apiService } from '../services/api';
 
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -29,22 +30,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error: null,
   });
 
+  // Check for existing token on app load
+  useEffect(() => {
+    const token = apiService.getToken();
+    if (token) {
+      // You could validate the token here if needed
+      // For now, we'll assume the token is valid
+      setState(prev => ({
+        ...prev,
+        isAuthenticated: true,
+        // Note: We don't have user data from token alone
+        // You might want to fetch user profile separately
+      }));
+    }
+  }, []);
+
   const login = async (credentials: LoginCredentials) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response: LoginResponse = await apiService.login(credentials);
       
-      // Mock successful login
-      const mockUser: AuthUser = {
-        id: '1',
-        name: 'John Doe',
-        email: credentials.email,
+      // Store the token in session storage
+      apiService.setToken(response.data.token);
+      
+      // Create user object from response
+      const user: AuthUser = {
+        id: response.data.email, // Using email as ID for now
+        email: response.data.email,
+        username: response.data.email.split('@')[0], // Extract username from email
+        is_pin_set: response.data.is_pin_set,
       };
       
       setState({
-        user: mockUser,
+        user,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -53,7 +72,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: 'Login failed. Please try again.',
+        error: error instanceof Error ? error.message : 'Login failed. Please try again.',
       }));
     }
   };
@@ -62,14 +81,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      // Simulate API call
+      // TODO: Implement registration API call
+      // For now, we'll simulate a successful registration
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Mock successful registration
       const mockUser: AuthUser = {
         id: '1',
-        name: credentials.name,
         email: credentials.email,
+        username: credentials.name,
+        is_pin_set: false,
       };
       
       setState({
@@ -88,6 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    // Remove token from session storage
+    apiService.removeToken();
+    
     setState({
       user: null,
       isAuthenticated: false,
