@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
-import { apiService, convertStudentToCreateRequest } from '../../services/api';
+import { apiService, convertStudentToCreateRequest, getChangedFields } from '../../services/api';
 
 // Collapsible Section Component
 interface CollapsibleSectionProps {
@@ -76,6 +76,7 @@ const Students: React.FC = () => {
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [originalStudent, setOriginalStudent] = useState<Student | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic-info');
@@ -458,6 +459,7 @@ const Students: React.FC = () => {
 
   const handleEditStudent = (student: Student) => {
     setEditingStudent(student);
+    setOriginalStudent(student); // Store original data for comparison
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
     setEditActiveSection('basic-info'); // Reset to first section when opening
@@ -481,40 +483,74 @@ const Students: React.FC = () => {
   const closeEditDrawer = () => {
     setIsEditDrawerOpen(false);
     setEditingStudent(null);
+    setOriginalStudent(null);
   };
 
   const handleSaveStudent = async () => {
-    if (editingStudent) {
+    if (editingStudent && originalStudent) {
       try {
-        const studentData = {
-          admission_number: editingStudent.admissionNumber,
-          full_name: editingStudent.fullName,
-          date_of_birth: editingStudent.dateOfBirth || '',
-          gender: editingStudent.gender || 'Male',
-          date_of_admission: editingStudent.dateOfAdmission || '',
-          class_on_admission: editingStudent.classOnAdmission || '',
-          guardian_name: editingStudent.guardianName || '',
-          guardian_contact: editingStudent.guardianContact || '',
-          alternative_contact: editingStudent.alternativeContact || '',
-          address: editingStudent.address || '',
-          last_school_attended: editingStudent.lastSchoolAttended || '',
-          boarding_status: editingStudent.boardingStatus || '',
-          exempted_from_religious_instruction: editingStudent.exemptedFromReligiousInstruction || false,
-          date_of_leaving: editingStudent.dateOfLeaving || '',
-        };
-
-        if (editingStudent.id) {
-          const response = await apiService.students.update(editingStudent.id, studentData);
-          
-          // Update the student in the list
-          setStudents(prev => prev.map(student => 
-            student.id === editingStudent.id ? response : student
-          ));
+        // Get only the changed fields
+        const changedFields = getChangedFields(originalStudent, editingStudent);
+        
+        // Only proceed if there are actual changes
+        if (Object.keys(changedFields).length === 0) {
+          setToast({
+            message: 'No changes detected. Student information is already up to date.',
+            type: 'success'
+          });
+          closeEditDrawer();
+          return;
         }
+
+        // Use admission number for the update
+        const admissionNumber = editingStudent.admissionNumber || originalStudent.admissionNumber;
+        if (!admissionNumber) {
+          throw new Error('Admission number is required for update');
+        }
+
+        const response = await apiService.students.update(admissionNumber, changedFields);
+        
+        // Transform the response to match our component format
+        const transformedResponse = transformStudentData(response);
+        
+        // Update the student in the list using admission number as unique identifier
+        setStudents(prev => prev.map(student => 
+          student.admissionNumber === admissionNumber ? transformedResponse : student
+        ));
+        
+        // Show success toast
+        setToast({
+          message: 'Student updated successfully!',
+          type: 'success'
+        });
+        
         closeEditDrawer();
-      } catch (error) {
+        
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+        
+      } catch (error: any) {
         console.error('Error updating student:', error);
-        // You might want to show an error message to the user here
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          setToast({
+            message: error.response.data.message || 'Please fix the validation errors.',
+            type: 'error'
+          });
+        } else {
+          setToast({
+            message: 'Failed to update student. Please try again.',
+            type: 'error'
+          });
+        }
+        
+        // Auto-hide error toast after 5 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 5000);
       }
     }
   };
@@ -722,7 +758,7 @@ const Students: React.FC = () => {
                                   toggleDropdown(studentId, e);
                                 }}
                                 className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
-                                  openDropdownId === (student.id || student.admissionNumber) 
+                                  openDropdownId === (student.admissionNumber || student.id) 
                                     ? 'text-blue-600 bg-blue-50' 
                                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                 }`}

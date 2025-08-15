@@ -216,9 +216,9 @@ export const apiService = {
       });
     },
 
-    // Update student
-    update: async (studentId: string, studentData: any) => {
-      return apiService.authenticatedRequest(`/students/${studentId}`, {
+    // Update student by admission number
+    update: async (admissionNumber: string, studentData: any) => {
+      return apiService.authenticatedRequest(`/students/admissions/${admissionNumber}`, {
         method: 'PUT',
         body: JSON.stringify(studentData),
       });
@@ -274,6 +274,72 @@ export const convertStudentToCreateRequest = (student: Partial<Student>): Create
     boarding_status: student.boardingStatus || student.boarding_status || '',
     exempted_from_religious_instruction: student.exemptedFromReligiousInstruction || student.exempted_from_religious_instruction || false,
   };
+};
+
+// Utility function to get only changed fields between original and edited student
+export const getChangedFields = (originalStudent: Student, editedStudent: Student): Partial<CreateStudentRequest> => {
+  const changes: Partial<CreateStudentRequest> = {};
+  
+  // Helper function to normalize field values for comparison
+  const normalizeValue = (value: any): any => {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  };
+  
+  // Compare each field and only include changed ones
+  if (normalizeValue(originalStudent.fullName || originalStudent.pupil_name) !== normalizeValue(editedStudent.fullName)) {
+    changes.pupil_name = editedStudent.fullName || '';
+  }
+  
+  if (normalizeValue(originalStudent.dateOfBirth || originalStudent.date_of_birth) !== normalizeValue(editedStudent.dateOfBirth)) {
+    changes.date_of_birth = editedStudent.dateOfBirth || '';
+  }
+  
+  if (normalizeValue(originalStudent.gender) !== normalizeValue(editedStudent.gender)) {
+    changes.gender = editedStudent.gender || '';
+  }
+  
+  if (normalizeValue(originalStudent.dateOfAdmission || originalStudent.date_of_admission) !== normalizeValue(editedStudent.dateOfAdmission)) {
+    changes.date_of_admission = editedStudent.dateOfAdmission || '';
+  }
+  
+  if (normalizeValue(originalStudent.classOnAdmission || originalStudent.class_on_admission || originalStudent.class) !== normalizeValue(editedStudent.classOnAdmission)) {
+    changes.class_on_admission = editedStudent.classOnAdmission || '';
+  }
+  
+  if (normalizeValue(originalStudent.guardianName || originalStudent.guardian_name || originalStudent.parentName) !== normalizeValue(editedStudent.guardianName)) {
+    changes.guardian_name = editedStudent.guardianName || '';
+  }
+  
+  if (normalizeValue(originalStudent.guardianContact || originalStudent.guardian_contact || originalStudent.contactInfo) !== normalizeValue(editedStudent.guardianContact)) {
+    changes.contact_1 = editedStudent.guardianContact || '';
+  }
+  
+  if (normalizeValue(originalStudent.alternativeContact || originalStudent.alternative_contact) !== normalizeValue(editedStudent.alternativeContact)) {
+    changes.alternative_contact = editedStudent.alternativeContact || '';
+  }
+  
+  if (normalizeValue(originalStudent.address) !== normalizeValue(editedStudent.address)) {
+    changes.address = editedStudent.address || '';
+  }
+  
+  if (normalizeValue(originalStudent.lastSchoolAttended || originalStudent.last_school_attended) !== normalizeValue(editedStudent.lastSchoolAttended)) {
+    changes.last_school_attended = editedStudent.lastSchoolAttended || '';
+  }
+  
+  if (normalizeValue(originalStudent.boardingStatus || originalStudent.boarding_status) !== normalizeValue(editedStudent.boardingStatus)) {
+    changes.boarding_status = editedStudent.boardingStatus || '';
+  }
+  
+  if (originalStudent.exemptedFromReligiousInstruction !== editedStudent.exemptedFromReligiousInstruction) {
+    changes.exempted_from_religious_instruction = editedStudent.exemptedFromReligiousInstruction || false;
+  }
+  
+  if (normalizeValue(originalStudent.dateOfLeaving || originalStudent.date_of_leaving) !== normalizeValue(editedStudent.dateOfLeaving)) {
+    changes.date_of_leaving = editedStudent.dateOfLeaving || '';
+  }
+  
+  return changes;
 };
 
 export default apiService;

@@ -66,10 +66,12 @@ export interface CreateStudentRequest {
   // Optional fields
   guardian_name?: string;
   contact_1?: string;
+  alternative_contact?: string;
   address?: string;
   last_school_attended?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
+  date_of_leaving?: string;
 }
 
 export interface DashboardState {
