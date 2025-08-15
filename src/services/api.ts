@@ -3,23 +3,7 @@ import { Student, CreateStudentRequest } from '../types/dashboard';
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-// Helper function to handle API responses
-const handleApiResponse = async (response: Response) => {
-  const responseData = await response.json();
-  
-  if (responseData.status === 'error') {
-    const errorMessage = responseData.message || 'Request failed';
-    const errors = responseData.errors || [];
-    throw new Error(`${errorMessage}${errors.length > 0 ? `: ${errors.join(', ')}` : ''}`);
-  }
-  
-  if (responseData.status === 'success') {
-    return responseData.data;
-  }
-  
-  // Fallback for legacy responses
-  return responseData;
-};
+
 
 // API Service for authentication and tenant-aware requests
 export const apiService = {
@@ -33,12 +17,21 @@ export const apiService = {
       body: JSON.stringify(credentials),
     });
 
+    const responseData = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Login failed');
+      throw new Error(responseData.message || 'Login failed');
     }
 
-    return handleApiResponse(response);
+    if (responseData.status === 'error') {
+      throw new Error(responseData.message || 'Login failed');
+    }
+    
+    if (responseData.status === 'success') {
+      return responseData.data;
+    }
+    
+    return responseData;
   },
 
   // Get current user details
@@ -93,12 +86,30 @@ export const apiService = {
       },
     });
 
+    // Get the response data once
+    const responseData = await response.json().catch(() => ({}));
+    
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Request failed');
+      // Create a custom error that preserves the full response data
+      const error = new Error(responseData.message || 'Request failed');
+      (error as any).response = { data: responseData };
+      throw error;
     }
 
-    return handleApiResponse(response);
+    // For successful responses, handle the data directly
+    if (responseData.status === 'error') {
+      // Create a custom error that preserves the full response data
+      const error = new Error(responseData.message || 'Request failed');
+      (error as any).response = { data: responseData };
+      throw error;
+    }
+    
+    if (responseData.status === 'success') {
+      return responseData.data;
+    }
+    
+    // Fallback for legacy responses
+    return responseData;
   },
 
 
@@ -114,12 +125,21 @@ export const apiService = {
         },
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to fetch schools');
+        throw new Error(responseData.message || 'Failed to fetch schools');
       }
 
-      return handleApiResponse(response);
+      if (responseData.status === 'error') {
+        throw new Error(responseData.message || 'Failed to fetch schools');
+      }
+      
+      if (responseData.status === 'success') {
+        return responseData.data;
+      }
+      
+      return responseData;
     },
 
     // Detect school by identifier
@@ -132,12 +152,21 @@ export const apiService = {
         body: JSON.stringify({ identifier }),
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to detect school');
+        throw new Error(responseData.message || 'Failed to detect school');
       }
 
-      return handleApiResponse(response);
+      if (responseData.status === 'error') {
+        throw new Error(responseData.message || 'Failed to detect school');
+      }
+      
+      if (responseData.status === 'success') {
+        return responseData.data;
+      }
+      
+      return responseData;
     },
 
     // Get school by ID
@@ -149,12 +178,21 @@ export const apiService = {
         },
       });
 
+      const responseData = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to fetch school');
+        throw new Error(responseData.message || 'Failed to fetch school');
       }
 
-      return handleApiResponse(response);
+      if (responseData.status === 'error') {
+        throw new Error(responseData.message || 'Failed to fetch school');
+      }
+      
+      if (responseData.status === 'success') {
+        return responseData.data;
+      }
+      
+      return responseData;
     },
   },
 
