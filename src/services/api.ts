@@ -1,3 +1,5 @@
+import { Student, CreateStudentRequest } from '../types/dashboard';
+
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -169,8 +171,8 @@ export const apiService = {
     },
 
     // Create new student
-    create: async (studentData: any) => {
-      return apiService.authenticatedRequest('/students', {
+    create: async (studentData: CreateStudentRequest) => {
+      return apiService.authenticatedRequest('/students/admissions', {
         method: 'POST',
         body: JSON.stringify(studentData),
       });
@@ -216,6 +218,24 @@ export const apiService = {
       return apiService.authenticatedRequest('/students/statistics', { method: 'GET' });
     },
   },
+};
+
+// Utility function to convert Student to CreateStudentRequest
+export const convertStudentToCreateRequest = (student: Partial<Student>): CreateStudentRequest => {
+  return {
+    admission_number: student.admissionNumber || student.admission_number || '',
+    pupil_name: student.fullName || student.pupil_name || '',
+    date_of_birth: student.dateOfBirth || student.date_of_birth || '',
+    gender: student.gender || '',
+    date_of_admission: student.dateOfAdmission || student.date_of_admission || '',
+    class_on_admission: student.classOnAdmission || student.class_on_admission || student.class || '',
+    guardian_name: student.guardianName || student.guardian_name || student.parentName || '',
+    contact_1: student.guardianContact || student.guardian_contact || student.contactInfo || '',
+    address: student.address || '',
+    last_school_attended: student.lastSchoolAttended || student.last_school_attended || '',
+    boarding_status: student.boardingStatus || student.boarding_status || '',
+    exempted_from_religious_instruction: student.exemptedFromReligiousInstruction || student.exempted_from_religious_instruction || false,
+  };
 };
 
 export default apiService;
