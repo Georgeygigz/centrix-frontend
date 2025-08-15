@@ -1,6 +1,7 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TenantProvider } from './context/TenantContext';
+import { RBACProvider } from './context/RBACContext';
 import Dashboard from './pages/Dashboard';
 import Auth from './pages/Auth';
 
@@ -26,9 +27,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <TenantProvider>
-        <AppContent />
-      </TenantProvider>
+      <RBACProvider>
+        <TenantProvider>
+          <AppContent />
+        </TenantProvider>
+      </RBACProvider>
     </AuthProvider>
   );
 }
