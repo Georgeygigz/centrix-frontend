@@ -42,13 +42,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const userInfo = await apiService.getCurrentUser();
           
           const user: AuthUser = {
-            id: userInfo.data?.id || userInfo.id || 'unknown',
-            email: userInfo.data?.email || userInfo.email || '',
-            username: userInfo.data?.first_name || userInfo.data?.username || userInfo.username || 'user',
-            is_pin_set: userInfo.data?.is_pin_set || userInfo.is_pin_set || false,
-            school_id: userInfo.data?.school?.id || userInfo.school?.id || userInfo.school_id || '',
-            school_name: userInfo.data?.school?.name || userInfo.school?.name || userInfo.school_name || '',
-            role: userInfo.data?.role || userInfo.role || 'user',
+            id: userInfo.id || 'unknown',
+            email: userInfo.email || '',
+            username: userInfo.first_name || userInfo.username || 'user',
+            is_pin_set: userInfo.is_pin_set || false,
+            school_id: userInfo.school?.id || '',
+            school_name: userInfo.school?.name || '',
+            role: userInfo.role || 'user',
           };
           
           setState(prev => ({
@@ -97,8 +97,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       sessionStorage.removeItem('authToken');
       
       // Store the token in session storage
-      if (response.data && response.data.token) {
-        sessionStorage.setItem('authToken', response.data.token);
+      if (response && response.token) {
+        sessionStorage.setItem('authToken', response.token);
       }
       
       // Fetch complete user information including school details
@@ -106,13 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Create user object from complete user info with proper null checks
       const user: AuthUser = {
-        id: userInfo.data?.id || userInfo.id || 'unknown',
-        email: userInfo.data?.email || userInfo.email || '',
-        username: userInfo.data?.first_name || userInfo.data?.username || userInfo.username || 'user', // Use first_name from /me endpoint
-        is_pin_set: userInfo.data?.is_pin_set || userInfo.is_pin_set || false,
-        school_id: userInfo.data?.school?.id || userInfo.school?.id || userInfo.school_id || '',
-        school_name: userInfo.data?.school?.name || userInfo.school?.name || userInfo.school_name || '',
-        role: userInfo.data?.role || userInfo.role || 'user',
+        id: userInfo.id || 'unknown',
+        email: userInfo.email || '',
+        username: userInfo.first_name || userInfo.username || 'user', // Use first_name from /me endpoint
+        is_pin_set: userInfo.is_pin_set || false,
+        school_id: userInfo.school?.id || '',
+        school_name: userInfo.school?.name || '',
+        role: userInfo.role || 'user',
       };
       
       setState({

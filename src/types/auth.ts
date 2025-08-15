@@ -21,15 +21,12 @@ export interface AuthUser {
 }
 
 export interface LoginResponse {
-  data: {
-    email: string;
-    token: string;
-    is_pin_set: boolean;
-    school_id: string;
-    school_name?: string;
-    role?: string;
-  };
-  status: string;
+  email: string;
+  token: string;
+  is_pin_set: boolean;
+  school_id?: string;
+  school_name?: string;
+  role?: string;
 }
 
 export interface AuthState {

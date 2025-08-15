@@ -1,6 +1,24 @@
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
+// Helper function to handle API responses
+const handleApiResponse = async (response: Response) => {
+  const responseData = await response.json();
+  
+  if (responseData.status === 'error') {
+    const errorMessage = responseData.message || 'Request failed';
+    const errors = responseData.errors || [];
+    throw new Error(`${errorMessage}${errors.length > 0 ? `: ${errors.join(', ')}` : ''}`);
+  }
+  
+  if (responseData.status === 'success') {
+    return responseData.data;
+  }
+  
+  // Fallback for legacy responses
+  return responseData;
+};
+
 // API Service for authentication and tenant-aware requests
 export const apiService = {
   // Login endpoint with tenant support
@@ -18,8 +36,7 @@ export const apiService = {
       throw new Error(errorData.message || 'Login failed');
     }
 
-    const data = await response.json();
-    return data;
+    return handleApiResponse(response);
   },
 
   // Get current user details
@@ -79,7 +96,7 @@ export const apiService = {
       throw new Error(errorData.message || 'Request failed');
     }
 
-    return response.json();
+    return handleApiResponse(response);
   },
 
 
@@ -100,7 +117,7 @@ export const apiService = {
         throw new Error(errorData.message || 'Failed to fetch schools');
       }
 
-      return response.json();
+      return handleApiResponse(response);
     },
 
     // Detect school by identifier
@@ -118,7 +135,7 @@ export const apiService = {
         throw new Error(errorData.message || 'Failed to detect school');
       }
 
-      return response.json();
+      return handleApiResponse(response);
     },
 
     // Get school by ID
@@ -135,7 +152,7 @@ export const apiService = {
         throw new Error(errorData.message || 'Failed to fetch school');
       }
 
-      return response.json();
+      return handleApiResponse(response);
     },
   },
 
