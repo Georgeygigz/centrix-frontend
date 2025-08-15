@@ -65,6 +65,10 @@ import { Student } from '../../types/dashboard';interface StudentModalProps {
           <div className="space-y-2">
             <div className="flex justify-between items-center py-1.5 border-b border-blue-200">
               <span className="text-xs font-semibold text-blue-700">Student ID:</span>
+              <span className="text-xs font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">{student.id || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-blue-200">
+              <span className="text-xs font-semibold text-blue-700">Admission #:</span>
               <span className="text-xs font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">{student.admissionNumber || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-blue-200">
