@@ -54,6 +54,24 @@ export interface Student {
   created_at?: string;
 }
 
+export interface CreateStudentRequest {
+  // Required fields for student creation
+  admission_number: string;
+  pupil_name: string;
+  date_of_birth: string;
+  gender: string;
+  date_of_admission: string;
+  class_on_admission: string;
+  
+  // Optional fields
+  guardian_name?: string;
+  contact_1?: string;
+  address?: string;
+  last_school_attended?: string;
+  boarding_status?: string;
+  exempted_from_religious_instruction?: boolean;
+}
+
 export interface DashboardState {
   currentPage: string;
   sidebarCollapsed: boolean;

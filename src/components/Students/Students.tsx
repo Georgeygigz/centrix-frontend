@@ -1,38 +1,63 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
-import { apiService } from '../../services/api';
+import { apiService, convertStudentToCreateRequest } from '../../services/api';
 
 // Collapsible Section Component
 interface CollapsibleSectionProps {
   title: string;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  isActive?: boolean;
+  onSectionClick?: () => void;
 }
 
 const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
   title, 
   children, 
-  defaultExpanded = true 
+  defaultExpanded = true,
+  isActive = false,
+  onSectionClick
 }) => {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
+  const handleClick = () => {
+    setIsExpanded(!isExpanded);
+    if (onSectionClick) {
+      onSectionClick();
+    }
+  };
+
   return (
-    <div className="border border-gray-200 rounded-lg">
+    <div className={`border rounded-lg transition-all duration-200 ${
+      isActive 
+        ? 'border-blue-300 bg-blue-50/30' 
+        : 'border-gray-200 hover:border-gray-300'
+    }`}>
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 transition-colors duration-200 rounded-t-lg"
+        onClick={handleClick}
+        className={`w-full px-4 py-3 flex items-center justify-between text-sm font-semibold transition-all duration-200 rounded-t-lg ${
+          isActive
+            ? 'text-blue-900 bg-blue-100/50 hover:bg-blue-100'
+            : 'text-gray-900 bg-gray-50 hover:bg-gray-100'
+        }`}
       >
         <span>{title}</span>
         {isExpanded ? 
-          FaChevronUp({ className: "w-4 h-4 text-gray-500" }) : 
-          FaChevronDown({ className: "w-4 h-4 text-gray-500" })
+          FaChevronUp({ className: `w-4 h-4 transition-colors duration-200 ${
+            isActive ? 'text-blue-600' : 'text-gray-500'
+          }` }) : 
+          FaChevronDown({ className: `w-4 h-4 transition-colors duration-200 ${
+            isActive ? 'text-blue-600' : 'text-gray-500'
+          }` })
         }
       </button>
       {isExpanded && (
-        <div className="p-4 space-y-4">
+        <div className={`p-4 space-y-4 transition-all duration-200 ${
+          isActive ? 'bg-blue-50/20' : ''
+        }`}>
           {children}
         </div>
       )}
@@ -52,6 +77,10 @@ const Students: React.FC = () => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [activeSection, setActiveSection] = useState<string>('basic-info');
+  const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
     // Basic Info (Required)
     admissionNumber: '',
@@ -194,6 +223,13 @@ const Students: React.FC = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
+  // Debug form errors
+  useEffect(() => {
+    if (Object.keys(formErrors).length > 0) {
+      console.log('Form errors updated:', formErrors);
+    }
+  }, [formErrors]);
+
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(prev - 1, 1));
   };
@@ -204,6 +240,8 @@ const Students: React.FC = () => {
 
   const openAddDrawer = () => {
     setIsAddDrawerOpen(true);
+    setActiveSection('basic-info'); // Reset to first section when opening
+    setFormErrors({}); // Clear any previous errors
   };
 
   const closeAddDrawer = () => {
@@ -222,35 +260,101 @@ const Students: React.FC = () => {
   };
 
   const handleAddStudent = async () => {
-    if (newStudent.fullName && newStudent.admissionNumber) {
-      try {
-        const studentData = {
-          admission_number: newStudent.admissionNumber,
-          full_name: newStudent.fullName,
-          date_of_birth: newStudent.dateOfBirth || '',
-          gender: newStudent.gender || 'Male',
-          date_of_admission: newStudent.dateOfAdmission || '',
-          class_on_admission: newStudent.classOnAdmission || '',
-          guardian_name: newStudent.guardianName || '',
-          guardian_contact: newStudent.guardianContact || '',
-          alternative_contact: newStudent.alternativeContact || '',
-          address: newStudent.address || '',
-          last_school_attended: newStudent.lastSchoolAttended || '',
-          boarding_status: newStudent.boardingStatus || '',
-          exempted_from_religious_instruction: newStudent.exemptedFromReligiousInstruction || false,
-          date_of_leaving: newStudent.dateOfLeaving || '',
-        };
+    try {
+        const studentData = convertStudentToCreateRequest(newStudent);
 
         const response = await apiService.students.create(studentData);
         
+        // Transform the API response to match the component's expected format
+        const transformedStudent = transformStudentData(response);
+        
         // Add the new student to the list
-        setStudents(prev => [...prev, response]);
-        closeAddDrawer();
-      } catch (error) {
+        setStudents(prev => [...prev, transformedStudent]);
+        
+        // Show success toast
+        setToast({
+          message: 'Student added successfully!',
+          type: 'success'
+        });
+        
+        // Clear form errors
+        setFormErrors({});
+        
+        // Clear the form
+        setNewStudent({
+          admissionNumber: '',
+          fullName: '',
+          dateOfBirth: '',
+          gender: 'Male',
+          dateOfAdmission: '',
+          classOnAdmission: '',
+          guardianName: '',
+          guardianContact: '',
+          alternativeContact: '',
+          address: '',
+          lastSchoolAttended: '',
+          boardingStatus: '',
+          exemptedFromReligiousInstruction: false,
+          dateOfLeaving: ''
+        });
+        
+        // Close drawer after a short delay to ensure form is cleared
+        setTimeout(() => {
+          closeAddDrawer();
+        }, 100);
+        
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+        
+      } catch (error: any) {
         console.error('Error adding student:', error);
-        // You might want to show an error message to the user here
+        console.log('Full error object:', error);
+        console.log('Error response:', error.response);
+        console.log('Error response data:', error.response?.data);
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          console.log('Setting form errors:', error.response.data.errors);
+          setFormErrors(error.response.data.errors);
+          setToast({
+            message: 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else if (error.response?.data) {
+          // Try different error structures
+          console.log('Trying alternative error structure:', error.response.data);
+          if (typeof error.response.data === 'object') {
+            setFormErrors(error.response.data);
+            setToast({
+              message: 'Please fix the validation errors below.',
+              type: 'error'
+            });
+          } else {
+            setFormErrors({});
+            setToast({
+              message: 'Failed to add student. Please try again.',
+              type: 'error'
+            });
+          }
+        } else {
+          setFormErrors({});
+          setToast({
+            message: 'Failed to add student. Please try again.',
+            type: 'error'
+          });
+        }
+        
+        // Auto-hide error toast after 5 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 5000);
       }
-    }
+  };
+
+  const getFieldError = (fieldName: string): string | null => {
+    return formErrors[fieldName]?.[0] || null;
   };
 
   const handleNewStudentInputChange = (field: keyof Student, value: string | boolean) => {
@@ -258,6 +362,26 @@ const Students: React.FC = () => {
       ...prev,
       [field]: value
     }));
+    
+    // Clear error for this field when user starts typing
+    // Map frontend field names to API field names for error clearing
+    const fieldMapping: { [key: string]: string } = {
+      'admissionNumber': 'admission_number',
+      'fullName': 'pupil_name',
+      'classOnAdmission': 'class_on_admission',
+      'guardianName': 'guardian_name',
+      'guardianContact': 'contact_1',
+      'boardingStatus': 'boarding_status'
+    };
+    
+    const apiFieldName = fieldMapping[field] || field;
+    if (formErrors[apiFieldName]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[apiFieldName];
+        return newErrors;
+      });
+    }
   };
 
   const handleSort = (column: string) => {
@@ -329,6 +453,7 @@ const Students: React.FC = () => {
     setEditingStudent(student);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
+    setEditActiveSection('basic-info'); // Reset to first section when opening
   };
 
   const handleDeleteStudent = async (student: Student) => {
@@ -716,7 +841,12 @@ const Students: React.FC = () => {
             <div className="flex-1 overflow-y-auto">
               <div className="p-6 space-y-4">
                 {/* Basic Info Section */}
-                <CollapsibleSection title="Basic Information *" defaultExpanded={true}>
+                <CollapsibleSection 
+                  title="Basic Information *" 
+                  defaultExpanded={true}
+                  isActive={editActiveSection === 'basic-info'}
+                  onSectionClick={() => setEditActiveSection('basic-info')}
+                >
                   {/* Admission Number */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -789,7 +919,12 @@ const Students: React.FC = () => {
                 </CollapsibleSection>
 
                 {/* Academic Info Section */}
-                <CollapsibleSection title="Academic Information *" defaultExpanded={true}>
+                <CollapsibleSection 
+                  title="Academic Information *" 
+                  defaultExpanded={true}
+                  isActive={editActiveSection === 'academic-info'}
+                  onSectionClick={() => setEditActiveSection('academic-info')}
+                >
                   {/* Class On Admission */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -806,7 +941,12 @@ const Students: React.FC = () => {
                 </CollapsibleSection>
 
                 {/* Parent Info Section */}
-                <CollapsibleSection title="Parent Information" defaultExpanded={false}>
+                <CollapsibleSection 
+                  title="Parent Information" 
+                  defaultExpanded={false}
+                  isActive={editActiveSection === 'parent-info'}
+                  onSectionClick={() => setEditActiveSection('parent-info')}
+                >
                   {/* Guardian Name */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -851,7 +991,12 @@ const Students: React.FC = () => {
                 </CollapsibleSection>
 
                 {/* Others Section */}
-                <CollapsibleSection title="Other Information" defaultExpanded={false}>
+                <CollapsibleSection 
+                  title="Other Information" 
+                  defaultExpanded={false}
+                  isActive={editActiveSection === 'other-info'}
+                  onSectionClick={() => setEditActiveSection('other-info')}
+                >
                   {/* Address */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -972,9 +1117,36 @@ const Students: React.FC = () => {
 
             {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto">
+              {/* Error Summary */}
+              {Object.keys(formErrors).length > 0 && (
+                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <h3 className="text-sm font-semibold text-red-800">Please fix the following errors:</h3>
+                  </div>
+                  <ul className="text-xs text-red-700 space-y-1">
+                    {Object.entries(formErrors).map(([field, errors]) => (
+                      <li key={field} className="flex items-start space-x-2">
+                        <span className="text-red-500 mt-0.5">•</span>
+                        <span>
+                          <span className="font-medium">{field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span> {errors[0]}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
               <div className="p-6 space-y-4">
                 {/* Basic Info Section */}
-                <CollapsibleSection title="Basic Information *" defaultExpanded={true}>
+                <CollapsibleSection 
+                  title="Basic Information *" 
+                  defaultExpanded={true}
+                  isActive={activeSection === 'basic-info'}
+                  onSectionClick={() => setActiveSection('basic-info')}
+                >
                   {/* Admission Number */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -984,9 +1156,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={newStudent.admissionNumber}
                       onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getFieldError('admission_number') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter admission number"
                     />
+                    {getFieldError('admission_number') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('admission_number')}</p>
+                    )}
                   </div>
 
                   {/* Full Name */}
@@ -998,9 +1175,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={newStudent.fullName}
                       onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getFieldError('pupil_name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter full names"
                     />
+                    {getFieldError('pupil_name') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('pupil_name')}</p>
+                    )}
                   </div>
 
                   {/* Date of Birth */}
@@ -1047,7 +1229,12 @@ const Students: React.FC = () => {
                 </CollapsibleSection>
 
                 {/* Academic Info Section */}
-                <CollapsibleSection title="Academic Information *" defaultExpanded={true}>
+                <CollapsibleSection 
+                  title="Academic Information *" 
+                  defaultExpanded={true}
+                  isActive={activeSection === 'academic-info'}
+                  onSectionClick={() => setActiveSection('academic-info')}
+                >
                   {/* Class On Admission */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -1057,14 +1244,24 @@ const Students: React.FC = () => {
                       type="text"
                       value={newStudent.classOnAdmission}
                       onChange={(e) => handleNewStudentInputChange('classOnAdmission', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getFieldError('class_on_admission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter class on admission"
                     />
+                    {getFieldError('class_on_admission') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('class_on_admission')}</p>
+                    )}
                   </div>
                 </CollapsibleSection>
 
                 {/* Parent Info Section */}
-                <CollapsibleSection title="Parent Information" defaultExpanded={false}>
+                <CollapsibleSection 
+                  title="Parent Information" 
+                  defaultExpanded={false}
+                  isActive={activeSection === 'parent-info'}
+                  onSectionClick={() => setActiveSection('parent-info')}
+                >
                   {/* Guardian Name */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -1074,9 +1271,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={newStudent.guardianName}
                       onChange={(e) => handleNewStudentInputChange('guardianName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getFieldError('guardian_name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter guardian name"
                     />
+                    {getFieldError('guardian_name') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('guardian_name')}</p>
+                    )}
                   </div>
 
                   {/* Guardian Contact */}
@@ -1109,7 +1311,12 @@ const Students: React.FC = () => {
                 </CollapsibleSection>
 
                 {/* Others Section */}
-                <CollapsibleSection title="Other Information" defaultExpanded={false}>
+                <CollapsibleSection 
+                  title="Other Information" 
+                  defaultExpanded={false}
+                  isActive={activeSection === 'other-info'}
+                  onSectionClick={() => setActiveSection('other-info')}
+                >
                   {/* Address */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
@@ -1119,9 +1326,14 @@ const Students: React.FC = () => {
                       value={newStudent.address}
                       onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                        getFieldError('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter address"
                     />
+                    {getFieldError('address') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('address')}</p>
+                    )}
                   </div>
 
                   {/* Last School Attended */}
@@ -1146,12 +1358,17 @@ const Students: React.FC = () => {
                     <select
                       value={newStudent.boardingStatus}
                       onChange={(e) => handleNewStudentInputChange('boardingStatus', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getFieldError('boarding_status') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     >
                       <option value="">Select boarding status</option>
                       <option value="Day">Day</option>
                       <option value="Boarding">Boarding</option>
                     </select>
+                    {getFieldError('boarding_status') && (
+                      <p className="text-xs text-red-600 mt-1">{getFieldError('boarding_status')}</p>
+                    )}
                   </div>
 
                   {/* Exempted From Religious Instruction */}
@@ -1247,6 +1464,30 @@ const Students: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+      
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[10000] flex items-center p-4 rounded-lg shadow-lg transition-all duration-300">
+          <div className={`flex items-center space-x-3 ${
+            toast.type === 'success' 
+              ? 'bg-green-50 border border-green-200 text-green-800' 
+              : 'bg-red-50 border border-red-200 text-red-800'
+          } px-6 py-4 rounded-lg shadow-xl`}>
+            {toast.type === 'success' ? (
+              FaCheckCircle({ className: "w-5 h-5 text-green-600" })
+            ) : (
+              FaTimes({ className: "w-5 h-5 text-red-600" })
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast(null)}
+              className="ml-3 text-gray-400 hover:text-gray-600"
+            >
+              {FaTimes({ className: "w-4 h-4" })}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
