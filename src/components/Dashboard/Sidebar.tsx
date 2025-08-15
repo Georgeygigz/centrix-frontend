@@ -1,7 +1,8 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding } from 'react-icons/fa';
-import { NavigationItem } from '../../types/dashboard';
+import { FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding, FaSchool } from 'react-icons/fa';
+import { NavigationItem } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
+import { useRoleBasedUI } from '../../hooks/usePermissions';
 
 interface SidebarProps {
   currentPage: string;
@@ -10,26 +11,38 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
   const { logout } = useAuth();
+  const ui = useRoleBasedUI();
+  
   const navigationItems: NavigationItem[] = [
     {
       id: 'students',
       label: 'Students',
       icon: FaUserGraduate,
+      requiredPermissions: ['view_students'],
     },
     {
       id: 'reports',
       label: 'Reports',
       icon: FaChartBar,
+      requiredPermissions: ['access_reports'],
     },
     {
       id: 'users',
       label: 'Users',
       icon: FaUsers,
+      requiredPermissions: ['view_school_users', 'view_all_users'],
+    },
+    {
+      id: 'schools',
+      label: 'Schools',
+      icon: FaSchool,
+      requiredPermissions: ['view_all_schools', 'create_school'],
     },
     {
       id: 'customer-support',
       label: 'Customer Support',
       icon: FaHeadset,
+      requiredPermissions: ['access_customer_support'],
       children: [
         { id: 'tickets', label: 'Tickets', icon: FaHeadset },
         { id: 'live-chat', label: 'Live Chat', icon: FaHeadset },
@@ -39,6 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       id: 'settings',
       label: 'Settings',
       icon: FaCog,
+      requiredPermissions: ['access_settings'],
     },
   ];
 
@@ -61,43 +75,51 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       {/* Navigation */}
       <nav className="p-3">
         <ul className="space-y-1">
-          {navigationItems.map((item) => (
-            <li key={item.id}>
-              <button
-                onClick={() => onPageChange(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-all duration-200 group ${
-                  currentPage === item.id
-                    ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  {item.icon({ className: `w-4 h-4 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` })}
-                  <span className="text-xs font-medium">{item.label}</span>
-                </div>
-                {item.children && (
-                  FaChevronDown({ className: `w-3 h-3 transition-transform duration-200 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400'}` })
+          {navigationItems.map((item) => {
+            // Check if user has permission to see this navigation item
+            const hasPermission = !item.requiredPermissions || 
+              item.requiredPermissions.some(permission => ui.hasPermission(permission));
+            
+            if (!hasPermission) return null;
+            
+            return (
+              <li key={item.id}>
+                <button
+                  onClick={() => onPageChange(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-all duration-200 group ${
+                    currentPage === item.id
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    {item.icon({ className: `w-4 h-4 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` })}
+                    <span className="text-xs font-medium">{item.label}</span>
+                  </div>
+                  {item.children && (
+                    FaChevronDown({ className: `w-3 h-3 transition-transform duration-200 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400'}` })
+                  )}
+                </button>
+                
+                {/* Sub-items */}
+                {item.children && currentPage === item.id && (
+                  <ul className="mt-1 ml-4 space-y-1">
+                    {item.children.map((subItem) => (
+                      <li key={subItem.id}>
+                        <button
+                          onClick={() => onPageChange(subItem.id)}
+                          className="w-full flex items-center space-x-2 px-2 py-1 rounded text-left text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all duration-200"
+                        >
+                          {subItem.icon({ className: "w-3 h-3 text-gray-400" })}
+                          <span className="text-xs">{subItem.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-              </button>
-              
-              {/* Sub-items */}
-              {item.children && currentPage === item.id && (
-                <ul className="mt-1 ml-4 space-y-1">
-                  {item.children.map((subItem) => (
-                    <li key={subItem.id}>
-                      <button
-                        onClick={() => onPageChange(subItem.id)}
-                        className="w-full flex items-center space-x-2 px-2 py-1 rounded text-left text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all duration-200"
-                      >
-                        {subItem.icon({ className: "w-3 h-3 text-gray-400" })}
-                        <span className="text-xs">{subItem.label}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </nav>
     </div>

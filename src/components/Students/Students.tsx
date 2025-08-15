@@ -4,6 +4,7 @@ import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTra
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 import { apiService, convertStudentToCreateRequest, getChangedFields } from '../../services/api';
+import { PermissionGate } from '../RBAC';
 
 // Collapsible Section Component
 interface CollapsibleSectionProps {
@@ -667,12 +668,14 @@ const Students: React.FC = () => {
                 </select>
 
                 {/* Add New Student Button */}
-                <button
-                  onClick={openAddDrawer}
-                  className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-                >
-                  + Add Student
-                </button>
+                <PermissionGate permissions={['student_crud']}>
+                  <button
+                    onClick={openAddDrawer}
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                  >
+                    + Add Student
+                  </button>
+                </PermissionGate>
               </div>
             </div>
           </div>
@@ -755,26 +758,28 @@ const Students: React.FC = () => {
                             </button>
                             
                             {/* Dropdown Menu */}
-                            <div className="relative" data-dropdown-container>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const studentId = student.id || `student-${Math.random()}`;
-                                  toggleDropdown(studentId, e);
-                                }}
-                                className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
-                                  openDropdownId === student.id 
-                                    ? 'text-blue-600 bg-blue-50' 
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                                }`}
-                                title="More Options"
-                              >
-                                {FaEllipsisV({ className: "w-3 h-3" })}
-                              </button>
-                              
-                              {/* Dropdown button only - dropdown rendered via portal */}
-                            </div>
+                            <PermissionGate permissions={['student_crud']}>
+                              <div className="relative" data-dropdown-container>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const studentId = student.id || `student-${Math.random()}`;
+                                    toggleDropdown(studentId, e);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
+                                    openDropdownId === student.id 
+                                      ? 'text-blue-600 bg-blue-50' 
+                                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                  }`}
+                                  title="More Options"
+                                >
+                                  {FaEllipsisV({ className: "w-3 h-3" })}
+                                </button>
+                                
+                                {/* Dropdown button only - dropdown rendered via portal */}
+                              </div>
+                            </PermissionGate>
                           </div>
                         </td>
                       </tr>
@@ -1521,32 +1526,36 @@ const Students: React.FC = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="py-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const student = students.find(s => s.id === openDropdownId);
-                if (student) {
-                  handleEditStudent(student);
-                }
-              }}
-              className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-            >
-              {FaEdit({ className: "w-3 h-3 mr-2" })}
-              Edit
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                const student = students.find(s => s.id === openDropdownId);
-                if (student) {
-                  handleDeleteStudent(student);
-                }
-              }}
-              className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
-            >
-              {FaTrash({ className: "w-3 h-3 mr-2" })}
-              Delete
-            </button>
+            <PermissionGate permissions={['student_crud']}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const student = students.find(s => s.id === openDropdownId);
+                  if (student) {
+                    handleEditStudent(student);
+                  }
+                }}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+              >
+                {FaEdit({ className: "w-3 h-3 mr-2" })}
+                Edit
+              </button>
+            </PermissionGate>
+            <PermissionGate permissions={['student_crud']}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const student = students.find(s => s.id === openDropdownId);
+                  if (student) {
+                    handleDeleteStudent(student);
+                  }
+                }}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+              >
+                {FaTrash({ className: "w-3 h-3 mr-2" })}
+                Delete
+              </button>
+            </PermissionGate>
           </div>
         </div>,
         document.body
