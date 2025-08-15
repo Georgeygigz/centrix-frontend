@@ -3,6 +3,7 @@ import Sidebar from '../components/Dashboard/Sidebar';
 import TopNavigation from '../components/Dashboard/TopNavigation';
 import Students from '../components/Students/Students';
 
+
 const Dashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('students');
 
@@ -19,7 +20,8 @@ const Dashboard: React.FC = () => {
       'ticket-list': 'Ticket List',
       'support-category': 'Support Category',
       'macro-replies': 'Macro Replies',
-      'create-ticket': 'Create Ticket'
+      'create-ticket': 'Create Ticket',
+
     };
     return pageTitles[page] || 'Dashboard';
   };
@@ -40,6 +42,7 @@ const Dashboard: React.FC = () => {
         return <div className="p-6 text-center text-gray-500">Settings page coming soon...</div>;
       case 'profile':
         return <div className="p-6 text-center text-gray-500">Profile page coming soon...</div>;
+
       default:
         return <Students />;
     }

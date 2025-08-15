@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes } from 'react-icons/fa';
 import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
+import { apiService } from '../../services/api';
 
 // Collapsible Section Component
 interface CollapsibleSectionProps {
@@ -47,6 +48,7 @@ const Students: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('admission');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
@@ -73,22 +75,68 @@ const Students: React.FC = () => {
     exemptedFromReligiousInstruction: false,
     dateOfLeaving: ''
   });
-  const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
+
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  // Load students data from JSON file
+  // Transform API response to component format
+  const transformStudentData = (apiStudent: any): Student => {
+    return {
+      id: apiStudent.id,
+      // Map snake_case to camelCase
+      admissionNumber: apiStudent.admission_number || apiStudent.admissionNumber,
+      fullName: apiStudent.full_name || apiStudent.pupil_name || apiStudent.fullName,
+      dateOfBirth: apiStudent.date_of_birth || apiStudent.dateOfBirth,
+      gender: apiStudent.gender,
+      dateOfAdmission: apiStudent.date_of_admission || apiStudent.dateOfAdmission,
+      classOnAdmission: apiStudent.class_on_admission || apiStudent.classOnAdmission,
+      guardianName: apiStudent.guardian_name || apiStudent.guardianName,
+      guardianContact: apiStudent.guardian_contact || apiStudent.guardianContact,
+      alternativeContact: apiStudent.alternative_contact || apiStudent.alternativeContact,
+      address: apiStudent.address,
+      lastSchoolAttended: apiStudent.last_school_attended || apiStudent.lastSchoolAttended,
+      boardingStatus: apiStudent.boarding_status || apiStudent.boardingStatus,
+      exemptedFromReligiousInstruction: apiStudent.exempted_from_religious_instruction || apiStudent.exemptedFromReligiousInstruction,
+      dateOfLeaving: apiStudent.date_of_leaving || apiStudent.dateOfLeaving,
+      // Legacy fields
+      class: apiStudent.class_on_admission || apiStudent.class,
+      parentName: apiStudent.guardian_name || apiStudent.parentName,
+      contactInfo: apiStudent.guardian_contact || apiStudent.contactInfo,
+      // Keep original API fields for backward compatibility
+      admission_number: apiStudent.admission_number,
+      pupil_name: apiStudent.pupil_name,
+      date_of_birth: apiStudent.date_of_birth,
+      date_of_admission: apiStudent.date_of_admission,
+      class_on_admission: apiStudent.class_on_admission,
+      guardian_name: apiStudent.guardian_name,
+      guardian_contact: apiStudent.guardian_contact,
+      alternative_contact: apiStudent.alternative_contact,
+      last_school_attended: apiStudent.last_school_attended,
+      boarding_status: apiStudent.boarding_status,
+      exempted_from_religious_instruction: apiStudent.exempted_from_religious_instruction,
+      date_of_leaving: apiStudent.date_of_leaving,
+      is_current_student: apiStudent.is_current_student,
+      created_at: apiStudent.created_at,
+    };
+  };
+
+  // Load students data from API with tenant support
   useEffect(() => {
     const loadStudents = async () => {
       try {
-        const response = await fetch('/students.json');
-        if (!response.ok) {
-          throw new Error('Failed to load students data');
-        }
-        const data = await response.json();
-        setStudents(data);
+        setIsLoading(true);
+        console.log('Fetching students from API...');
+        const data = await apiService.students.getAll();
+        console.log('Students API response:', data);
+        
+        // Transform the API response data
+        const rawStudents = data.results || data || [];
+        const transformedStudents = rawStudents.map(transformStudentData);
+        console.log('Transformed students:', transformedStudents);
+        
+        setStudents(transformedStudents);
       } catch (error) {
         console.error('Error loading students:', error);
         // Fallback to empty array if loading fails
@@ -99,12 +147,12 @@ const Students: React.FC = () => {
     };
 
     loadStudents();
-  }, []);
+  }, []); // Remove currentSchool dependency since API handles school context via auth token
 
   const filteredAndSortedStudents = useMemo(() => {
     let filtered = students.filter(student =>
-      student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (student.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (student.admissionNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (student.classOnAdmission || student.class || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -173,35 +221,35 @@ const Students: React.FC = () => {
     });
   };
 
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     if (newStudent.fullName && newStudent.admissionNumber) {
-      const studentToAdd: Student = {
-        id: (students.length + 1).toString(),
-        // Basic Info (Required)
-        admissionNumber: newStudent.admissionNumber,
-        fullName: newStudent.fullName,
-        dateOfBirth: newStudent.dateOfBirth || '',
-        gender: newStudent.gender || 'Male',
-        dateOfAdmission: newStudent.dateOfAdmission || '',
+      try {
+        const studentData = {
+          admission_number: newStudent.admissionNumber,
+          full_name: newStudent.fullName,
+          date_of_birth: newStudent.dateOfBirth || '',
+          gender: newStudent.gender || 'Male',
+          date_of_admission: newStudent.dateOfAdmission || '',
+          class_on_admission: newStudent.classOnAdmission || '',
+          guardian_name: newStudent.guardianName || '',
+          guardian_contact: newStudent.guardianContact || '',
+          alternative_contact: newStudent.alternativeContact || '',
+          address: newStudent.address || '',
+          last_school_attended: newStudent.lastSchoolAttended || '',
+          boarding_status: newStudent.boardingStatus || '',
+          exempted_from_religious_instruction: newStudent.exemptedFromReligiousInstruction || false,
+          date_of_leaving: newStudent.dateOfLeaving || '',
+        };
+
+        const response = await apiService.students.create(studentData);
         
-        // Academic Info (Required)
-        classOnAdmission: newStudent.classOnAdmission || '',
-        
-        // Parent Info (Partial optional)
-        guardianName: newStudent.guardianName || '',
-        guardianContact: newStudent.guardianContact || '',
-        alternativeContact: newStudent.alternativeContact,
-        
-        // Others (Optional)
-        address: newStudent.address,
-        lastSchoolAttended: newStudent.lastSchoolAttended,
-        boardingStatus: newStudent.boardingStatus,
-        exemptedFromReligiousInstruction: newStudent.exemptedFromReligiousInstruction,
-        dateOfLeaving: newStudent.dateOfLeaving
-      };
-      
-      setStudents(prev => [...prev, studentToAdd]);
-      closeAddDrawer();
+        // Add the new student to the list
+        setStudents(prev => [...prev, response]);
+        closeAddDrawer();
+      } catch (error) {
+        console.error('Error adding student:', error);
+        // You might want to show an error message to the user here
+      }
     }
   };
 
@@ -235,8 +283,8 @@ const Students: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      // Close dropdown if clicking outside both the dropdown menu and the portal dropdown
-      if (!target.closest('.dropdown-menu') && !target.closest('[data-portal-dropdown]')) {
+      // Close dropdown if clicking outside both the dropdown container and portal dropdown
+      if (!target.closest('[data-dropdown-container]') && !target.closest('[data-portal-dropdown]')) {
         setOpenDropdownId(null);
       }
     };
@@ -251,14 +299,17 @@ const Students: React.FC = () => {
     if (openDropdownId === studentId) {
       setOpenDropdownId(null);
     } else {
+      // Calculate dropdown position
       const button = event.currentTarget as HTMLElement;
       const buttonRect = button.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
-      const dropdownHeight = 80; // Approximate height of dropdown
+      const viewportWidth = window.innerWidth;
+      const dropdownHeight = 80;
+      const dropdownWidth = 128;
       
       // Calculate position
-      let x = buttonRect.right - 128; // 128px is dropdown width
-      let y = buttonRect.bottom + 4; // 4px margin
+      let x = buttonRect.right - dropdownWidth;
+      let y = buttonRect.bottom + 4;
       
       // If there's not enough space below, position above
       if (buttonRect.bottom + dropdownHeight > viewportHeight) {
@@ -267,7 +318,7 @@ const Students: React.FC = () => {
       
       // Ensure dropdown doesn't go off-screen horizontally
       if (x < 0) x = 0;
-      if (x + 128 > window.innerWidth) x = window.innerWidth - 128;
+      if (x + dropdownWidth > viewportWidth) x = viewportWidth - dropdownWidth;
       
       setDropdownCoords({ x, y });
       setOpenDropdownId(studentId);
@@ -280,10 +331,19 @@ const Students: React.FC = () => {
     setOpenDropdownId(null);
   };
 
-  const handleDeleteStudent = (student: Student) => {
-    console.log('Delete student:', student);
-    setOpenDropdownId(null);
-    // TODO: Implement delete functionality
+  const handleDeleteStudent = async (student: Student) => {
+    try {
+      if (student.id) {
+        await apiService.students.delete(student.id);
+      }
+      
+      // Remove the student from the list
+      setStudents(prev => prev.filter(s => s.id !== student.id));
+      setOpenDropdownId(null);
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      // You might want to show an error message to the user here
+    }
   };
 
   const closeEditDrawer = () => {
@@ -291,10 +351,40 @@ const Students: React.FC = () => {
     setEditingStudent(null);
   };
 
-  const handleSaveStudent = () => {
-    // TODO: Implement save functionality
-    console.log('Saving student:', editingStudent);
-    closeEditDrawer();
+  const handleSaveStudent = async () => {
+    if (editingStudent) {
+      try {
+        const studentData = {
+          admission_number: editingStudent.admissionNumber,
+          full_name: editingStudent.fullName,
+          date_of_birth: editingStudent.dateOfBirth || '',
+          gender: editingStudent.gender || 'Male',
+          date_of_admission: editingStudent.dateOfAdmission || '',
+          class_on_admission: editingStudent.classOnAdmission || '',
+          guardian_name: editingStudent.guardianName || '',
+          guardian_contact: editingStudent.guardianContact || '',
+          alternative_contact: editingStudent.alternativeContact || '',
+          address: editingStudent.address || '',
+          last_school_attended: editingStudent.lastSchoolAttended || '',
+          boarding_status: editingStudent.boardingStatus || '',
+          exempted_from_religious_instruction: editingStudent.exemptedFromReligiousInstruction || false,
+          date_of_leaving: editingStudent.dateOfLeaving || '',
+        };
+
+        if (editingStudent.id) {
+          const response = await apiService.students.update(editingStudent.id, studentData);
+          
+          // Update the student in the list
+          setStudents(prev => prev.map(student => 
+            student.id === editingStudent.id ? response : student
+          ));
+        }
+        closeEditDrawer();
+      } catch (error) {
+        console.error('Error updating student:', error);
+        // You might want to show an error message to the user here
+      }
+    }
   };
 
   const handleInputChange = (field: keyof Student, value: string | boolean) => {
@@ -480,7 +570,7 @@ const Students: React.FC = () => {
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                           {student.dateOfAdmission}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
                             <button
                               onClick={() => openStudentModal(student)}
@@ -490,16 +580,27 @@ const Students: React.FC = () => {
                               {FaEye({ className: "w-3 h-3" })}
                             </button>
                             
-                                                    {/* Dropdown Menu */}
-                          <div className="relative dropdown-menu">
-                            <button
-                              onClick={(e) => toggleDropdown(student.id, e)}
-                              className="p-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-md transition-colors duration-200"
-                              title="More Options"
-                            >
-                              {FaEllipsisV({ className: "w-3 h-3" })}
-                            </button>
-                          </div>
+                            {/* Dropdown Menu */}
+                            <div className="relative" data-dropdown-container>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const studentId = student.id || student.admissionNumber || `student-${Math.random()}`;
+                                  toggleDropdown(studentId, e);
+                                }}
+                                className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
+                                  openDropdownId === (student.id || student.admissionNumber) 
+                                    ? 'text-blue-600 bg-blue-50' 
+                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                }`}
+                                title="More Options"
+                              >
+                                {FaEllipsisV({ className: "w-3 h-3" })}
+                              </button>
+                              
+                              {/* Dropdown button only - dropdown rendered via portal */}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -1114,15 +1215,15 @@ const Students: React.FC = () => {
             left: `${dropdownCoords.x}px`,
             top: `${dropdownCoords.y}px`
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="py-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const student = students.find(s => s.id === openDropdownId);
+                const student = students.find(s => (s.id || s.admissionNumber) === openDropdownId);
                 if (student) {
                   handleEditStudent(student);
-                  setOpenDropdownId(null); // Close dropdown after clicking
                 }
               }}
               className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
@@ -1133,10 +1234,9 @@ const Students: React.FC = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const student = students.find(s => s.id === openDropdownId);
+                const student = students.find(s => (s.id || s.admissionNumber) === openDropdownId);
                 if (student) {
                   handleDeleteStudent(student);
-                  setOpenDropdownId(null); // Close dropdown after clicking
                 }
               }}
               className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
