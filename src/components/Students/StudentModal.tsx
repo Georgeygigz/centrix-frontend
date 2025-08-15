@@ -40,7 +40,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                   </div>
                   <div>
                     <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Full Name</p>
-                    <p className="text-lg font-bold text-gray-900 mt-1">{student.fullName}</p>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{student.fullName || student.pupil_name || ''}</p>
                   </div>
                 </div>
               </div>

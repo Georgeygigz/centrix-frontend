@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaBook, FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding } from 'react-icons/fa';
+import { FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding } from 'react-icons/fa';
 import { NavigationItem } from '../../types/dashboard';
 import { useAuth } from '../../context/AuthContext';
 

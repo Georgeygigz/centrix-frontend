@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { AuthState, AuthUser, LoginCredentials, RegisterCredentials, LoginResponse } from '../types/auth';
 import { apiService } from '../services/api';
 
+
 interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
@@ -26,21 +27,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
-    isLoading: false,
+    isLoading: true, // Start with loading true to prevent flash
     error: null,
   });
 
   // Check for existing token on app load
   useEffect(() => {
     const token = apiService.getToken();
+    
     if (token) {
-      // You could validate the token here if needed
-      // For now, we'll assume the token is valid
+      // Fetch user data when app loads with existing token
+      const fetchUserData = async () => {
+        try {
+          const userInfo = await apiService.getCurrentUser();
+          
+          const user: AuthUser = {
+            id: userInfo.data?.id || userInfo.id || 'unknown',
+            email: userInfo.data?.email || userInfo.email || '',
+            username: userInfo.data?.first_name || userInfo.data?.username || userInfo.username || 'user',
+            is_pin_set: userInfo.data?.is_pin_set || userInfo.is_pin_set || false,
+            school_id: userInfo.data?.school?.id || userInfo.school?.id || userInfo.school_id || '',
+            school_name: userInfo.data?.school?.name || userInfo.school?.name || userInfo.school_name || '',
+            role: userInfo.data?.role || userInfo.role || 'user',
+          };
+          
+          setState(prev => ({
+            ...prev,
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          }));
+        } catch (error) {
+          console.error('Failed to fetch user data on app load:', error);
+          // If we can't fetch user data, clear the token
+          apiService.removeToken();
+          setState(prev => ({
+            ...prev,
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          }));
+        }
+      };
+      
+      fetchUserData();
+    } else {
+      // No token found, set loading to false
       setState(prev => ({
         ...prev,
-        isAuthenticated: true,
-        // Note: We don't have user data from token alone
-        // You might want to fetch user profile separately
+        isLoading: false,
       }));
     }
   }, []);
@@ -49,17 +84,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response: LoginResponse = await apiService.login(credentials);
+
+      
+      // Use credentials as is (school is determined by backend from user)
+      const loginData = {
+        ...credentials,
+      };
+
+      const response: LoginResponse = await apiService.login(loginData);
+      
+      // Clear any existing tokens first
+      sessionStorage.removeItem('authToken');
       
       // Store the token in session storage
-      apiService.setToken(response.data.token);
+      if (response.data && response.data.token) {
+        sessionStorage.setItem('authToken', response.data.token);
+      }
       
-      // Create user object from response
+      // Fetch complete user information including school details
+      const userInfo = await apiService.getCurrentUser();
+      
+      // Create user object from complete user info with proper null checks
       const user: AuthUser = {
-        id: response.data.email, // Using email as ID for now
-        email: response.data.email,
-        username: response.data.email.split('@')[0], // Extract username from email
-        is_pin_set: response.data.is_pin_set,
+        id: userInfo.data?.id || userInfo.id || 'unknown',
+        email: userInfo.data?.email || userInfo.email || '',
+        username: userInfo.data?.first_name || userInfo.data?.username || userInfo.username || 'user', // Use first_name from /me endpoint
+        is_pin_set: userInfo.data?.is_pin_set || userInfo.is_pin_set || false,
+        school_id: userInfo.data?.school?.id || userInfo.school?.id || userInfo.school_id || '',
+        school_name: userInfo.data?.school?.name || userInfo.school?.name || userInfo.school_name || '',
+        role: userInfo.data?.role || userInfo.role || 'user',
       };
       
       setState({
@@ -69,6 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error: null,
       });
     } catch (error) {
+      console.error('Login error in AuthContext:', error);
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -90,6 +144,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: credentials.email,
         username: credentials.name,
         is_pin_set: false,
+        school_id: '',
+        school_name: '',
       };
       
       setState({
