@@ -205,7 +205,7 @@ export const apiService = {
 
     // Get student by ID
     getById: async (studentId: string) => {
-      return apiService.authenticatedRequest(`/students/${studentId}`, { method: 'GET' });
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}`, { method: 'GET' });
     },
 
     // Create new student
@@ -216,17 +216,17 @@ export const apiService = {
       });
     },
 
-    // Update student by admission number
-    update: async (admissionNumber: string, studentData: any) => {
-      return apiService.authenticatedRequest(`/students/admissions/${admissionNumber}`, {
+    // Update student by ID
+    update: async (studentId: string, studentData: any) => {
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}`, {
         method: 'PUT',
         body: JSON.stringify(studentData),
       });
     },
 
-    // Delete student
+    // Delete student by ID
     delete: async (studentId: string) => {
-      return apiService.authenticatedRequest(`/students/${studentId}`, { method: 'DELETE' });
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}`, { method: 'DELETE' });
     },
 
     // Bulk operations
@@ -268,11 +268,15 @@ export const convertStudentToCreateRequest = (student: Partial<Student>): Create
     date_of_admission: student.dateOfAdmission || student.date_of_admission || '',
     class_on_admission: student.classOnAdmission || student.class_on_admission || student.class || '',
     guardian_name: student.guardianName || student.guardian_name || student.parentName || '',
-    contact_1: student.guardianContact || student.guardian_contact || student.contactInfo || '',
+    contact_1: student.guardianContact || student.contact_1 || student.guardian_contact || student.contactInfo || '',
+    contact_2: student.alternativeContact || student.contact_2 || '',
     address: student.address || '',
     last_school_attended: student.lastSchoolAttended || student.last_school_attended || '',
     boarding_status: student.boardingStatus || student.boarding_status || '',
     exempted_from_religious_instruction: student.exemptedFromReligiousInstruction || student.exempted_from_religious_instruction || false,
+    date_of_leaving: student.dateOfLeaving || student.date_of_leaving || '',
+    school_leaving_certificate_number: student.school_leaving_certificate_number || '',
+    remarks: student.remarks || '',
   };
 };
 
@@ -311,12 +315,12 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
     changes.guardian_name = editedStudent.guardianName || '';
   }
   
-  if (normalizeValue(originalStudent.guardianContact || originalStudent.guardian_contact || originalStudent.contactInfo) !== normalizeValue(editedStudent.guardianContact)) {
+  if (normalizeValue(originalStudent.guardianContact || originalStudent.contact_1 || originalStudent.guardian_contact || originalStudent.contactInfo) !== normalizeValue(editedStudent.guardianContact)) {
     changes.contact_1 = editedStudent.guardianContact || '';
   }
   
-  if (normalizeValue(originalStudent.alternativeContact || originalStudent.alternative_contact) !== normalizeValue(editedStudent.alternativeContact)) {
-    changes.alternative_contact = editedStudent.alternativeContact || '';
+  if (normalizeValue(originalStudent.alternativeContact || originalStudent.contact_2) !== normalizeValue(editedStudent.alternativeContact)) {
+    changes.contact_2 = editedStudent.alternativeContact || '';
   }
   
   if (normalizeValue(originalStudent.address) !== normalizeValue(editedStudent.address)) {
@@ -337,6 +341,14 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
   
   if (normalizeValue(originalStudent.dateOfLeaving || originalStudent.date_of_leaving) !== normalizeValue(editedStudent.dateOfLeaving)) {
     changes.date_of_leaving = editedStudent.dateOfLeaving || '';
+  }
+  
+  if (normalizeValue(originalStudent.school_leaving_certificate_number) !== normalizeValue(editedStudent.school_leaving_certificate_number)) {
+    changes.school_leaving_certificate_number = editedStudent.school_leaving_certificate_number || '';
+  }
+  
+  if (normalizeValue(originalStudent.remarks) !== normalizeValue(editedStudent.remarks)) {
+    changes.remarks = editedStudent.remarks || '';
   }
   
   return changes;

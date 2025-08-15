@@ -45,13 +45,19 @@ export interface Student {
   class_on_admission?: string;
   guardian_name?: string;
   guardian_contact?: string;
-  alternative_contact?: string;
   last_school_attended?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
   date_of_leaving?: string;
   is_current_student?: boolean;
   created_at?: string;
+  updated_at?: string;
+  deleted?: boolean;
+  contact_1?: string;
+  contact_2?: string;
+  image?: string;
+  school_leaving_certificate_number?: string;
+  remarks?: string;
 }
 
 export interface CreateStudentRequest {
@@ -66,12 +72,14 @@ export interface CreateStudentRequest {
   // Optional fields
   guardian_name?: string;
   contact_1?: string;
-  alternative_contact?: string;
+  contact_2?: string;
   address?: string;
   last_school_attended?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
   date_of_leaving?: string;
+  school_leaving_certificate_number?: string;
+  remarks?: string;
 }
 
 export interface DashboardState {

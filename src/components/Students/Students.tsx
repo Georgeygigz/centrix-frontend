@@ -117,14 +117,14 @@ const Students: React.FC = () => {
       id: apiStudent.id,
       // Map snake_case to camelCase
       admissionNumber: apiStudent.admission_number || apiStudent.admissionNumber,
-      fullName: apiStudent.full_name || apiStudent.pupil_name || apiStudent.fullName,
+      fullName: apiStudent.pupil_name || apiStudent.fullName,
       dateOfBirth: apiStudent.date_of_birth || apiStudent.dateOfBirth,
       gender: apiStudent.gender,
       dateOfAdmission: apiStudent.date_of_admission || apiStudent.dateOfAdmission,
       classOnAdmission: apiStudent.class_on_admission || apiStudent.classOnAdmission,
       guardianName: apiStudent.guardian_name || apiStudent.guardianName,
-      guardianContact: apiStudent.guardian_contact || apiStudent.guardianContact,
-      alternativeContact: apiStudent.alternative_contact || apiStudent.alternativeContact,
+      guardianContact: apiStudent.contact_1 || apiStudent.guardian_contact || apiStudent.guardianContact,
+      alternativeContact: apiStudent.contact_2 || apiStudent.alternativeContact,
       address: apiStudent.address,
       lastSchoolAttended: apiStudent.last_school_attended || apiStudent.lastSchoolAttended,
       boardingStatus: apiStudent.boarding_status || apiStudent.boardingStatus,
@@ -133,7 +133,7 @@ const Students: React.FC = () => {
       // Legacy fields
       class: apiStudent.class_on_admission || apiStudent.class,
       parentName: apiStudent.guardian_name || apiStudent.parentName,
-      contactInfo: apiStudent.guardian_contact || apiStudent.contactInfo,
+      contactInfo: apiStudent.contact_1 || apiStudent.guardian_contact || apiStudent.contactInfo,
       // Keep original API fields for backward compatibility
       admission_number: apiStudent.admission_number,
       pupil_name: apiStudent.pupil_name,
@@ -141,14 +141,20 @@ const Students: React.FC = () => {
       date_of_admission: apiStudent.date_of_admission,
       class_on_admission: apiStudent.class_on_admission,
       guardian_name: apiStudent.guardian_name,
-      guardian_contact: apiStudent.guardian_contact,
-      alternative_contact: apiStudent.alternative_contact,
+      guardian_contact: apiStudent.contact_1,
       last_school_attended: apiStudent.last_school_attended,
       boarding_status: apiStudent.boarding_status,
       exempted_from_religious_instruction: apiStudent.exempted_from_religious_instruction,
       date_of_leaving: apiStudent.date_of_leaving,
       is_current_student: apiStudent.is_current_student,
       created_at: apiStudent.created_at,
+      updated_at: apiStudent.updated_at,
+      deleted: apiStudent.deleted,
+      contact_1: apiStudent.contact_1,
+      contact_2: apiStudent.contact_2,
+      image: apiStudent.image,
+      school_leaving_certificate_number: apiStudent.school_leaving_certificate_number,
+      remarks: apiStudent.remarks,
     };
   };
 
@@ -502,20 +508,20 @@ const Students: React.FC = () => {
           return;
         }
 
-        // Use admission number for the update
-        const admissionNumber = editingStudent.admissionNumber || originalStudent.admissionNumber;
-        if (!admissionNumber) {
-          throw new Error('Admission number is required for update');
+        // Use ID for the update
+        const studentId = editingStudent.id || originalStudent.id;
+        if (!studentId) {
+          throw new Error('Student ID is required for update');
         }
 
-        const response = await apiService.students.update(admissionNumber, changedFields);
+        const response = await apiService.students.update(studentId, changedFields);
         
         // Transform the response to match our component format
         const transformedResponse = transformStudentData(response);
         
-        // Update the student in the list using admission number as unique identifier
+        // Update the student in the list using ID as unique identifier
         setStudents(prev => prev.map(student => 
-          student.admissionNumber === admissionNumber ? transformedResponse : student
+          student.id === studentId ? transformedResponse : student
         ));
         
         // Show success toast
@@ -722,7 +728,7 @@ const Students: React.FC = () => {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedStudents.map((student, index) => (
-                      <tr key={student.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <tr key={student.id || `student-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                         <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                           {student.admissionNumber}
                         </td>
@@ -754,11 +760,11 @@ const Students: React.FC = () => {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  const studentId = student.id || student.admissionNumber || `student-${Math.random()}`;
+                                  const studentId = student.id || `student-${Math.random()}`;
                                   toggleDropdown(studentId, e);
                                 }}
                                 className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
-                                  openDropdownId === (student.admissionNumber || student.id) 
+                                  openDropdownId === student.id 
                                     ? 'text-blue-600 bg-blue-50' 
                                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                                 }`}
@@ -1518,7 +1524,7 @@ const Students: React.FC = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const student = students.find(s => (s.id || s.admissionNumber) === openDropdownId);
+                const student = students.find(s => s.id === openDropdownId);
                 if (student) {
                   handleEditStudent(student);
                 }
@@ -1531,7 +1537,7 @@ const Students: React.FC = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const student = students.find(s => (s.id || s.admissionNumber) === openDropdownId);
+                const student = students.find(s => s.id === openDropdownId);
                 if (student) {
                   handleDeleteStudent(student);
                 }
