@@ -157,4 +157,8 @@ api.yaml
 structure.txt
 students.json
 
+
+FEATURE_SWITCH_COMPREHENSIVE_GUIDE.md
+FEATURE_SWITCH_FRONTEND_GUIDE.md
+
 # End of https://www.toptal.com/developers/gitignore/api/node,react

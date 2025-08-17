@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
+import { FeatureFlag } from '../../types/featureFlags';
+import { apiService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 // Collapsible Section Component (same as Students)
 interface CollapsibleSectionProps {
@@ -63,18 +66,10 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
-// Feature interface
-interface Feature {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'inactive' | 'pending';
-  category: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// Feature interface removed - using FeatureFlag from types instead
 
 const SwitchBoard: React.FC = () => {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('');
@@ -84,70 +79,92 @@ const SwitchBoard: React.FC = () => {
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
-  const [editingFeature, setEditingFeature] = useState<Feature | null>(null);
+  const [editingFeature, setEditingFeature] = useState<FeatureFlag | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic-info');
   const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
   const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
 
-  const [newFeature, setNewFeature] = useState<Partial<Feature>>({
+  const [newFeature, setNewFeature] = useState<Partial<FeatureFlag>>({
     name: '',
+    display_name: '',
     description: '',
-    status: 'active',
-    category: ''
+    feature_type: '',
+    is_active: true
   });
 
-  // Mock data for features
-  const [features, setFeatures] = useState<Feature[]>([
-    {
-      id: '1',
-      name: 'Student Management',
-      description: 'Comprehensive student information management system',
-      status: 'active',
-      category: 'Core',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'Attendance Tracking',
-      description: 'Track student attendance and generate reports',
-      status: 'active',
-      category: 'Academic',
-      createdAt: '2024-01-16',
-      updatedAt: '2024-01-16'
-    },
-    {
-      id: '3',
-      name: 'Fee Management',
-      description: 'Manage student fees and payments',
-      status: 'pending',
-      category: 'Financial',
-      createdAt: '2024-01-17',
-      updatedAt: '2024-01-17'
-    },
-    {
-      id: '4',
-      name: 'Report Generation',
-      description: 'Generate various academic and administrative reports',
-      status: 'active',
-      category: 'Analytics',
-      createdAt: '2024-01-18',
-      updatedAt: '2024-01-18'
-    },
-    {
-      id: '5',
-      name: 'Communication Portal',
-      description: 'Internal communication system for staff and students',
-      status: 'inactive',
-      category: 'Communication',
-      createdAt: '2024-01-19',
-      updatedAt: '2024-01-19'
-    }
-  ]);
+  // Feature flags data from API
+  const [features, setFeatures] = useState<FeatureFlag[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load feature flags from API
+  useEffect(() => {
+    // Only load feature flags if user is authenticated and auth loading is complete
+    if (!authLoading && isAuthenticated) {
+      console.log('User is authenticated, loading feature flags...');
+      console.log('Auth token:', apiService.getToken());
+      
+      const loadFeatureFlags = async () => {
+        setIsLoading(true);
+        try {
+          console.log('Loading feature flags...');
+          const data = await apiService.featureFlags.getAll();
+          console.log('API Response:', data); // Debug log
+          
+          // Handle different response structures
+          let featureFlags: FeatureFlag[] = [];
+          if (data && data.status === 'success' && data.data && data.data.results) {
+            // Correct API response structure
+            console.log('Using correct API response structure');
+            featureFlags = data.data.results;
+          } else if (Array.isArray(data)) {
+            console.log('Using direct array response');
+            featureFlags = data;
+          } else if (data && Array.isArray(data.data)) {
+            console.log('Using data array response');
+            featureFlags = data.data;
+          } else if (data && data.features && Array.isArray(data.features)) {
+            console.log('Using features array response');
+            featureFlags = data.features;
+          } else if (data && data.status === 'error') {
+            console.warn('API returned error:', data.message);
+            // API returned an error (like authentication required)
+            throw new Error(data.message || 'API Error');
+          } else {
+            console.warn('Unexpected API response structure:', data);
+            console.log('Response type:', typeof data);
+            console.log('Response keys:', data ? Object.keys(data) : 'null/undefined');
+            // Don't use fallback data - show empty state instead
+            featureFlags = [];
+            throw new Error('Unexpected API response structure');
+          }
+          
+          console.log('Final feature flags:', featureFlags);
+          setFeatures(featureFlags);
+        } catch (error) {
+          console.error('Error loading feature flags:', error);
+          setFeatures([]);
+          setToast({
+            message: `Failed to load feature flags: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            type: 'error'
+          });
+          setTimeout(() => {
+            setToast(null);
+          }, 5000);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadFeatureFlags();
+    } else if (!authLoading && !isAuthenticated) {
+      // User is not authenticated, show empty state or redirect
+      console.log('User not authenticated, showing empty state');
+      setFeatures([]);
+    }
+  }, [isAuthenticated, authLoading]);
 
   // Debounce search query
   useEffect(() => {
@@ -159,19 +176,30 @@ const SwitchBoard: React.FC = () => {
   }, [searchQuery]);
 
   const filteredAndSortedFeatures = useMemo(() => {
+    // Ensure features is always an array
+    if (!Array.isArray(features)) {
+      console.warn('Features is not an array:', features);
+      return [];
+    }
+
     let filtered = features.filter(feature =>
       feature.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      feature.display_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
       feature.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      feature.category.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+      feature.feature_type.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
 
     if (sortBy) {
       filtered.sort((a, b) => {
-        const aValue = a[sortBy as keyof Feature];
-        const bValue = b[sortBy as keyof Feature];
+        const aValue = a[sortBy as keyof FeatureFlag];
+        const bValue = b[sortBy as keyof FeatureFlag];
         
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           const comparison = aValue.localeCompare(bValue);
+          return sortDirection === 'asc' ? comparison : -comparison;
+        } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+          // For boolean values, true comes first in ascending order
+          const comparison = aValue === bValue ? 0 : aValue ? -1 : 1;
           return sortDirection === 'asc' ? comparison : -comparison;
         }
         return 0;
@@ -209,29 +237,28 @@ const SwitchBoard: React.FC = () => {
     setIsAddDrawerOpen(false);
     setNewFeature({
       name: '',
+      display_name: '',
       description: '',
-      status: 'active',
-      category: ''
+      feature_type: '',
+      is_active: true
     });
   };
 
   const handleAddFeature = async () => {
     try {
-      const newId = (features.length + 1).toString();
-      const feature: Feature = {
-        id: newId,
+      const featureData = {
         name: newFeature.name || '',
+        display_name: newFeature.display_name || '',
         description: newFeature.description || '',
-        status: newFeature.status || 'active',
-        category: newFeature.category || '',
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0]
+        feature_type: newFeature.feature_type || '',
+        is_active: newFeature.is_active ?? true
       };
 
-      setFeatures(prev => [...prev, feature]);
+      const newFeatureFlag = await apiService.featureFlags.create(featureData);
+      setFeatures(prev => [...prev, newFeatureFlag]);
       
       setToast({
-        message: 'Feature added successfully!',
+        message: 'Feature flag added successfully!',
         type: 'success'
       });
       
@@ -239,9 +266,10 @@ const SwitchBoard: React.FC = () => {
       
       setNewFeature({
         name: '',
+        display_name: '',
         description: '',
-        status: 'active',
-        category: ''
+        feature_type: '',
+        is_active: true
       });
       
       setTimeout(() => {
@@ -253,9 +281,9 @@ const SwitchBoard: React.FC = () => {
       }, 3000);
       
     } catch (error) {
-      console.error('Error adding feature:', error);
+      console.error('Error adding feature flag:', error);
       setToast({
-        message: 'Failed to add feature. Please try again.',
+        message: 'Failed to add feature flag. Please try again.',
         type: 'error'
       });
       
@@ -265,7 +293,7 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
-  const handleNewFeatureInputChange = (field: keyof Feature, value: string) => {
+  const handleNewFeatureInputChange = (field: keyof FeatureFlag, value: string | boolean) => {
     setNewFeature(prev => ({
       ...prev,
       [field]: value
@@ -280,7 +308,7 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
-  const handleEditFeature = (feature: Feature) => {
+  const handleEditFeature = (feature: FeatureFlag) => {
     setEditingFeature(feature);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
@@ -288,12 +316,13 @@ const SwitchBoard: React.FC = () => {
     setEditFormErrors({});
   };
 
-  const handleDeleteFeature = async (feature: Feature) => {
+  const handleDeleteFeature = async (feature: FeatureFlag) => {
     try {
+      await apiService.featureFlags.delete(feature.id);
       setFeatures(prev => prev.filter(f => f.id !== feature.id));
       setOpenDropdownId(null);
       setToast({
-        message: 'Feature deleted successfully!',
+        message: 'Feature flag deleted successfully!',
         type: 'success'
       });
       
@@ -301,9 +330,9 @@ const SwitchBoard: React.FC = () => {
         setToast(null);
       }, 3000);
     } catch (error) {
-      console.error('Error deleting feature:', error);
+      console.error('Error deleting feature flag:', error);
       setToast({
-        message: 'Failed to delete feature. Please try again.',
+        message: 'Failed to delete feature flag. Please try again.',
         type: 'error'
       });
       
@@ -322,12 +351,20 @@ const SwitchBoard: React.FC = () => {
   const handleSaveFeature = async () => {
     if (editingFeature) {
       try {
+        const updatedFeature = await apiService.featureFlags.update(editingFeature.id, {
+          name: editingFeature.name,
+          display_name: editingFeature.display_name,
+          description: editingFeature.description,
+          feature_type: editingFeature.feature_type,
+          is_active: editingFeature.is_active
+        });
+        
         setFeatures(prev => prev.map(f => 
-          f.id === editingFeature.id ? { ...editingFeature, updatedAt: new Date().toISOString().split('T')[0] } : f
+          f.id === editingFeature.id ? updatedFeature : f
         ));
         
         setToast({
-          message: 'Feature updated successfully!',
+          message: 'Feature flag updated successfully!',
           type: 'success'
         });
         
@@ -339,9 +376,9 @@ const SwitchBoard: React.FC = () => {
         }, 3000);
         
       } catch (error) {
-        console.error('Error updating feature:', error);
+        console.error('Error updating feature flag:', error);
         setToast({
-          message: 'Failed to update feature. Please try again.',
+          message: 'Failed to update feature flag. Please try again.',
           type: 'error'
         });
         
@@ -352,7 +389,7 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof Feature, value: string) => {
+  const handleInputChange = (field: keyof FeatureFlag, value: string | boolean) => {
     if (editingFeature) {
       setEditingFeature({
         ...editingFeature,
@@ -410,21 +447,7 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Active' },
-      inactive: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Inactive' },
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.inactive;
-    
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
-        {config.label}
-      </span>
-    );
-  };
+// getStatusBadge function removed - no longer needed since we show raw boolean values
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -444,7 +467,7 @@ const SwitchBoard: React.FC = () => {
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Features
+                  Feature Flags
                 </button>
                 <button 
                   onClick={() => setActiveTab('settings')}
@@ -474,7 +497,7 @@ const SwitchBoard: React.FC = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search features..."
+                    placeholder="Search feature flags..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
@@ -497,10 +520,48 @@ const SwitchBoard: React.FC = () => {
                 >
                   <option value="">Sort by</option>
                   <option value="name">Name</option>
-                  <option value="category">Category</option>
-                  <option value="status">Status</option>
-                  <option value="createdAt">Created Date</option>
+                  <option value="display_name">Display Name</option>
+                  <option value="feature_type">Feature Type</option>
+                  <option value="is_active">Is Active</option>
+                  <option value="created_at">Created At</option>
+                  <option value="updated_at">Updated At</option>
                 </select>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={() => {
+                    if (isAuthenticated) {
+                      const loadFeatureFlags = async () => {
+                        setIsLoading(true);
+                        try {
+                          const data = await apiService.featureFlags.getAll();
+                          if (data && data.status === 'success' && data.data && data.data.results) {
+                            setFeatures(data.data.results);
+                            setToast({
+                              message: 'Feature flags refreshed successfully!',
+                              type: 'success'
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error refreshing feature flags:', error);
+                          setToast({
+                            message: 'Failed to refresh feature flags',
+                            type: 'error'
+                          });
+                        } finally {
+                          setIsLoading(false);
+                          setTimeout(() => setToast(null), 3000);
+                        }
+                      };
+                      loadFeatureFlags();
+                    }
+                  }}
+                  disabled={!isAuthenticated || isLoading}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh feature flags"
+                >
+                  ↻ Refresh
+                </button>
 
                 {/* Add New Feature Button */}
                 <PermissionGate permissions={['access_admin_panel']}>
@@ -519,10 +580,25 @@ const SwitchBoard: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'features' && (
           <div className="bg-white rounded-md shadow-sm">
-            {isLoading ? (
+            {authLoading ? (
               <div className="p-8 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                <p className="mt-2 text-sm text-gray-600">Loading features...</p>
+                <p className="mt-2 text-sm text-gray-600">Loading authentication...</p>
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-400 mb-3">
+                  <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-medium text-gray-900 mb-1">Authentication Required</h3>
+                <p className="text-xs text-gray-500">Please log in to view feature flags.</p>
+              </div>
+            ) : isLoading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading feature flags...</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -531,29 +607,41 @@ const SwitchBoard: React.FC = () => {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                         <div className="flex items-center space-x-1">
-                          <span>Feature Name</span>
+                          <span>Name</span>
                           {getSortIcon('name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('display_name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Display Name</span>
+                          {getSortIcon('display_name')}
                         </div>
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Description</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('category')}>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_type')}>
                         <div className="flex items-center space-x-1">
-                          <span>Category</span>
-                          {getSortIcon('category')}
+                          <span>Feature Type</span>
+                          {getSortIcon('feature_type')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('status')}>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
                         <div className="flex items-center space-x-1">
-                          <span>Status</span>
-                          {getSortIcon('status')}
+                          <span>Is Active</span>
+                          {getSortIcon('is_active')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('createdAt')}>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
                         <div className="flex items-center space-x-1">
-                          <span>Created Date</span>
-                          {getSortIcon('createdAt')}
+                          <span>Created At</span>
+                          {getSortIcon('created_at')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Updated At</span>
+                          {getSortIcon('updated_at')}
                         </div>
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
@@ -567,17 +655,29 @@ const SwitchBoard: React.FC = () => {
                         <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
                           {feature.name}
                         </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                          {feature.display_name}
+                        </td>
                         <td className="px-4 py-2 text-xs text-gray-900 max-w-xs truncate">
                           {feature.description}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          {feature.category}
+                          {feature.feature_type}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          {getStatusBadge(feature.status)}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            feature.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {feature.is_active ? 'true' : 'false'}
+                          </span>
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          {feature.createdAt}
+                          {feature.created_at}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {feature.updated_at}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
@@ -694,7 +794,21 @@ const SwitchBoard: React.FC = () => {
                       value={newFeature.name}
                       onChange={(e) => handleNewFeatureInputChange('name', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter feature name"
+                      placeholder="Enter feature name (e.g., student_admission_billing)"
+                    />
+                  </div>
+
+                  {/* Display Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Display Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newFeature.display_name}
+                      onChange={(e) => handleNewFeatureInputChange('display_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter display name (e.g., Student Admission Billing Control)"
                     />
                   </div>
 
@@ -712,22 +826,23 @@ const SwitchBoard: React.FC = () => {
                     />
                   </div>
 
-                  {/* Category */}
+                  {/* Feature Type */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Category *
+                      Feature Type *
                     </label>
                     <select
-                      value={newFeature.category}
-                      onChange={(e) => handleNewFeatureInputChange('category', e.target.value)}
+                      value={newFeature.feature_type}
+                      onChange={(e) => handleNewFeatureInputChange('feature_type', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     >
-                      <option value="">Select category</option>
-                      <option value="Core">Core</option>
-                      <option value="Academic">Academic</option>
-                      <option value="Financial">Financial</option>
-                      <option value="Analytics">Analytics</option>
-                      <option value="Communication">Communication</option>
+                      <option value="">Select feature type</option>
+                      <option value="billing">Billing</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="test">Test</option>
+                      <option value="core">Core</option>
+                      <option value="academic">Academic</option>
+                      <option value="financial">Financial</option>
                     </select>
                   </div>
 
@@ -737,13 +852,12 @@ const SwitchBoard: React.FC = () => {
                       Status *
                     </label>
                     <select
-                      value={newFeature.status}
-                      onChange={(e) => handleNewFeatureInputChange('status', e.target.value)}
+                      value={newFeature.is_active ? 'true' : 'false'}
+                      onChange={(e) => handleNewFeatureInputChange('is_active', e.target.value === 'true')}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="pending">Pending</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
                     </select>
                   </div>
                 </CollapsibleSection>
@@ -760,7 +874,7 @@ const SwitchBoard: React.FC = () => {
               </button>
               <button
                 onClick={handleAddFeature}
-                disabled={!newFeature.name || !newFeature.description || !newFeature.category}
+                disabled={!newFeature.name || !newFeature.display_name || !newFeature.description || !newFeature.feature_type}
                 className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
               >
                 Add Feature
@@ -813,7 +927,21 @@ const SwitchBoard: React.FC = () => {
                         value={editingFeature.name}
                         onChange={(e) => handleInputChange('name', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter feature name"
+                        placeholder="Enter feature name (e.g., student_admission_billing)"
+                      />
+                    </div>
+
+                    {/* Display Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Display Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingFeature.display_name}
+                        onChange={(e) => handleInputChange('display_name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="Enter display name (e.g., Student Admission Billing Control)"
                       />
                     </div>
 
@@ -831,22 +959,23 @@ const SwitchBoard: React.FC = () => {
                       />
                     </div>
 
-                    {/* Category */}
+                    {/* Feature Type */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Category *
+                        Feature Type *
                       </label>
                       <select
-                        value={editingFeature.category}
-                        onChange={(e) => handleInputChange('category', e.target.value)}
+                        value={editingFeature.feature_type}
+                        onChange={(e) => handleInputChange('feature_type', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       >
-                        <option value="">Select category</option>
-                        <option value="Core">Core</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Financial">Financial</option>
-                        <option value="Analytics">Analytics</option>
-                        <option value="Communication">Communication</option>
+                        <option value="">Select feature type</option>
+                        <option value="billing">Billing</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="test">Test</option>
+                        <option value="core">Core</option>
+                        <option value="academic">Academic</option>
+                        <option value="financial">Financial</option>
                       </select>
                     </div>
 
@@ -856,13 +985,12 @@ const SwitchBoard: React.FC = () => {
                         Status *
                       </label>
                       <select
-                        value={editingFeature.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
+                        value={editingFeature.is_active ? 'true' : 'false'}
+                        onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="pending">Pending</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
                       </select>
                     </div>
                   </CollapsibleSection>
