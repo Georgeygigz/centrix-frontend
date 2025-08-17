@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Dashboard/Sidebar';
 import TopNavigation from '../components/Dashboard/TopNavigation';
 import Students from '../components/Students/Students';
+import SwitchBoard from '../components/SwitchBoard/SwitchBoard';
+import Users from '../components/Users/Users';
+import Schools from '../components/Schools/Schools';
 
 
 const Dashboard: React.FC = () => {
@@ -14,14 +17,12 @@ const Dashboard: React.FC = () => {
       'ebook': 'EBook',
       'enrollments': 'Enrollments',
       'reports': 'Reports',
-      'users': 'Users',
-      'settings': 'Settings',
-      'profile': 'Manage Profile',
-      'ticket-list': 'Ticket List',
-      'support-category': 'Support Category',
-      'macro-replies': 'Macro Replies',
-      'create-ticket': 'Create Ticket',
 
+      'profile': 'Manage Profile',
+      'admin-panel': 'Admin Panel',
+      'admin-schools': 'Admin - Schools',
+      'admin-users': 'Admin - Users',
+      'admin-features': 'Admin - Switch Board',
     };
     return pageTitles[page] || 'Dashboard';
   };
@@ -36,12 +37,17 @@ const Dashboard: React.FC = () => {
         return <div className="p-6 text-center text-gray-500">Enrollments page coming soon...</div>;
       case 'reports':
         return <div className="p-6 text-center text-gray-500">Reports page coming soon...</div>;
-      case 'users':
-        return <div className="p-6 text-center text-gray-500">Users page coming soon...</div>;
-      case 'settings':
-        return <div className="p-6 text-center text-gray-500">Settings page coming soon...</div>;
+
       case 'profile':
         return <div className="p-6 text-center text-gray-500">Profile page coming soon...</div>;
+      case 'admin-panel':
+        return <div className="p-6 text-center text-gray-500">Admin Panel - Select a sub-item from the sidebar</div>;
+                   case 'admin-schools':
+               return <Schools />;
+      case 'admin-users':
+        return <Users />;
+      case 'admin-features':
+        return <SwitchBoard />;
 
       default:
         return <Students />;

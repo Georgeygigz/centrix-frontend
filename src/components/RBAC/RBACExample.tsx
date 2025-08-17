@@ -331,10 +331,10 @@ const RBACExample: React.FC = () => {
               icon={FaCog}
             />
             <FeatureCard 
-              title="Customer Support"
-              description="Support tickets and chat"
-              hasAccess={features.canAccessCustomerSupportModule()}
-              icon={FaUsers}
+              title="Admin Panel"
+              description="System administration and management"
+              hasAccess={features.canAccessAdminPanelModule()}
+              icon={FaCog}
             />
             <FeatureCard 
               title="School Management"

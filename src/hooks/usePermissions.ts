@@ -20,6 +20,7 @@ export const usePermissions = () => {
     canAccessReports: () => rbac.hasPermission('access_reports'),
     canAccessSettings: () => rbac.hasPermission('access_settings'),
     canAccessCustomerSupport: () => rbac.hasPermission('access_customer_support'),
+    canAccessAdminPanel: () => rbac.hasPermission('access_admin_panel'),
 
     // Role-based checks
     isRoot: () => rbac.userRole === 'root',
@@ -64,6 +65,7 @@ export const useFeatureAccess = () => {
     canAccessReportsModule: () => permissions.canAccessReports(),
     canAccessSettingsModule: () => permissions.canAccessSettings(),
     canAccessCustomerSupportModule: () => permissions.canAccessCustomerSupport(),
+    canAccessAdminPanelModule: () => permissions.canAccessAdminPanel(),
     
     // School management
     canManageSchools: () => permissions.canCreateSchool() || permissions.canViewAllSchools(),
@@ -94,6 +96,7 @@ export const useRoleBasedUI = () => {
     showReportsNavigation: () => permissions.canAccessReports(),
     showSettingsNavigation: () => permissions.canAccessSettings(),
     showCustomerSupportNavigation: () => permissions.canAccessCustomerSupport(),
+    showAdminPanelNavigation: () => permissions.canAccessAdminPanel(),
     
     // Action button visibility
     showCreateStudentButton: () => permissions.canCreateStudent(),

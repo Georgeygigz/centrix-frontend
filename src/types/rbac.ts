@@ -16,7 +16,8 @@ export type Permission =
   | 'manage_users'
   | 'access_reports'
   | 'access_settings'
-  | 'access_customer_support';
+  | 'access_customer_support'
+  | 'access_admin_panel';
 
 // Permission matrix defining what each role can do
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -34,7 +35,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'manage_users',
     'access_reports',
     'access_settings',
-    'access_customer_support'
+    'access_customer_support',
+    'access_admin_panel'
   ],
   super_admin: [
     'view_own_school',
@@ -45,7 +47,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'manage_users',
     'access_reports',
     'access_settings',
-    'access_customer_support'
+    'access_customer_support',
+    'access_admin_panel'
   ],
   admin: [
     'view_own_school',
