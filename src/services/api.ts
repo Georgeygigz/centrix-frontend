@@ -198,9 +198,13 @@ export const apiService = {
 
   // Students API
   students: {
-    // Get all students for current school
-    getAll: async () => {
-      return apiService.authenticatedRequest('/students/admissions', { method: 'GET' });
+    // Get all students for current school with pagination support
+    getAll: async (page: number = 1, pageSize: number = 20, search?: string) => {
+      let url = `/students/admissions?page=${page}&page_size=${pageSize}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      return apiService.authenticatedRequest(url, { method: 'GET' });
     },
 
     // Get student by ID

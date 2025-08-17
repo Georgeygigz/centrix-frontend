@@ -68,6 +68,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
 const Students: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -83,6 +84,7 @@ const Students: React.FC = () => {
   const [activeSection, setActiveSection] = useState<string>('basic-info');
   const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
+  const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
     // Basic Info (Required)
     admissionNumber: '',
@@ -110,6 +112,9 @@ const Students: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [hasPreviousPage, setHasPreviousPage] = useState(false);
   const itemsPerPage = 20;
 
   // Transform API response to component format
@@ -159,39 +164,53 @@ const Students: React.FC = () => {
     };
   };
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Load students data from API with tenant support
   useEffect(() => {
     const loadStudents = async () => {
       try {
         setIsLoading(true);
-        const data = await apiService.students.getAll();
+        const data = await apiService.students.getAll(currentPage, itemsPerPage, debouncedSearchQuery || undefined);
         
         // Transform the API response data
         const rawStudents = data.results || data || [];
         const transformedStudents = rawStudents.map(transformStudentData);
         
         setStudents(transformedStudents);
+        
+        // Set pagination metadata
+        setTotalCount(data.count || 0);
+        setHasNextPage(!!data.next);
+        setHasPreviousPage(!!data.previous);
       } catch (error) {
         console.error('Error loading students:', error);
         // Fallback to empty array if loading fails
         setStudents([]);
+        setTotalCount(0);
+        setHasNextPage(false);
+        setHasPreviousPage(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     loadStudents();
-  }, []); // Remove currentSchool dependency since API handles school context via auth token
+  }, [currentPage, debouncedSearchQuery]); // Reload when page or debounced search query changes
 
   const filteredAndSortedStudents = useMemo(() => {
-    let filtered = students.filter(student =>
-      (student.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (student.admissionNumber || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (student.classOnAdmission || student.class || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Since we're doing server-side search, we only need to handle sorting
+    let sorted = [...students];
 
     if (sortBy) {
-      filtered.sort((a, b) => {
+      sorted.sort((a, b) => {
         const aValue = a[sortBy as keyof Student];
         const bValue = b[sortBy as keyof Student];
         
@@ -203,21 +222,21 @@ const Students: React.FC = () => {
       });
     }
 
-    return filtered;
-  }, [students, searchQuery, sortBy, sortDirection]);
+    return sorted;
+  }, [students, sortBy, sortDirection]);
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedStudents.length / itemsPerPage);
+  // Pagination logic - now using server-side pagination
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedStudents = filteredAndSortedStudents.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
+  const paginatedStudents = filteredAndSortedStudents; // No need to slice since we get the correct page from server
 
 
 
-  // Reset to first page when search query changes
+  // Reset to first page when debounced search query changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
 
 
@@ -382,6 +401,11 @@ const Students: React.FC = () => {
     return formErrors[frontendFieldName]?.[0] || null;
   };
 
+  // Get field error for edit form
+  const getEditFieldErrorByFrontendName = (frontendFieldName: string): string | null => {
+    return editFormErrors[frontendFieldName]?.[0] || null;
+  };
+
   const handleNewStudentInputChange = (field: keyof Student, value: string | boolean) => {
     setNewStudent(prev => ({
       ...prev,
@@ -470,6 +494,7 @@ const Students: React.FC = () => {
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
     setEditActiveSection('basic-info'); // Reset to first section when opening
+    setEditFormErrors({}); // Clear any previous errors
   };
 
   const handleDeleteStudent = async (student: Student) => {
@@ -491,6 +516,7 @@ const Students: React.FC = () => {
     setIsEditDrawerOpen(false);
     setEditingStudent(null);
     setOriginalStudent(null);
+    setEditFormErrors({}); // Clear errors when closing
   };
 
   const handleSaveStudent = async () => {
@@ -531,6 +557,9 @@ const Students: React.FC = () => {
           type: 'success'
         });
         
+        // Clear form errors
+        setEditFormErrors({});
+        
         closeEditDrawer();
         
         // Auto-hide toast after 3 seconds
@@ -543,11 +572,66 @@ const Students: React.FC = () => {
         
         // Handle validation errors
         if (error.response?.data?.errors) {
+          
+          // Convert snake_case to camelCase for frontend fields
+          const transformedErrors: { [key: string]: string[] } = {};
+          
+          Object.entries(error.response.data.errors).forEach(([key, value]) => {
+            let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+            
+            // Special case: map 'pupil_name' to 'fullName' for consistency
+            if (key === 'pupil_name') {
+              camelCaseKey = 'fullName';
+            }
+            
+            transformedErrors[camelCaseKey] = value as string[];
+          });
+          
+          setEditFormErrors(transformedErrors);
           setToast({
-            message: error.response.data.message || 'Please fix the validation errors.',
+            message: error.response.data.message || 'Please fix the validation errors below.',
             type: 'error'
           });
+        } else if (error.response?.data) {
+          // Try different error structures
+          
+          if (typeof error.response.data === 'object' && error.response.data !== null) {
+            // Try to extract errors from different possible structures
+            const possibleErrors = error.response.data.errors || error.response.data;
+            
+            if (typeof possibleErrors === 'object' && possibleErrors !== null) {
+              // Convert to camelCase if needed
+              const transformedErrors: { [key: string]: string[] } = {};
+              
+              Object.entries(possibleErrors).forEach(([key, value]) => {
+                let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+                if (key === 'pupil_name') {
+                  camelCaseKey = 'fullName';
+                }
+                transformedErrors[camelCaseKey] = Array.isArray(value) ? value as string[] : [String(value)];
+              });
+              
+              setEditFormErrors(transformedErrors);
+              setToast({
+                message: 'Please fix the validation errors below.',
+                type: 'error'
+              });
+            } else {
+              setEditFormErrors({});
+              setToast({
+                message: 'Failed to update student. Please try again.',
+                type: 'error'
+              });
+            }
+          } else {
+            setEditFormErrors({});
+            setToast({
+              message: 'Failed to update student. Please try again.',
+              type: 'error'
+            });
+          }
         } else {
+          setEditFormErrors({});
           setToast({
             message: 'Failed to update student. Please try again.',
             type: 'error'
@@ -568,6 +652,15 @@ const Students: React.FC = () => {
         ...editingStudent,
         [field]: value
       });
+      
+      // Clear error for this field when user starts typing
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
     }
   };
 
@@ -839,12 +932,12 @@ const Students: React.FC = () => {
         {/* Pagination */}
         <div className="flex items-center justify-between mt-8">
           <div className="text-sm text-gray-700">
-            Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{Math.min(endIndex, filteredAndSortedStudents.length)}</span> of <span className="font-medium">{filteredAndSortedStudents.length}</span> results
+            Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalCount}</span> results
           </div>
           <div className="flex items-center space-x-2">
             <button 
               onClick={handlePreviousPage}
-              disabled={currentPage === 1}
+              disabled={!hasPreviousPage}
               className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
@@ -854,7 +947,7 @@ const Students: React.FC = () => {
             </span>
             <button 
               onClick={handleNextPage}
-              disabled={currentPage === totalPages}
+              disabled={!hasNextPage}
               className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
@@ -893,6 +986,45 @@ const Students: React.FC = () => {
 
                           {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto">
+              {/* Error Summary */}
+              {Object.keys(editFormErrors).length > 0 && (
+                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">!</span>
+                    </div>
+                    <h3 className="text-sm font-semibold text-red-800">Please fix the following errors:</h3>
+                  </div>
+                  <ul className="text-xs text-red-700 space-y-1">
+                    {Object.entries(editFormErrors).map(([field, errors]) => {
+                      // Map camelCase field names to user-friendly names
+                      const fieldNameMapping: { [key: string]: string } = {
+                        'admissionNumber': 'Admission Number',
+                        'fullName': 'Full Name',
+                        'dateOfBirth': 'Date of Birth',
+                        'dateOfAdmission': 'Date of Admission',
+                        'classOnAdmission': 'Class on Admission',
+                        'guardianName': 'Guardian Name',
+                        'guardianContact': 'Guardian Contact',
+                        'boardingStatus': 'Boarding Status',
+                        'address': 'Address'
+                      };
+                      
+                      const displayName = fieldNameMapping[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                      
+                      return (
+                        <li key={field} className="flex items-start space-x-2">
+                          <span className="text-red-500 mt-0.5">•</span>
+                          <span>
+                            <span className="font-medium">{displayName}:</span> {errors[0]}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              
               <div className="p-6 space-y-4">
                 {/* Basic Info Section */}
                 <CollapsibleSection 
@@ -910,9 +1042,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={editingStudent.admissionNumber}
                       onChange={(e) => handleInputChange('admissionNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('admissionNumber') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter admission number"
                     />
+                    {getEditFieldErrorByFrontendName('admissionNumber') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('admissionNumber')}</p>
+                    )}
                   </div>
 
                   {/* Full Name */}
@@ -924,9 +1061,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={editingStudent.fullName}
                       onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('fullName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter full names"
                     />
+                    {getEditFieldErrorByFrontendName('fullName') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('fullName')}</p>
+                    )}
                   </div>
 
                   {/* Date of Birth */}
@@ -938,8 +1080,13 @@ const Students: React.FC = () => {
                       type="date"
                       value={editingStudent.dateOfBirth}
                       onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('dateOfBirth') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     />
+                    {getEditFieldErrorByFrontendName('dateOfBirth') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfBirth')}</p>
+                    )}
                   </div>
 
                   {/* Gender */}
@@ -950,12 +1097,17 @@ const Students: React.FC = () => {
                     <select
                       value={editingStudent.gender}
                       onChange={(e) => handleInputChange('gender', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('gender') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>
                     </select>
+                    {getEditFieldErrorByFrontendName('gender') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('gender')}</p>
+                    )}
                   </div>
 
                   {/* Date of Admission */}
@@ -967,8 +1119,13 @@ const Students: React.FC = () => {
                       type="date"
                       value={editingStudent.dateOfAdmission}
                       onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('dateOfAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     />
+                    {getEditFieldErrorByFrontendName('dateOfAdmission') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfAdmission')}</p>
+                    )}
                   </div>
                 </CollapsibleSection>
 
@@ -988,9 +1145,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={editingStudent.classOnAdmission}
                       onChange={(e) => handleInputChange('classOnAdmission', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('classOnAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter class on admission"
                     />
+                    {getEditFieldErrorByFrontendName('classOnAdmission') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('classOnAdmission')}</p>
+                    )}
                   </div>
                 </CollapsibleSection>
 
@@ -1010,9 +1172,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={editingStudent.guardianName}
                       onChange={(e) => handleInputChange('guardianName', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('guardianName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter guardian name"
                     />
+                    {getEditFieldErrorByFrontendName('guardianName') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianName')}</p>
+                    )}
                   </div>
 
                   {/* Guardian Contact */}
@@ -1024,9 +1191,14 @@ const Students: React.FC = () => {
                       type="tel"
                       value={editingStudent.guardianContact}
                       onChange={(e) => handleInputChange('guardianContact', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('guardianContact') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter guardian contact"
                     />
+                    {getEditFieldErrorByFrontendName('guardianContact') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianContact')}</p>
+                    )}
                   </div>
 
                   {/* Alternative Contact */}
@@ -1038,9 +1210,14 @@ const Students: React.FC = () => {
                       type="tel"
                       value={editingStudent.alternativeContact}
                       onChange={(e) => handleInputChange('alternativeContact', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('alternativeContact') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter alternative contact"
                     />
+                    {getEditFieldErrorByFrontendName('alternativeContact') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('alternativeContact')}</p>
+                    )}
                   </div>
                 </CollapsibleSection>
 
@@ -1060,9 +1237,14 @@ const Students: React.FC = () => {
                       value={editingStudent.address}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                        getEditFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter address"
                     />
+                    {getEditFieldErrorByFrontendName('address') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('address')}</p>
+                    )}
                   </div>
 
                   {/* Last School Attended */}
@@ -1074,9 +1256,14 @@ const Students: React.FC = () => {
                       type="text"
                       value={editingStudent.lastSchoolAttended}
                       onChange={(e) => handleInputChange('lastSchoolAttended', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('lastSchoolAttended') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                       placeholder="Enter last school attended"
                     />
+                    {getEditFieldErrorByFrontendName('lastSchoolAttended') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('lastSchoolAttended')}</p>
+                    )}
                   </div>
 
                   {/* Boarding Status */}
@@ -1087,12 +1274,17 @@ const Students: React.FC = () => {
                     <select
                       value={editingStudent.boardingStatus}
                       onChange={(e) => handleInputChange('boardingStatus', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('boardingStatus') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     >
                       <option value="">Select boarding status</option>
                       <option value="Day">Day</option>
                       <option value="Boarding">Boarding</option>
                     </select>
+                    {getEditFieldErrorByFrontendName('boardingStatus') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('boardingStatus')}</p>
+                    )}
                   </div>
 
                   {/* Exempted From Religious Instruction */}
@@ -1120,8 +1312,13 @@ const Students: React.FC = () => {
                       type="date"
                       value={editingStudent.dateOfLeaving}
                       onChange={(e) => handleInputChange('dateOfLeaving', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                        getEditFieldErrorByFrontendName('dateOfLeaving') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      }`}
                     />
+                    {getEditFieldErrorByFrontendName('dateOfLeaving') && (
+                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfLeaving')}</p>
+                    )}
                   </div>
                 </CollapsibleSection>
               </div>
