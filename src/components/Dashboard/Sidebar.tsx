@@ -1,8 +1,9 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaHeadset, FaCog, FaChevronDown, FaBuilding, FaSchool } from 'react-icons/fa';
+import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool } from 'react-icons/fa';
 import { NavigationItem } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
 import { useRoleBasedUI } from '../../hooks/usePermissions';
+import { useRBAC } from '../../context/RBACContext';
 
 interface SidebarProps {
   currentPage: string;
@@ -12,6 +13,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
   const { logout } = useAuth();
   const ui = useRoleBasedUI();
+  const { userRole } = useRBAC();
   
   const navigationItems: NavigationItem[] = [
     {
@@ -27,32 +29,19 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       requiredPermissions: ['access_reports'],
     },
     {
-      id: 'users',
-      label: 'Users',
-      icon: FaUsers,
-      requiredPermissions: ['view_school_users', 'view_all_users'],
-    },
-    {
-      id: 'schools',
-      label: 'Schools',
-      icon: FaSchool,
-      requiredPermissions: ['view_all_schools', 'create_school'],
-    },
-    {
-      id: 'customer-support',
-      label: 'Customer Support',
-      icon: FaHeadset,
-      requiredPermissions: ['access_customer_support'],
-      children: [
-        { id: 'tickets', label: 'Tickets', icon: FaHeadset },
-        { id: 'live-chat', label: 'Live Chat', icon: FaHeadset },
-      ],
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
+      id: 'admin-panel',
+      label: 'Admin Panel',
       icon: FaCog,
-      requiredPermissions: ['access_settings'],
+      requiredPermissions: ['access_admin_panel'],
+      children: userRole === 'super_admin' 
+        ? [
+            { id: 'admin-users', label: 'Users', icon: FaUsers },
+          ]
+        : [
+            { id: 'admin-schools', label: 'Schools', icon: FaSchool },
+            { id: 'admin-users', label: 'Users', icon: FaUsers },
+            { id: 'admin-features', label: 'Switch Board', icon: FaCog },
+          ],
     },
   ];
 
@@ -87,30 +76,34 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
                 <button
                   onClick={() => onPageChange(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-all duration-200 group ${
-                    currentPage === item.id
+                    currentPage === item.id || (item.children && item.children.some(child => child.id === currentPage))
                       ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
                   }`}
                 >
                   <div className="flex items-center space-x-2">
-                    {item.icon({ className: `w-4 h-4 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` })}
+                    {item.icon({ className: `w-4 h-4 ${currentPage === item.id || (item.children && item.children.some(child => child.id === currentPage)) ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}` })}
                     <span className="text-xs font-medium">{item.label}</span>
                   </div>
                   {item.children && (
-                    FaChevronDown({ className: `w-3 h-3 transition-transform duration-200 ${currentPage === item.id ? 'text-blue-600' : 'text-gray-400'}` })
+                    FaChevronDown({ className: `w-3 h-3 transition-transform duration-200 ${currentPage === item.id || (item.children && item.children.some(child => child.id === currentPage)) ? 'text-blue-600' : 'text-gray-400'}` })
                   )}
                 </button>
                 
                 {/* Sub-items */}
-                {item.children && currentPage === item.id && (
+                {item.children && (currentPage === item.id || item.children.some(child => child.id === currentPage)) && (
                   <ul className="mt-1 ml-4 space-y-1">
                     {item.children.map((subItem) => (
                       <li key={subItem.id}>
                         <button
                           onClick={() => onPageChange(subItem.id)}
-                          className="w-full flex items-center space-x-2 px-2 py-1 rounded text-left text-gray-600 hover:bg-gray-50 hover:text-gray-800 transition-all duration-200"
+                          className={`w-full flex items-center space-x-2 px-2 py-1 rounded text-left transition-all duration-200 ${
+                            currentPage === subItem.id
+                              ? 'text-blue-600 bg-blue-50'
+                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                          }`}
                         >
-                          {subItem.icon({ className: "w-3 h-3 text-gray-400" })}
+                          {subItem.icon({ className: `w-3 h-3 ${currentPage === subItem.id ? 'text-blue-600' : 'text-gray-400'}` })}
                           <span className="text-xs">{subItem.label}</span>
                         </button>
                       </li>
