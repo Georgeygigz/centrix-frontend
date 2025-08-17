@@ -1,4 +1,5 @@
 import { Student, CreateStudentRequest } from '../types/dashboard';
+import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest } from '../types/featureFlags';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -258,6 +259,70 @@ export const apiService = {
     // Get statistics
     getStats: async () => {
       return apiService.authenticatedRequest('/students/statistics', { method: 'GET' });
+    },
+  },
+
+  // Feature Flags API
+  featureFlags: {
+    // Get all feature flags
+    getAll: async () => {
+      const headers = apiService.getAuthHeaders();
+      const fullUrl = `${API_BASE_URL}/switch/flags/`;
+      
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          ...headers,
+        },
+      });
+
+      const responseData = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        const error = new Error(responseData.message || 'Request failed');
+        (error as any).response = { data: responseData };
+        throw error;
+      }
+
+      if (responseData.status === 'error') {
+        const error = new Error(responseData.message || 'Request failed');
+        (error as any).response = { data: responseData };
+        throw error;
+      }
+      
+      // Return the full response for feature flags
+      return responseData;
+    },
+
+    // Get feature flag by ID
+    getById: async (flagId: string) => {
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, { method: 'GET' });
+    },
+
+    // Create new feature flag
+    create: async (flagData: CreateFeatureFlagRequest) => {
+      return apiService.authenticatedRequest('/switch/flags/', {
+        method: 'POST',
+        body: JSON.stringify(flagData),
+      });
+    },
+
+    // Update feature flag by ID
+    update: async (flagId: string, flagData: Partial<UpdateFeatureFlagRequest>) => {
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, {
+        method: 'PUT',
+        body: JSON.stringify(flagData),
+      });
+    },
+
+    // Delete feature flag by ID
+    delete: async (flagId: string) => {
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, { method: 'DELETE' });
+    },
+
+    // Toggle feature flag status
+    toggle: async (flagId: string) => {
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}/toggle`, { method: 'POST' });
     },
   },
 };
