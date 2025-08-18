@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
-import { FeatureFlag } from '../../types/featureFlags';
+import { FeatureFlag, FeatureFlagState } from '../../types/featureFlags';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -75,11 +75,18 @@ const SwitchBoard: React.FC = () => {
   const [sortBy, setSortBy] = useState('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [activeTab, setActiveTab] = useState('features');
+  
+  // Tab-specific sort states
+  const [featuresSortBy, setFeaturesSortBy] = useState('');
+  const [featuresSortDirection, setFeaturesSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [statesSortBy, setStatesSortBy] = useState('');
+  const [statesSortDirection, setStatesSortDirection] = useState<'asc' | 'desc'>('asc');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingFeature, setEditingFeature] = useState<FeatureFlag | null>(null);
+  const [editingState, setEditingState] = useState<FeatureFlagState | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic-info');
   const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
@@ -94,60 +101,102 @@ const SwitchBoard: React.FC = () => {
     is_active: true
   });
 
+  const [newState, setNewState] = useState<Partial<FeatureFlagState>>({
+    feature_flag: '',
+    scope_type: '',
+    scope_id: null,
+    is_enabled: false,
+    percentage: 100,
+    start_date: null,
+    end_date: null
+  });
+
   // Feature flags data from API
   const [features, setFeatures] = useState<FeatureFlag[]>([]);
+  
+  // Feature flag states data from API
+  const [featureFlagStates, setFeatureFlagStates] = useState<FeatureFlagState[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load feature flags from API
+  // Load feature flags and feature flag states from API
   useEffect(() => {
-    // Only load feature flags if user is authenticated and auth loading is complete
+    // Only load data if user is authenticated and auth loading is complete
     if (!authLoading && isAuthenticated) {
-      console.log('User is authenticated, loading feature flags...');
+      console.log('User is authenticated, loading feature flags and states...');
       console.log('Auth token:', apiService.getToken());
       
-      const loadFeatureFlags = async () => {
+      const loadData = async () => {
         setIsLoading(true);
         try {
+          // Load feature flags
           console.log('Loading feature flags...');
-          const data = await apiService.featureFlags.getAll();
-          console.log('API Response:', data); // Debug log
+          const featureFlagsData = await apiService.featureFlags.getAll();
+          console.log('Feature Flags API Response:', featureFlagsData);
           
-          // Handle different response structures
+          // Handle different response structures for feature flags
           let featureFlags: FeatureFlag[] = [];
-          if (data && data.status === 'success' && data.data && data.data.results) {
-            // Correct API response structure
-            console.log('Using correct API response structure');
-            featureFlags = data.data.results;
-          } else if (Array.isArray(data)) {
-            console.log('Using direct array response');
-            featureFlags = data;
-          } else if (data && Array.isArray(data.data)) {
-            console.log('Using data array response');
-            featureFlags = data.data;
-          } else if (data && data.features && Array.isArray(data.features)) {
-            console.log('Using features array response');
-            featureFlags = data.features;
-          } else if (data && data.status === 'error') {
-            console.warn('API returned error:', data.message);
-            // API returned an error (like authentication required)
-            throw new Error(data.message || 'API Error');
+          if (featureFlagsData && featureFlagsData.status === 'success' && featureFlagsData.data && featureFlagsData.data.results) {
+            console.log('Using correct feature flags API response structure');
+            featureFlags = featureFlagsData.data.results;
+          } else if (Array.isArray(featureFlagsData)) {
+            console.log('Using direct feature flags array response');
+            featureFlags = featureFlagsData;
+          } else if (featureFlagsData && Array.isArray(featureFlagsData.data)) {
+            console.log('Using feature flags data array response');
+            featureFlags = featureFlagsData.data;
+          } else if (featureFlagsData && featureFlagsData.features && Array.isArray(featureFlagsData.features)) {
+            console.log('Using feature flags features array response');
+            featureFlags = featureFlagsData.features;
+          } else if (featureFlagsData && featureFlagsData.status === 'error') {
+            console.warn('Feature flags API returned error:', featureFlagsData.message);
+            throw new Error(featureFlagsData.message || 'Feature Flags API Error');
           } else {
-            console.warn('Unexpected API response structure:', data);
-            console.log('Response type:', typeof data);
-            console.log('Response keys:', data ? Object.keys(data) : 'null/undefined');
-            // Don't use fallback data - show empty state instead
+            console.warn('Unexpected feature flags API response structure:', featureFlagsData);
             featureFlags = [];
-            throw new Error('Unexpected API response structure');
+            throw new Error('Unexpected feature flags API response structure');
           }
           
           console.log('Final feature flags:', featureFlags);
           setFeatures(featureFlags);
+
+          // Load feature flag states
+          console.log('Loading feature flag states...');
+          const featureFlagStatesData = await apiService.featureFlagStates.getAll();
+          console.log('Feature Flag States API Response:', featureFlagStatesData);
+          
+          // Handle different response structures for feature flag states
+          let states: FeatureFlagState[] = [];
+          if (featureFlagStatesData && featureFlagStatesData.status === 'success' && featureFlagStatesData.data && featureFlagStatesData.data.results) {
+            console.log('Using correct feature flag states API response structure');
+            states = featureFlagStatesData.data.results;
+          } else if (Array.isArray(featureFlagStatesData)) {
+            console.log('Using direct feature flag states array response');
+            states = featureFlagStatesData;
+          } else if (featureFlagStatesData && Array.isArray(featureFlagStatesData.data)) {
+            console.log('Using feature flag states data array response');
+            states = featureFlagStatesData.data;
+          } else if (featureFlagStatesData && featureFlagStatesData.states && Array.isArray(featureFlagStatesData.states)) {
+            console.log('Using feature flag states states array response');
+            states = featureFlagStatesData.states;
+          } else if (featureFlagStatesData && featureFlagStatesData.status === 'error') {
+            console.warn('Feature flag states API returned error:', featureFlagStatesData.message);
+            // Don't throw error for states, just set empty array
+            states = [];
+          } else {
+            console.warn('Unexpected feature flag states API response structure:', featureFlagStatesData);
+            states = [];
+          }
+          
+          console.log('Final feature flag states:', states);
+          setFeatureFlagStates(states);
+          
         } catch (error) {
-          console.error('Error loading feature flags:', error);
+          console.error('Error loading data:', error);
           setFeatures([]);
+          setFeatureFlagStates([]);
           setToast({
-            message: `Failed to load feature flags: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            message: `Failed to load data: ${error instanceof Error ? error.message : 'Unknown error'}`,
             type: 'error'
           });
           setTimeout(() => {
@@ -158,11 +207,12 @@ const SwitchBoard: React.FC = () => {
         }
       };
 
-      loadFeatureFlags();
+      loadData();
     } else if (!authLoading && !isAuthenticated) {
       // User is not authenticated, show empty state or redirect
       console.log('User not authenticated, showing empty state');
       setFeatures([]);
+      setFeatureFlagStates([]);
     }
   }, [isAuthenticated, authLoading]);
 
@@ -189,42 +239,98 @@ const SwitchBoard: React.FC = () => {
       feature.feature_type.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
     );
 
-    if (sortBy) {
+    if (featuresSortBy) {
       filtered.sort((a, b) => {
-        const aValue = a[sortBy as keyof FeatureFlag];
-        const bValue = b[sortBy as keyof FeatureFlag];
+        const aValue = a[featuresSortBy as keyof FeatureFlag];
+        const bValue = b[featuresSortBy as keyof FeatureFlag];
         
         if (typeof aValue === 'string' && typeof bValue === 'string') {
           const comparison = aValue.localeCompare(bValue);
-          return sortDirection === 'asc' ? comparison : -comparison;
+          return featuresSortDirection === 'asc' ? comparison : -comparison;
         } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
           // For boolean values, true comes first in ascending order
           const comparison = aValue === bValue ? 0 : aValue ? -1 : 1;
-          return sortDirection === 'asc' ? comparison : -comparison;
+          return featuresSortDirection === 'asc' ? comparison : -comparison;
         }
         return 0;
       });
     }
 
     return filtered;
-  }, [features, debouncedSearchQuery, sortBy, sortDirection]);
+  }, [features, debouncedSearchQuery, featuresSortBy, featuresSortDirection]);
+
+  const filteredAndSortedFeatureFlagStates = useMemo(() => {
+    // Ensure feature flag states is always an array
+    if (!Array.isArray(featureFlagStates)) {
+      console.warn('Feature flag states is not an array:', featureFlagStates);
+      return [];
+    }
+
+    let filtered = featureFlagStates.filter(state =>
+      state.scope_type.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      (state.scope_id && state.scope_id.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
+      state.feature_flag_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      state.feature_flag_display_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    );
+
+    if (statesSortBy) {
+      filtered.sort((a, b) => {
+        const aValue = a[statesSortBy as keyof FeatureFlagState];
+        const bValue = b[statesSortBy as keyof FeatureFlagState];
+        
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          const comparison = aValue.localeCompare(bValue);
+          return statesSortDirection === 'asc' ? comparison : -comparison;
+        } else if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+          // For boolean values, true comes first in ascending order
+          const comparison = aValue === bValue ? 0 : aValue ? -1 : 1;
+          return statesSortDirection === 'asc' ? comparison : -comparison;
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+          const comparison = aValue - bValue;
+          return statesSortDirection === 'asc' ? comparison : -comparison;
+        }
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [featureFlagStates, debouncedSearchQuery, statesSortBy, statesSortDirection]);
 
   const handleSort = (column: string) => {
-    if (sortBy === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortDirection('asc');
+    if (activeTab === 'features') {
+      if (featuresSortBy === column) {
+        setFeaturesSortDirection(featuresSortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+        setFeaturesSortBy(column);
+        setFeaturesSortDirection('asc');
+      }
+    } else if (activeTab === 'feature-flag-states') {
+      if (statesSortBy === column) {
+        setStatesSortDirection(statesSortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+        setStatesSortBy(column);
+        setStatesSortDirection('asc');
+      }
     }
   };
 
   const getSortIcon = (column: string) => {
-    if (sortBy !== column) {
-      return null;
+    if (activeTab === 'features') {
+      if (featuresSortBy !== column) {
+        return null;
+      }
+      return featuresSortDirection === 'asc' ? 
+        FaChevronUp({ className: "w-3 h-3" }) : 
+        FaChevronDown({ className: "w-3 h-3" });
+    } else if (activeTab === 'feature-flag-states') {
+      if (statesSortBy !== column) {
+        return null;
+      }
+      return statesSortDirection === 'asc' ? 
+        FaChevronUp({ className: "w-3 h-3" }) : 
+        FaChevronDown({ className: "w-3 h-3" });
     }
-    return sortDirection === 'asc' ? 
-      FaChevronUp({ className: "w-3 h-3" }) : 
-      FaChevronDown({ className: "w-3 h-3" });
+    return null;
   };
 
   const openAddDrawer = () => {
@@ -241,6 +347,25 @@ const SwitchBoard: React.FC = () => {
       description: '',
       feature_type: '',
       is_active: true
+    });
+  };
+
+  const openAddStateDrawer = () => {
+    setIsAddDrawerOpen(true);
+    setActiveSection('basic-info');
+    setFormErrors({});
+  };
+
+  const closeAddStateDrawer = () => {
+    setIsAddDrawerOpen(false);
+    setNewState({
+      feature_flag: '',
+      scope_type: '',
+      scope_id: null,
+      is_enabled: false,
+      percentage: 100,
+      start_date: null,
+      end_date: null
     });
   };
 
@@ -293,6 +418,59 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
+  const handleAddState = async () => {
+    try {
+      const stateData = {
+        feature_flag: newState.feature_flag || '',
+        scope_type: newState.scope_type || '',
+        scope_id: newState.scope_id ?? null,
+        is_enabled: newState.is_enabled ?? false,
+        percentage: newState.percentage ?? 100,
+        start_date: newState.start_date ?? null,
+        end_date: newState.end_date ?? null
+      };
+
+      const newFeatureFlagState = await apiService.featureFlagStates.create(stateData);
+      setFeatureFlagStates(prev => [...prev, newFeatureFlagState]);
+      
+      setToast({
+        message: 'Feature flag state added successfully!',
+        type: 'success'
+      });
+      
+      setFormErrors({});
+      
+      setNewState({
+        feature_flag: '',
+        scope_type: '',
+        scope_id: null,
+        is_enabled: false,
+        percentage: 100,
+        start_date: null,
+        end_date: null
+      });
+      
+      setTimeout(() => {
+        closeAddStateDrawer();
+      }, 100);
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Error adding feature flag state:', error);
+      setToast({
+        message: 'Failed to add feature flag state. Please try again.',
+        type: 'error'
+      });
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    }
+  };
+
   const handleNewFeatureInputChange = (field: keyof FeatureFlag, value: string | boolean) => {
     setNewFeature(prev => ({
       ...prev,
@@ -308,8 +486,31 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
+  const handleNewStateInputChange = (field: keyof FeatureFlagState, value: string | boolean | number | null) => {
+    setNewState(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
   const handleEditFeature = (feature: FeatureFlag) => {
     setEditingFeature(feature);
+    setIsEditDrawerOpen(true);
+    setOpenDropdownId(null);
+    setEditActiveSection('basic-info');
+    setEditFormErrors({});
+  };
+
+  const handleEditState = (state: FeatureFlagState) => {
+    setEditingState(state);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
     setEditActiveSection('basic-info');
@@ -342,9 +543,36 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
+  const handleDeleteState = async (state: FeatureFlagState) => {
+    try {
+      await apiService.featureFlagStates.delete(state.id);
+      setFeatureFlagStates(prev => prev.filter(s => s.id !== state.id));
+      setOpenDropdownId(null);
+      setToast({
+        message: 'Feature flag state deleted successfully!',
+        type: 'success'
+      });
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    } catch (error) {
+      console.error('Error deleting feature flag state:', error);
+      setToast({
+        message: 'Failed to delete feature flag state. Please try again.',
+        type: 'error'
+      });
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    }
+  };
+
   const closeEditDrawer = () => {
     setIsEditDrawerOpen(false);
     setEditingFeature(null);
+    setEditingState(null);
     setEditFormErrors({});
   };
 
@@ -389,10 +617,70 @@ const SwitchBoard: React.FC = () => {
     }
   };
 
+  const handleSaveState = async () => {
+    if (editingState) {
+      try {
+        const updatedState = await apiService.featureFlagStates.update(editingState.id, {
+          feature_flag: editingState.feature_flag,
+          scope_type: editingState.scope_type,
+          scope_id: editingState.scope_id,
+          is_enabled: editingState.is_enabled,
+          percentage: editingState.percentage,
+          start_date: editingState.start_date,
+          end_date: editingState.end_date
+        });
+        
+        setFeatureFlagStates(prev => prev.map(s => 
+          s.id === editingState.id ? updatedState : s
+        ));
+        
+        setToast({
+          message: 'Feature flag state updated successfully!',
+          type: 'success'
+        });
+        
+        setEditFormErrors({});
+        closeEditDrawer();
+        
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+        
+      } catch (error) {
+        console.error('Error updating feature flag state:', error);
+        setToast({
+          message: 'Failed to update feature flag state. Please try again.',
+          type: 'error'
+        });
+        
+        setTimeout(() => {
+          setToast(null);
+        }, 5000);
+      }
+    }
+  };
+
   const handleInputChange = (field: keyof FeatureFlag, value: string | boolean) => {
     if (editingFeature) {
       setEditingFeature({
         ...editingFeature,
+        [field]: value
+      });
+      
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  const handleStateInputChange = (field: keyof FeatureFlagState, value: string | boolean | number | null) => {
+    if (editingState) {
+      setEditingState({
+        ...editingState,
         [field]: value
       });
       
@@ -470,6 +758,16 @@ const SwitchBoard: React.FC = () => {
                   Feature Flags
                 </button>
                 <button 
+                  onClick={() => setActiveTab('feature-flag-states')}
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                    activeTab === 'feature-flag-states' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Feature Flag States
+                </button>
+                <button 
                   onClick={() => setActiveTab('settings')}
                   className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'settings' 
@@ -497,7 +795,7 @@ const SwitchBoard: React.FC = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search feature flags..."
+                    placeholder={activeTab === 'feature-flag-states' ? "Search feature flag states..." : "Search feature flags..."}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
@@ -514,38 +812,67 @@ const SwitchBoard: React.FC = () => {
 
                 {/* Sort */}
                 <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  value={activeTab === 'features' ? featuresSortBy : activeTab === 'feature-flag-states' ? statesSortBy : ''}
+                  onChange={(e) => {
+                    if (activeTab === 'features') {
+                      setFeaturesSortBy(e.target.value);
+                    } else if (activeTab === 'feature-flag-states') {
+                      setStatesSortBy(e.target.value);
+                    }
+                  }}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                 >
                   <option value="">Sort by</option>
-                  <option value="name">Name</option>
-                  <option value="display_name">Display Name</option>
-                  <option value="feature_type">Feature Type</option>
-                  <option value="is_active">Is Active</option>
-                  <option value="created_at">Created At</option>
-                  <option value="updated_at">Updated At</option>
+                  {activeTab === 'features' ? (
+                    <>
+                      <option value="name">Name</option>
+                      <option value="display_name">Display Name</option>
+                      <option value="feature_type">Feature Type</option>
+                      <option value="is_active">Is Active</option>
+                      <option value="created_at">Created At</option>
+                      <option value="updated_at">Updated At</option>
+                    </>
+                  ) : activeTab === 'feature-flag-states' ? (
+                    <>
+                      <option value="feature_flag_name">Feature Flag Name</option>
+                      <option value="scope_type">Scope Type</option>
+                      <option value="scope_id">Scope Id</option>
+                      <option value="is_enabled">Is Enabled</option>
+                      <option value="percentage">Percentage</option>
+                      <option value="start_date">Start Date</option>
+                      <option value="end_date">End Date</option>
+                      <option value="updated_at">Updated At</option>
+                    </>
+                  ) : null}
                 </select>
 
                 {/* Refresh Button */}
                 <button
                   onClick={() => {
                     if (isAuthenticated) {
-                      const loadFeatureFlags = async () => {
+                      const loadData = async () => {
                         setIsLoading(true);
                         try {
-                          const data = await apiService.featureFlags.getAll();
-                          if (data && data.status === 'success' && data.data && data.data.results) {
-                            setFeatures(data.data.results);
-                            setToast({
-                              message: 'Feature flags refreshed successfully!',
-                              type: 'success'
-                            });
+                          // Refresh feature flags
+                          const featureFlagsData = await apiService.featureFlags.getAll();
+                          if (featureFlagsData && featureFlagsData.status === 'success' && featureFlagsData.data && featureFlagsData.data.results) {
+                            setFeatures(featureFlagsData.data.results);
                           }
-                        } catch (error) {
-                          console.error('Error refreshing feature flags:', error);
+                          
+                          // Refresh feature flag states
+                          const featureFlagStatesData = await apiService.featureFlagStates.getAll();
+                          if (featureFlagStatesData && featureFlagStatesData.status === 'success' && featureFlagStatesData.data && featureFlagStatesData.data.results) {
+                            setFeatureFlagStates(featureFlagStatesData.data.results);
+                          }
+                          
                           setToast({
-                            message: 'Failed to refresh feature flags',
+                            message: 'Data refreshed successfully!',
+                            type: 'success'
+                          });
+                        } catch (error) {
+                          console.error('Error refreshing data:', error);
+                          setToast({
+                            message: 'Failed to refresh data',
                             type: 'error'
                           });
                         } finally {
@@ -553,24 +880,34 @@ const SwitchBoard: React.FC = () => {
                           setTimeout(() => setToast(null), 3000);
                         }
                       };
-                      loadFeatureFlags();
+                      loadData();
                     }
                   }}
                   disabled={!isAuthenticated || isLoading}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Refresh feature flags"
+                  title="Refresh data"
                 >
                   ↻ Refresh
                 </button>
 
-                {/* Add New Feature Button */}
+                {/* Add New Button */}
                 <PermissionGate permissions={['access_admin_panel']}>
-                  <button
-                    onClick={openAddDrawer}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-                  >
-                    + Add Feature
-                  </button>
+                  {activeTab === 'features' && (
+                    <button
+                      onClick={openAddDrawer}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                    >
+                      + Add Feature
+                    </button>
+                  )}
+                  {activeTab === 'feature-flag-states' && (
+                    <button
+                      onClick={openAddStateDrawer}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                    >
+                      + Add State
+                    </button>
+                  )}
                 </PermissionGate>
               </div>
             </div>
@@ -720,6 +1057,161 @@ const SwitchBoard: React.FC = () => {
           </div>
         )}
 
+        {/* Feature Flag States Tab */}
+        {activeTab === 'feature-flag-states' && (
+          <div className="bg-white rounded-md shadow-sm">
+            {authLoading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading authentication...</p>
+              </div>
+            ) : !isAuthenticated ? (
+              <div className="p-8 text-center">
+                <div className="text-gray-400 mb-3">
+                  <svg className="mx-auto h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="text-sm font-medium text-gray-900 mb-1">Authentication Required</h3>
+                <p className="text-xs text-gray-500">Please log in to view feature flag states.</p>
+              </div>
+            ) : isLoading ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading feature flag states...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_flag_name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Feature Flag Name</span>
+                          {getSortIcon('feature_flag_name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_type')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Scope Type</span>
+                          {getSortIcon('scope_type')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_id')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Scope Id</span>
+                          {getSortIcon('scope_id')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_enabled')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Is Enabled</span>
+                          {getSortIcon('is_enabled')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('percentage')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Percentage</span>
+                          {getSortIcon('percentage')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('start_date')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Start Date</span>
+                          {getSortIcon('start_date')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('end_date')}>
+                        <div className="flex items-center space-x-1">
+                          <span>End Date</span>
+                          {getSortIcon('end_date')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Updated At</span>
+                          {getSortIcon('updated_at')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAndSortedFeatureFlagStates.map((state, index) => (
+                      <tr key={state.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                          {state.feature_flag_name}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.scope_type}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.scope_id || '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            state.is_enabled 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {state.is_enabled ? 'true' : 'false'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.percentage}%
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.start_date || '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.end_date || '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.updated_at}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                          <div className="flex items-center space-x-1">
+                            <button
+                              onClick={() => {/* View details */}}
+                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+                              title="View Details"
+                            >
+                              {FaEye({ className: "w-3 h-3" })}
+                            </button>
+                            
+                            {/* Dropdown Menu */}
+                            <PermissionGate permissions={['access_admin_panel']}>
+                              <div className="relative" data-dropdown-container>
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    toggleDropdown(state.id, e);
+                                  }}
+                                  className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
+                                    openDropdownId === state.id 
+                                      ? 'text-blue-600 bg-blue-50' 
+                                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                  }`}
+                                  title="More Options"
+                                >
+                                  {FaEllipsisV({ className: "w-3 h-3" })}
+                                </button>
+                              </div>
+                            </PermissionGate>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="bg-white rounded-md shadow-sm p-6">
@@ -763,11 +1255,15 @@ const SwitchBoard: React.FC = () => {
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New Feature</h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">Enter feature information</p>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">
+                  {activeTab === 'features' ? 'Add New Feature' : 'Add New Feature Flag State'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">
+                  {activeTab === 'features' ? 'Enter feature information' : 'Enter feature flag state information'}
+                </p>
               </div>
               <button
-                onClick={closeAddDrawer}
+                onClick={activeTab === 'features' ? closeAddDrawer : closeAddStateDrawer}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
               >
                 {FaTimes({ className: "w-4 h-4" })}
@@ -777,145 +1273,13 @@ const SwitchBoard: React.FC = () => {
             {/* Drawer Content */}
             <div className="flex-1 overflow-y-auto">
               <div className="p-6 space-y-4">
-                {/* Basic Info Section */}
-                <CollapsibleSection 
-                  title="Basic Information *" 
-                  defaultExpanded={true}
-                  isActive={activeSection === 'basic-info'}
-                  onSectionClick={() => setActiveSection('basic-info')}
-                >
-                  {/* Feature Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Feature Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newFeature.name}
-                      onChange={(e) => handleNewFeatureInputChange('name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter feature name (e.g., student_admission_billing)"
-                    />
-                  </div>
-
-                  {/* Display Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Display Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newFeature.display_name}
-                      onChange={(e) => handleNewFeatureInputChange('display_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter display name (e.g., Student Admission Billing Control)"
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Description *
-                    </label>
-                    <textarea
-                      value={newFeature.description}
-                      onChange={(e) => handleNewFeatureInputChange('description', e.target.value)}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
-                      placeholder="Enter feature description"
-                    />
-                  </div>
-
-                  {/* Feature Type */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Feature Type *
-                    </label>
-                    <select
-                      value={newFeature.feature_type}
-                      onChange={(e) => handleNewFeatureInputChange('feature_type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    >
-                      <option value="">Select feature type</option>
-                      <option value="billing">Billing</option>
-                      <option value="maintenance">Maintenance</option>
-                      <option value="test">Test</option>
-                      <option value="core">Core</option>
-                      <option value="academic">Academic</option>
-                      <option value="financial">Financial</option>
-                    </select>
-                  </div>
-
-                  {/* Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Status *
-                    </label>
-                    <select
-                      value={newFeature.is_active ? 'true' : 'false'}
-                      onChange={(e) => handleNewFeatureInputChange('is_active', e.target.value === 'true')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    >
-                      <option value="true">Active</option>
-                      <option value="false">Inactive</option>
-                    </select>
-                  </div>
-                </CollapsibleSection>
-              </div>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
-              <button
-                onClick={closeAddDrawer}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddFeature}
-                disabled={!newFeature.name || !newFeature.display_name || !newFeature.description || !newFeature.feature_type}
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-              >
-                Add Feature
-              </button>
-            </div>
-          </>
-        </div>
-      </div>
-
-      {/* Edit Feature Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          {editingFeature && (
-            <>
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit Feature</h2>
-                  <p className="text-xs text-gray-500 mt-1 font-modern">Update feature information</p>
-                </div>
-                <button
-                  onClick={closeEditDrawer}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-                >
-                  {FaTimes({ className: "w-4 h-4" })}
-                </button>
-              </div>
-
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-4">
-                  {/* Basic Info Section */}
+                {activeTab === 'features' ? (
+                  /* Feature Form */
                   <CollapsibleSection 
                     title="Basic Information *" 
                     defaultExpanded={true}
-                    isActive={editActiveSection === 'basic-info'}
-                    onSectionClick={() => setEditActiveSection('basic-info')}
+                    isActive={activeSection === 'basic-info'}
+                    onSectionClick={() => setActiveSection('basic-info')}
                   >
                     {/* Feature Name */}
                     <div>
@@ -924,8 +1288,8 @@ const SwitchBoard: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={editingFeature.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        value={newFeature.name}
+                        onChange={(e) => handleNewFeatureInputChange('name', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                         placeholder="Enter feature name (e.g., student_admission_billing)"
                       />
@@ -938,8 +1302,8 @@ const SwitchBoard: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        value={editingFeature.display_name}
-                        onChange={(e) => handleInputChange('display_name', e.target.value)}
+                        value={newFeature.display_name}
+                        onChange={(e) => handleNewFeatureInputChange('display_name', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                         placeholder="Enter display name (e.g., Student Admission Billing Control)"
                       />
@@ -951,8 +1315,8 @@ const SwitchBoard: React.FC = () => {
                         Description *
                       </label>
                       <textarea
-                        value={editingFeature.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        value={newFeature.description}
+                        onChange={(e) => handleNewFeatureInputChange('description', e.target.value)}
                         rows={3}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
                         placeholder="Enter feature description"
@@ -965,8 +1329,8 @@ const SwitchBoard: React.FC = () => {
                         Feature Type *
                       </label>
                       <select
-                        value={editingFeature.feature_type}
-                        onChange={(e) => handleInputChange('feature_type', e.target.value)}
+                        value={newFeature.feature_type}
+                        onChange={(e) => handleNewFeatureInputChange('feature_type', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       >
                         <option value="">Select feature type</option>
@@ -985,8 +1349,8 @@ const SwitchBoard: React.FC = () => {
                         Status *
                       </label>
                       <select
-                        value={editingFeature.is_active ? 'true' : 'false'}
-                        onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
+                        value={newFeature.is_active ? 'true' : 'false'}
+                        onChange={(e) => handleNewFeatureInputChange('is_active', e.target.value === 'true')}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       >
                         <option value="true">Active</option>
@@ -994,6 +1358,380 @@ const SwitchBoard: React.FC = () => {
                       </select>
                     </div>
                   </CollapsibleSection>
+                ) : (
+                  /* Feature Flag State Form */
+                  <CollapsibleSection 
+                    title="Basic Information *" 
+                    defaultExpanded={true}
+                    isActive={activeSection === 'basic-info'}
+                    onSectionClick={() => setActiveSection('basic-info')}
+                  >
+                    {/* Feature Flag */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Feature Flag *
+                      </label>
+                      <select
+                        value={newState.feature_flag}
+                        onChange={(e) => handleNewStateInputChange('feature_flag', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      >
+                        <option value="">Select feature flag</option>
+                        {features.map(feature => (
+                          <option key={feature.id} value={feature.id}>
+                            {feature.display_name} ({feature.name})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Scope Type */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Scope Type *
+                      </label>
+                      <select
+                        value={newState.scope_type}
+                        onChange={(e) => handleNewStateInputChange('scope_type', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      >
+                        <option value="">Select scope type</option>
+                        <option value="global">Global</option>
+                        <option value="school">School</option>
+                        <option value="user">User</option>
+                      </select>
+                    </div>
+
+                    {/* Scope ID */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Scope ID
+                      </label>
+                      <input
+                        type="text"
+                        value={newState.scope_id || ''}
+                        onChange={(e) => handleNewStateInputChange('scope_id', e.target.value || null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="Enter scope ID (optional)"
+                      />
+                    </div>
+
+                    {/* Is Enabled */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Is Enabled *
+                      </label>
+                      <select
+                        value={newState.is_enabled ? 'true' : 'false'}
+                        onChange={(e) => handleNewStateInputChange('is_enabled', e.target.value === 'true')}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      >
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                      </select>
+                    </div>
+
+                    {/* Percentage */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Percentage *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={newState.percentage}
+                        onChange={(e) => handleNewStateInputChange('percentage', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="Enter percentage (0-100)"
+                      />
+                    </div>
+
+                    {/* Start Date */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Start Date
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={newState.start_date || ''}
+                        onChange={(e) => handleNewStateInputChange('start_date', e.target.value || null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      />
+                    </div>
+
+                    {/* End Date */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        End Date
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={newState.end_date || ''}
+                        onChange={(e) => handleNewStateInputChange('end_date', e.target.value || null)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      />
+                    </div>
+                  </CollapsibleSection>
+                )}
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+              <button
+                onClick={activeTab === 'features' ? closeAddDrawer : closeAddStateDrawer}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={activeTab === 'features' ? handleAddFeature : handleAddState}
+                disabled={
+                  activeTab === 'features' 
+                    ? (!newFeature.name || !newFeature.display_name || !newFeature.description || !newFeature.feature_type)
+                    : (!newState.feature_flag || !newState.scope_type)
+                }
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+              >
+                {activeTab === 'features' ? 'Add Feature' : 'Add State'}
+              </button>
+            </div>
+          </>
+        </div>
+      </div>
+
+      {/* Edit Feature Drawer */}
+      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
+        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+      }`}>
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
+          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          {(editingFeature || editingState) && (
+            <>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 font-elegant">
+                    {editingFeature ? 'Edit Feature' : 'Edit Feature Flag State'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1 font-modern">
+                    {editingFeature ? 'Update feature information' : 'Update feature flag state information'}
+                  </p>
+                </div>
+                <button
+                  onClick={closeEditDrawer}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                >
+                  {FaTimes({ className: "w-4 h-4" })}
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-4">
+                  {editingFeature ? (
+                    /* Edit Feature Form */
+                    <CollapsibleSection 
+                      title="Basic Information *" 
+                      defaultExpanded={true}
+                      isActive={editActiveSection === 'basic-info'}
+                      onSectionClick={() => setEditActiveSection('basic-info')}
+                    >
+                      {/* Feature Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Feature Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingFeature.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="Enter feature name (e.g., student_admission_billing)"
+                        />
+                      </div>
+
+                      {/* Display Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Display Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingFeature.display_name}
+                          onChange={(e) => handleInputChange('display_name', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="Enter display name (e.g., Student Admission Billing Control)"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Description *
+                        </label>
+                        <textarea
+                          value={editingFeature.description}
+                          onChange={(e) => handleInputChange('description', e.target.value)}
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
+                          placeholder="Enter feature description"
+                        />
+                      </div>
+
+                      {/* Feature Type */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Feature Type *
+                        </label>
+                        <select
+                          value={editingFeature.feature_type}
+                          onChange={(e) => handleInputChange('feature_type', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="">Select feature type</option>
+                          <option value="billing">Billing</option>
+                          <option value="maintenance">Maintenance</option>
+                          <option value="test">Test</option>
+                          <option value="core">Core</option>
+                          <option value="academic">Academic</option>
+                          <option value="financial">Financial</option>
+                        </select>
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Status *
+                        </label>
+                        <select
+                          value={editingFeature.is_active ? 'true' : 'false'}
+                          onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="true">Active</option>
+                          <option value="false">Inactive</option>
+                        </select>
+                      </div>
+                    </CollapsibleSection>
+                  ) : editingState ? (
+                    /* Edit Feature Flag State Form */
+                    <CollapsibleSection 
+                      title="Basic Information *" 
+                      defaultExpanded={true}
+                      isActive={editActiveSection === 'basic-info'}
+                      onSectionClick={() => setEditActiveSection('basic-info')}
+                    >
+                      {/* Feature Flag */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Feature Flag *
+                        </label>
+                        <select
+                          value={editingState.feature_flag}
+                          onChange={(e) => handleStateInputChange('feature_flag', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="">Select feature flag</option>
+                          {features.map(feature => (
+                            <option key={feature.id} value={feature.id}>
+                              {feature.display_name} ({feature.name})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Scope Type */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Scope Type *
+                        </label>
+                        <select
+                          value={editingState.scope_type}
+                          onChange={(e) => handleStateInputChange('scope_type', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="">Select scope type</option>
+                          <option value="global">Global</option>
+                          <option value="school">School</option>
+                          <option value="user">User</option>
+                        </select>
+                      </div>
+
+                      {/* Scope ID */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Scope ID
+                        </label>
+                        <input
+                          type="text"
+                          value={editingState.scope_id || ''}
+                          onChange={(e) => handleStateInputChange('scope_id', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="Enter scope ID (optional)"
+                        />
+                      </div>
+
+                      {/* Is Enabled */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Is Enabled *
+                        </label>
+                        <select
+                          value={editingState.is_enabled ? 'true' : 'false'}
+                          onChange={(e) => handleStateInputChange('is_enabled', e.target.value === 'true')}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="true">Enabled</option>
+                          <option value="false">Disabled</option>
+                        </select>
+                      </div>
+
+                      {/* Percentage */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Percentage *
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={editingState.percentage}
+                          onChange={(e) => handleStateInputChange('percentage', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="Enter percentage (0-100)"
+                        />
+                      </div>
+
+                      {/* Start Date */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Start Date
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={editingState.start_date ? editingState.start_date.slice(0, 16) : ''}
+                          onChange={(e) => handleStateInputChange('start_date', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        />
+                      </div>
+
+                      {/* End Date */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          End Date
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={editingState.end_date ? editingState.end_date.slice(0, 16) : ''}
+                          onChange={(e) => handleStateInputChange('end_date', e.target.value || null)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        />
+                      </div>
+                    </CollapsibleSection>
+                  ) : null}
                 </div>
               </div>
 
@@ -1006,7 +1744,7 @@ const SwitchBoard: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={handleSaveFeature}
+                  onClick={editingFeature ? handleSaveFeature : handleSaveState}
                   className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
                 >
                   Save Changes
@@ -1030,34 +1768,66 @@ const SwitchBoard: React.FC = () => {
         >
           <div className="py-1">
             <PermissionGate permissions={['access_admin_panel']}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const feature = features.find(f => f.id === openDropdownId);
-                  if (feature) {
-                    handleEditFeature(feature);
-                  }
-                }}
-                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
-              >
-                {FaEdit({ className: "w-3 h-3 mr-2" })}
-                Edit
-              </button>
-            </PermissionGate>
-            <PermissionGate permissions={['access_admin_panel']}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const feature = features.find(f => f.id === openDropdownId);
-                  if (feature) {
-                    handleDeleteFeature(feature);
-                  }
-                }}
-                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
-              >
-                {FaTrash({ className: "w-3 h-3 mr-2" })}
-                Delete
-              </button>
+              {activeTab === 'features' && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const feature = features.find(f => f.id === openDropdownId);
+                      if (feature) {
+                        handleEditFeature(feature);
+                      }
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                  >
+                    {FaEdit({ className: "w-3 h-3 mr-2" })}
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const feature = features.find(f => f.id === openDropdownId);
+                      if (feature) {
+                        handleDeleteFeature(feature);
+                      }
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                  >
+                    {FaTrash({ className: "w-3 h-3 mr-2" })}
+                    Delete
+                  </button>
+                </>
+              )}
+              {activeTab === 'feature-flag-states' && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const state = featureFlagStates.find(s => s.id === openDropdownId);
+                      if (state) {
+                        handleEditState(state);
+                      }
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                  >
+                    {FaEdit({ className: "w-3 h-3 mr-2" })}
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const state = featureFlagStates.find(s => s.id === openDropdownId);
+                      if (state) {
+                        handleDeleteState(state);
+                      }
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+                  >
+                    {FaTrash({ className: "w-3 h-3 mr-2" })}
+                    Delete
+                  </button>
+                </>
+              )}
             </PermissionGate>
           </div>
         </div>,
