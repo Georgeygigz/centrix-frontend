@@ -420,17 +420,56 @@ const SwitchBoard: React.FC = () => {
 
   const handleAddState = async () => {
     try {
+      // Format dates properly for the API
+      const formatDateForAPI = (dateString: string | null): string | null => {
+        if (!dateString) return null;
+        // Convert datetime-local format to ISO string
+        const date = new Date(dateString);
+        return date.toISOString();
+      };
+
       const stateData = {
         feature_flag: newState.feature_flag || '',
         scope_type: newState.scope_type || '',
         scope_id: newState.scope_id ?? null,
         is_enabled: newState.is_enabled ?? false,
         percentage: newState.percentage ?? 100,
-        start_date: newState.start_date ?? null,
-        end_date: newState.end_date ?? null
+        start_date: formatDateForAPI(newState.start_date ?? null),
+        end_date: formatDateForAPI(newState.end_date ?? null)
       };
 
-      const newFeatureFlagState = await apiService.featureFlagStates.create(stateData);
+      console.log('Creating new feature flag state with data:', stateData);
+
+      const response = await apiService.featureFlagStates.create(stateData);
+      console.log('API Response:', response);
+      
+      // Handle different response structures
+      let newFeatureFlagState: FeatureFlagState;
+      if (response && response.status === 'success' && response.data) {
+        // Response wrapped in success object
+        newFeatureFlagState = response.data;
+      } else if (response && response.id) {
+        // Direct feature flag state object
+        newFeatureFlagState = response;
+      } else {
+        // Fallback - create a temporary object with the form data
+        const relatedFeature = features.find(f => f.id === stateData.feature_flag);
+        newFeatureFlagState = {
+          id: 'temp-' + Date.now(), // Temporary ID
+          feature_flag: stateData.feature_flag,
+          feature_flag_name: relatedFeature?.name || '',
+          feature_flag_display_name: relatedFeature?.display_name || '',
+          scope_type: stateData.scope_type,
+          scope_id: stateData.scope_id,
+          is_enabled: stateData.is_enabled,
+          percentage: stateData.percentage,
+          start_date: stateData.start_date,
+          end_date: stateData.end_date,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
+      
       setFeatureFlagStates(prev => [...prev, newFeatureFlagState]);
       
       setToast({
@@ -620,15 +659,27 @@ const SwitchBoard: React.FC = () => {
   const handleSaveState = async () => {
     if (editingState) {
       try {
-        const updatedState = await apiService.featureFlagStates.update(editingState.id, {
+        // Format dates properly for the API
+        const formatDateForAPI = (dateString: string | null): string | null => {
+          if (!dateString) return null;
+          // Convert datetime-local format to ISO string
+          const date = new Date(dateString);
+          return date.toISOString();
+        };
+
+        const updateData = {
           feature_flag: editingState.feature_flag,
           scope_type: editingState.scope_type,
           scope_id: editingState.scope_id,
           is_enabled: editingState.is_enabled,
           percentage: editingState.percentage,
-          start_date: editingState.start_date,
-          end_date: editingState.end_date
-        });
+          start_date: formatDateForAPI(editingState.start_date),
+          end_date: formatDateForAPI(editingState.end_date)
+        };
+
+        console.log('Updating feature flag state:', editingState.id, 'with data:', updateData);
+
+        const updatedState = await apiService.featureFlagStates.update(editingState.id, updateData);
         
         setFeatureFlagStates(prev => prev.map(s => 
           s.id === editingState.id ? updatedState : s
