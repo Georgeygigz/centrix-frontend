@@ -373,7 +373,7 @@ export const apiService = {
 
     // Update feature flag state by ID
     update: async (stateId: string, stateData: Partial<UpdateFeatureFlagStateRequest>) => {
-      return apiService.authenticatedRequest(`/switch/states/${stateId}`, {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}/`, {
         method: 'PUT',
         body: JSON.stringify(stateData),
       });
