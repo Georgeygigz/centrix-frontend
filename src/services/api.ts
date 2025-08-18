@@ -1,5 +1,5 @@
 import { Student, CreateStudentRequest } from '../types/dashboard';
-import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest } from '../types/featureFlags';
+import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -323,6 +323,65 @@ export const apiService = {
     // Toggle feature flag status
     toggle: async (flagId: string) => {
       return apiService.authenticatedRequest(`/switch/flags/${flagId}/toggle`, { method: 'POST' });
+    },
+  },
+
+  // Feature Flag States API
+  featureFlagStates: {
+    // Get all feature flag states
+    getAll: async () => {
+      const headers = apiService.getAuthHeaders();
+      const fullUrl = `${API_BASE_URL}/switch/states/`;
+      
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          ...headers,
+        },
+      });
+
+      const responseData = await response.json().catch(() => ({}));
+      
+      if (!response.ok) {
+        const error = new Error(responseData.message || 'Request failed');
+        (error as any).response = { data: responseData };
+        throw error;
+      }
+
+      if (responseData.status === 'error') {
+        const error = new Error(responseData.message || 'Request failed');
+        (error as any).response = { data: responseData };
+        throw error;
+      }
+      
+      // Return the full response for feature flag states
+      return responseData;
+    },
+
+    // Get feature flag state by ID
+    getById: async (stateId: string) => {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}`, { method: 'GET' });
+    },
+
+    // Create new feature flag state
+    create: async (stateData: CreateFeatureFlagStateRequest) => {
+      return apiService.authenticatedRequest('/switch/states/', {
+        method: 'POST',
+        body: JSON.stringify(stateData),
+      });
+    },
+
+    // Update feature flag state by ID
+    update: async (stateId: string, stateData: Partial<UpdateFeatureFlagStateRequest>) => {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}`, {
+        method: 'PUT',
+        body: JSON.stringify(stateData),
+      });
+    },
+
+    // Delete feature flag state by ID
+    delete: async (stateId: string) => {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}`, { method: 'DELETE' });
     },
   },
 };

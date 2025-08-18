@@ -17,6 +17,21 @@ export interface FeatureFlag {
   updated_by?: string;
 }
 
+export interface FeatureFlagState {
+  id: string;
+  feature_flag: string;
+  feature_flag_name: string;
+  feature_flag_display_name: string;
+  scope_type: string;
+  scope_id: string | null;
+  is_enabled: boolean;
+  percentage: number;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FeatureFlagResponse {
   status: 'success' | 'error';
   data: {
@@ -24,6 +39,17 @@ export interface FeatureFlagResponse {
     next: string | null;
     previous: string | null;
     results: FeatureFlag[];
+  };
+  message?: string;
+}
+
+export interface FeatureFlagStateResponse {
+  status: 'success' | 'error';
+  data: {
+    count: number;
+    next: string | null;
+    previous: string | null;
+    results: FeatureFlagState[];
   };
   message?: string;
 }
@@ -40,5 +66,19 @@ export interface CreateFeatureFlagRequest {
 }
 
 export interface UpdateFeatureFlagRequest extends Partial<CreateFeatureFlagRequest> {
+  id: string;
+}
+
+export interface CreateFeatureFlagStateRequest {
+  feature_flag: string;
+  scope_type: string;
+  scope_id: string | null;
+  is_enabled: boolean;
+  percentage: number;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface UpdateFeatureFlagStateRequest extends Partial<CreateFeatureFlagStateRequest> {
   id: string;
 }
