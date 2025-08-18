@@ -5,6 +5,9 @@ import { Student } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 import { apiService, convertStudentToCreateRequest, getChangedFields } from '../../services/api';
 import { PermissionGate } from '../RBAC';
+import { useFeatureSwitch } from '../../hooks/useFeatureSwitch';
+import DisabledButtonWithTooltip from './DisabledButtonWithTooltip';
+import { useAuth } from '../../context/AuthContext';
 
 // Collapsible Section Component
 interface CollapsibleSectionProps {
@@ -67,6 +70,20 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 };
 
 const Students: React.FC = () => {
+  // Auth context
+  const { user } = useAuth();
+  
+  // Feature switch hook
+  const {
+    isStudentAdmissionBlocked,
+    blockMessage,
+    isLoading: featureSwitchLoading,
+    error: featureSwitchError,
+    refreshStatus: refreshFeatureStatus
+  } = useFeatureSwitch();
+
+  const isRootUser = user?.role === 'root';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('');
@@ -167,11 +184,14 @@ const Students: React.FC = () => {
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
+      // Only update debounced search if admission is not blocked or we're not on admission tab
+      if (activeTab !== 'admission' || !isStudentAdmissionBlocked) {
+        setDebouncedSearchQuery(searchQuery);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, activeTab, isStudentAdmissionBlocked]);
 
   // Load students data from API with tenant support
   useEffect(() => {
@@ -202,8 +222,11 @@ const Students: React.FC = () => {
       }
     };
 
-    loadStudents();
-  }, [currentPage, debouncedSearchQuery]); // Reload when page or debounced search query changes
+    // Only load students if admission is not blocked or we're not on admission tab
+    if (activeTab !== 'admission' || !isStudentAdmissionBlocked) {
+      loadStudents();
+    }
+  }, [currentPage, debouncedSearchQuery, activeTab, isStudentAdmissionBlocked]); // Reload when page, debounced search query, or tab/block status changes
 
   const filteredAndSortedStudents = useMemo(() => {
     // Since we're doing server-side search, we only need to handle sorting
@@ -235,8 +258,11 @@ const Students: React.FC = () => {
 
   // Reset to first page when debounced search query changes
   useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchQuery]);
+    // Only reset page if admission is not blocked or we're not on admission tab
+    if (activeTab !== 'admission' || !isStudentAdmissionBlocked) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchQuery, activeTab, isStudentAdmissionBlocked]);
 
 
 
@@ -680,6 +706,24 @@ const Students: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-4 mb-4">
           {/* Tabs and Controls Row */}
           <div className="mb-4">
+            {/* Feature Status Indicator - Only show on admission tab */}
+            {!featureSwitchLoading && activeTab === 'admission' && (
+              <div className="mb-3 p-2 rounded-md text-xs font-medium flex items-center space-x-2">
+                {isRootUser && (
+                  <div className="flex items-center space-x-1 text-green-700 bg-green-50 px-2 py-1 rounded">
+                    <span>👑</span>
+                    <span>Root User - All Features Enabled</span>
+                  </div>
+                )}
+                {!isRootUser && isStudentAdmissionBlocked && (
+                  <div className="flex items-center space-x-1 text-red-700 bg-red-50 px-2 py-1 rounded">
+                    <span>🚫</span>
+                    <span>Student Admission Blocked</span>
+                  </div>
+                )}
+              </div>
+            )}
+            
             <div className="flex items-center justify-between">
               {/* Tabs */}
               <nav className="flex space-x-6">
@@ -727,6 +771,17 @@ const Students: React.FC = () => {
 
               {/* Search, Filter, and Sort Controls */}
               <div className="flex items-center space-x-3">
+                {/* Refresh Feature Status Button */}
+                {featureSwitchError && (
+                  <button
+                    onClick={refreshFeatureStatus}
+                    className="px-3 py-1.5 border border-red-300 bg-red-50 text-red-700 rounded-md text-xs font-medium hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                    title="Refresh feature status"
+                  >
+                    Refresh Status
+                  </button>
+                )}
+                
                 {/* Search */}
                 <div className="relative">
                   <input
@@ -734,15 +789,27 @@ const Students: React.FC = () => {
                     placeholder="Search students..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+                    disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
+                    className={`pl-8 pr-3 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent text-xs transition-colors duration-200 ${
+                      activeTab === 'admission' && isStudentAdmissionBlocked
+                        ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
+                    }`}
                   />
                   <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                    {FaSearch({ className: "h-3 w-3 text-gray-400" })}
+                    {FaSearch({ className: `h-3 w-3 ${activeTab === 'admission' && isStudentAdmissionBlocked ? 'text-gray-300' : 'text-gray-400'}` })}
                   </div>
                 </div>
 
                 {/* Filter */}
-                <button className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                <button 
+                  disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
+                  className={`px-3 py-1.5 border rounded-md text-xs transition-colors duration-200 ${
+                    activeTab === 'admission' && isStudentAdmissionBlocked
+                      ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  }`}
+                >
                   Filter
                 </button>
 
@@ -750,7 +817,12 @@ const Students: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                  disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
+                  className={`px-3 py-1.5 border rounded-md text-xs focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200 ${
+                    activeTab === 'admission' && isStudentAdmissionBlocked
+                      ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 focus:ring-blue-500 focus:border-transparent'
+                  }`}
                 >
                   <option value="">Sort by</option>
                   <option value="admissionNumber">Admission Number</option>
@@ -762,12 +834,19 @@ const Students: React.FC = () => {
 
                 {/* Add New Student Button */}
                 <PermissionGate permissions={['student_crud']}>
-                  <button
-                    onClick={openAddDrawer}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                  <DisabledButtonWithTooltip
+                    tooltipMessage={isStudentAdmissionBlocked ? blockMessage : ''}
+                    disabled={isStudentAdmissionBlocked}
+                    className="inline-block"
                   >
-                    + Add Student
-                  </button>
+                    <button
+                      onClick={openAddDrawer}
+                      disabled={isStudentAdmissionBlocked}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      + Add Student
+                    </button>
+                  </DisabledButtonWithTooltip>
                 </PermissionGate>
               </div>
             </div>
@@ -776,7 +855,25 @@ const Students: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'admission' && (
-          <div className="bg-white rounded-md shadow-sm">
+          <div className="bg-white rounded-md shadow-sm relative">
+            {/* Grey overlay when admission is blocked */}
+            {isStudentAdmissionBlocked && (
+              <div 
+                className="absolute inset-0 bg-gray-500 bg-opacity-15 z-10 flex items-center justify-center"
+                title={blockMessage}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-lg text-center">
+                  <div className="text-gray-600 mb-2">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">Student Admission Temporarily Unavailable</p>
+                  <p className="text-xs text-gray-600 mt-1">{blockMessage}</p>
+                </div>
+              </div>
+            )}
+            
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -937,8 +1034,12 @@ const Students: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button 
               onClick={handlePreviousPage}
-              disabled={!hasPreviousPage}
-              className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!hasPreviousPage || (activeTab === 'admission' && isStudentAdmissionBlocked)}
+              className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 ${
+                activeTab === 'admission' && isStudentAdmissionBlocked
+                  ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                  : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+              }`}
             >
               Previous
             </button>
@@ -947,8 +1048,12 @@ const Students: React.FC = () => {
             </span>
             <button 
               onClick={handleNextPage}
-              disabled={!hasNextPage}
-              className="px-3 py-1.5 text-xs font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!hasNextPage || (activeTab === 'admission' && isStudentAdmissionBlocked)}
+              className={`px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 ${
+                activeTab === 'admission' && isStudentAdmissionBlocked
+                  ? 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                  : 'text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+              }`}
             >
               Next
             </button>
@@ -1724,34 +1829,52 @@ const Students: React.FC = () => {
         >
           <div className="py-1">
             <PermissionGate permissions={['student_crud']}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const student = students.find(s => s.id === openDropdownId);
-                  if (student) {
-                    handleEditStudent(student);
-                  }
-                }}
-                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+              <DisabledButtonWithTooltip
+                tooltipMessage={isStudentAdmissionBlocked ? blockMessage : ''}
+                disabled={isStudentAdmissionBlocked}
+                className="w-full"
               >
-                {FaEdit({ className: "w-3 h-3 mr-2" })}
-                Edit
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isStudentAdmissionBlocked) {
+                      const student = students.find(s => s.id === openDropdownId);
+                      if (student) {
+                        handleEditStudent(student);
+                      }
+                    }
+                  }}
+                  disabled={isStudentAdmissionBlocked}
+                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {FaEdit({ className: "w-3 h-3 mr-2" })}
+                  Edit
+                </button>
+              </DisabledButtonWithTooltip>
             </PermissionGate>
             <PermissionGate permissions={['student_crud']}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const student = students.find(s => s.id === openDropdownId);
-                  if (student) {
-                    handleDeleteStudent(student);
-                  }
-                }}
-                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200"
+              <DisabledButtonWithTooltip
+                tooltipMessage={isStudentAdmissionBlocked ? blockMessage : ''}
+                disabled={isStudentAdmissionBlocked}
+                className="w-full"
               >
-                {FaTrash({ className: "w-3 h-3 mr-2" })}
-                Delete
-              </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isStudentAdmissionBlocked) {
+                      const student = students.find(s => s.id === openDropdownId);
+                      if (student) {
+                        handleDeleteStudent(student);
+                      }
+                    }
+                  }}
+                  disabled={isStudentAdmissionBlocked}
+                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {FaTrash({ className: "w-3 h-3 mr-2" })}
+                  Delete
+                </button>
+              </DisabledButtonWithTooltip>
             </PermissionGate>
           </div>
         </div>,

@@ -260,6 +260,11 @@ export const apiService = {
     getStats: async () => {
       return apiService.authenticatedRequest('/students/statistics', { method: 'GET' });
     },
+
+    // Get student admission detailed feature status
+    getDetailedFeatureStatus: async () => {
+      return apiService.authenticatedRequest('/students/features/detailed-status', { method: 'GET' });
+    },
   },
 
   // Feature Flags API
@@ -297,6 +302,52 @@ export const apiService = {
     // Get feature flag by ID
     getById: async (flagId: string) => {
       return apiService.authenticatedRequest(`/switch/flags/${flagId}`, { method: 'GET' });
+    },
+
+    // Check single feature
+    checkFeature: async (featureName: string, scopeType: string = 'global', scopeId: string | null = null) => {
+      return apiService.authenticatedRequest('/switch/check/', {
+        method: 'POST',
+        body: JSON.stringify({
+          feature_name: featureName,
+          scope_type: scopeType,
+          scope_id: scopeId
+        }),
+      });
+    },
+
+    // Check multiple features in bulk
+    checkFeaturesBulk: async (featureNames: string[], scopeType: string = 'global', scopeId: string | null = null) => {
+      return apiService.authenticatedRequest('/switch/check/bulk/', {
+        method: 'POST',
+        body: JSON.stringify({
+          features: featureNames,
+          scope_type: scopeType,
+          scope_id: scopeId
+        }),
+      });
+    },
+
+    // Get all feature flag states
+    getFeatureFlagStates: async (featureFlag?: string, scopeType?: string, scopeId?: string) => {
+      let url = '/switch/states/';
+      const params = new URLSearchParams();
+      
+      if (featureFlag) {
+        params.append('feature_flag', featureFlag);
+      }
+      if (scopeType) {
+        params.append('scope_type', scopeType);
+      }
+      if (scopeId) {
+        params.append('scope_id', scopeId);
+      }
+      
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+
+      return apiService.authenticatedRequest(url, { method: 'GET' });
     },
 
     // Create new feature flag
