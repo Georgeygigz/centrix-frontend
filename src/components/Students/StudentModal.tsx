@@ -77,7 +77,7 @@ import { Student } from '../../types/dashboard';interface StudentModalProps {
             </div>
             <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-semibold text-blue-700">Phone:</span>
-              <span className="text-xs text-blue-900">{student.contactInfo || student.guardianContact || 'N/A'}</span>
+              <span className="text-xs text-blue-900">{student.guardianPhone || student.contactInfo || 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -93,12 +93,22 @@ import { Student } from '../../types/dashboard';interface StudentModalProps {
               <span className="text-xs text-green-900">N/A</span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-green-200">
-              <span className="text-xs font-semibold text-green-700">Grade:</span>
-              <span className="text-xs font-medium text-green-900 bg-green-50 px-2 py-1 rounded">{student.classOnAdmission || student.class || 'N/A'}</span>
+              <span className="text-xs font-semibold text-green-700">Class On Admission:</span>
+              <span className="text-xs text-green-900">
+                {student.class_on_admission ? 
+                  `${student.class_on_admission.name} - ${student.class_on_admission.stream?.name || 'No Stream'}` : 
+                  (student.classOnAdmission || 'N/A')
+                }
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-green-200">
-              <span className="text-xs font-semibold text-green-700">Class:</span>
-              <span className="text-xs text-green-900">{student.classOnAdmission || student.class || 'N/A'}</span>
+              <span className="text-xs font-semibold text-green-700">Current Class:</span>
+              <span className="text-xs text-green-900">
+                {student.current_class ? 
+                  `${student.current_class.name} - ${student.current_class.stream?.name || 'No Stream'}` : 
+                  (student.currentClass || 'N/A')
+                }
+              </span>
             </div>
             <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-semibold text-green-700">Attendance:</span>
@@ -123,11 +133,11 @@ import { Student } from '../../types/dashboard';interface StudentModalProps {
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-purple-200">
               <span className="text-xs font-semibold text-purple-700">Phone:</span>
-              <span className="text-xs text-purple-900">{student.guardianContact || student.contactInfo || 'N/A'}</span>
+              <span className="text-xs text-purple-900">{student.guardianPhone || student.contactInfo || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-semibold text-purple-700">Relationship:</span>
-              <span className="text-xs font-medium text-purple-900 bg-purple-50 px-2 py-1 rounded">Parent</span>
+              <span className="text-xs font-medium text-purple-900 bg-purple-50 px-2 py-1 rounded">{student.guardianRelationship || 'Parent'}</span>
             </div>
           </div>
         </div>
@@ -177,6 +187,10 @@ import { Student } from '../../types/dashboard';interface StudentModalProps {
             <div className="flex justify-between items-center py-1.5 border-b border-red-200">
               <span className="text-xs font-semibold text-red-700">Address:</span>
               <span className="text-xs text-red-900">{student.address || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-red-200">
+              <span className="text-xs font-semibold text-red-700">Birth Certificate:</span>
+              <span className="text-xs text-red-900">{student.birthCertificateNo || 'N/A'}</span>
             </div>
             <div className="flex justify-between items-center py-1.5">
               <span className="text-xs font-semibold text-red-700">Last School:</span>

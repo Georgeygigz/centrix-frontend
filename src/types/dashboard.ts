@@ -17,20 +17,25 @@ export interface Student {
   gender?: string;
   dateOfAdmission?: string;
   
-  // Academic Info (Required)
+  // Academic Info
   classOnAdmission?: string;
-  
-  // Parent Info (Partial optional)
-  guardianName?: string;
-  guardianContact?: string;
-  alternativeContact?: string;
-  
-  // Others (Optional)
-  address?: string;
+  currentClass?: string;
   lastSchoolAttended?: string;
+  
+  // Parent/Guardian Info
+  guardianName?: string;
+  guardianPhone?: string;
+  guardianRelationship?: string;
+  
+  // Others
+  address?: string;
   boardingStatus?: string;
   exemptedFromReligiousInstruction?: boolean;
+  birthCertificateNo?: string;
+  image?: string;
   dateOfLeaving?: string;
+  schoolLeavingCertificateNumber?: string;
+  remarks?: string;
   
   // Legacy fields for backward compatibility
   class?: string;
@@ -42,22 +47,25 @@ export interface Student {
   pupil_name?: string;
   date_of_birth?: string;
   date_of_admission?: string;
-  class_on_admission?: string;
-  guardian_name?: string;
-  guardian_contact?: string;
+  class_on_admission_id?: string;
+  current_class_id?: string;
+  class_on_admission?: Class;
+  current_class?: Class;
   last_school_attended?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  guardian_relationship?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
+  birth_certificate_no?: string;
   date_of_leaving?: string;
+  school_leaving_certificate_number?: string;
   is_current_student?: boolean;
   created_at?: string;
   updated_at?: string;
   deleted?: boolean;
   contact_1?: string;
   contact_2?: string;
-  image?: string;
-  school_leaving_certificate_number?: string;
-  remarks?: string;
 }
 
 export interface CreateStudentRequest {
@@ -67,16 +75,19 @@ export interface CreateStudentRequest {
   date_of_birth: string;
   gender: string;
   date_of_admission: string;
-  class_on_admission: string;
+  class_on_admission_id: string;
+  current_class_id: string;
   
   // Optional fields
   guardian_name?: string;
-  contact_1?: string;
-  contact_2?: string;
+  guardian_phone?: string;
+  guardian_relationship?: string;
   address?: string;
   last_school_attended?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
+  birth_certificate_no?: string;
+  image?: string;
   date_of_leaving?: string;
   school_leaving_certificate_number?: string;
   remarks?: string;
@@ -135,4 +146,36 @@ export interface CreateSchoolRequest {
   max_students?: number;
   primary_color?: string;
   secondary_color?: string;
+}
+
+export interface Stream {
+  id: string;
+  name: string;
+  code: string;
+  description: string;
+  created_at: string;
+  updated_at: string;
+  deleted: boolean;
+}
+
+export interface Class {
+  id: string;
+  name: string;
+  code: string;
+  stream: Stream;
+  level: number;
+  capacity: number;
+  created_at: string;
+  updated_at: string;
+  deleted: boolean;
+}
+
+export interface StreamsResponse {
+  data: Stream[];
+  status: string;
+}
+
+export interface ClassesResponse {
+  data: Class[];
+  status: string;
 } 
