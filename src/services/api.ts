@@ -1,4 +1,4 @@
-import { Student, CreateStudentRequest } from '../types/dashboard';
+import { Student, CreateStudentRequest, CreateSchoolRequest } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 import { UpdateUserRequest, PaginationParams } from '../types/users';
 
@@ -118,30 +118,16 @@ export const apiService = {
 
   // School-specific API calls
   schools: {
-    // Get all schools
-    getAll: async () => {
-      const response = await fetch(`${API_BASE_URL}/schools`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const responseData = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to fetch schools');
+    // Get all schools with pagination support
+    getAll: async (page: number = 1, pageSize: number = 20, search?: string, ordering?: string) => {
+      let url = `/schools?page=${page}&page_size=${pageSize}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
       }
-
-      if (responseData.status === 'error') {
-        throw new Error(responseData.message || 'Failed to fetch schools');
+      if (ordering) {
+        url += `&ordering=${encodeURIComponent(ordering)}`;
       }
-      
-      if (responseData.status === 'success') {
-        return responseData.data;
-      }
-      
-      return responseData;
+      return apiService.authenticatedRequest(url, { method: 'GET' });
     },
 
     // Detect school by identifier
@@ -195,6 +181,14 @@ export const apiService = {
       }
       
       return responseData;
+    },
+
+    // Create new school
+    create: async (schoolData: CreateSchoolRequest) => {
+      return apiService.authenticatedRequest('/schools/create', {
+        method: 'POST',
+        body: JSON.stringify(schoolData),
+      });
     },
   },
 
