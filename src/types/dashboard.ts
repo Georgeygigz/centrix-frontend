@@ -86,3 +86,53 @@ export interface DashboardState {
   currentPage: string;
   sidebarCollapsed: boolean;
 } 
+
+export interface School {
+  id: string;
+  name: string;
+  slug: string;
+  subdomain: string;
+  domain: string;
+  address: string;
+  phone: string;
+  email: string;
+  website: string;
+  logo: string;
+  primary_color: string;
+  secondary_color: string;
+  timezone: string;
+  language: string;
+  currency: string;
+  is_active: boolean;
+  max_students: number;
+  academic_year_start: string | null;
+  academic_year_end: string | null;
+  created_at: string;
+  updated_at: string;
+  number_of_students?: number; // This will be calculated/added for display purposes
+}
+
+export interface SchoolsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: School[];
+}
+
+export interface CreateSchoolRequest {
+  name: string;
+  slug: string;
+  subdomain: string;
+  domain?: string;
+  address?: string;
+  phone?: string;
+  email: string;
+  website?: string;
+  timezone?: string;
+  language?: string;
+  currency?: string;
+  is_active?: boolean;
+  max_students?: number;
+  primary_color?: string;
+  secondary_color?: string;
+} 
