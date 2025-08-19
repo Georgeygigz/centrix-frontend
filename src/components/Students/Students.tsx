@@ -707,20 +707,12 @@ const Students: React.FC = () => {
           {/* Tabs and Controls Row */}
           <div className="mb-4">
             {/* Feature Status Indicator - Only show on admission tab */}
-            {!featureSwitchLoading && activeTab === 'admission' && (
+            {!featureSwitchLoading && activeTab === 'admission' && !isRootUser && isStudentAdmissionBlocked && (
               <div className="mb-3 p-2 rounded-md text-xs font-medium flex items-center space-x-2">
-                {isRootUser && (
-                  <div className="flex items-center space-x-1 text-green-700 bg-green-50 px-2 py-1 rounded">
-                    <span>👑</span>
-                    <span>Root User - All Features Enabled</span>
-                  </div>
-                )}
-                {!isRootUser && isStudentAdmissionBlocked && (
-                  <div className="flex items-center space-x-1 text-red-700 bg-red-50 px-2 py-1 rounded">
-                    <span>🚫</span>
-                    <span>Student Admission Blocked</span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-1 text-red-700 bg-red-50 px-2 py-1 rounded">
+                  <span>🚫</span>
+                  <span>Student Admission Blocked</span>
+                </div>
               </div>
             )}
             

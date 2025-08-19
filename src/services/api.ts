@@ -1,5 +1,6 @@
 import { Student, CreateStudentRequest } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
+import { UpdateUserRequest, PaginationParams } from '../types/users';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -433,6 +434,67 @@ export const apiService = {
     // Delete feature flag state by ID
     delete: async (stateId: string) => {
       return apiService.authenticatedRequest(`/switch/states/${stateId}`, { method: 'DELETE' });
+    },
+  },
+
+  // Users API
+  users: {
+    // Get all users with pagination
+    getAll: async (params?: PaginationParams) => {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.sort_by) queryParams.append('sort_by', params.sort_by);
+      if (params?.sort_direction) queryParams.append('sort_direction', params.sort_direction);
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `/users?${queryString}` : '/users';
+      
+      return apiService.authenticatedRequest(url, { method: 'GET' });
+    },
+
+    // Get user by ID
+    getById: async (userId: string) => {
+      return apiService.authenticatedRequest(`/users/${userId}`, { method: 'GET' });
+    },
+
+    // Create new user
+    create: async (userData: any) => {
+      return apiService.authenticatedRequest('/users', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+    },
+
+    // Register new user (signup)
+    signup: async (userData: any) => {
+      return apiService.authenticatedRequest('/users/signup', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+    },
+
+    // Update user by ID
+    update: async (userId: string, userData: UpdateUserRequest) => {
+      return apiService.authenticatedRequest(`/users/${userId}`, {
+        method: 'PUT',
+        body: JSON.stringify(userData),
+      });
+    },
+
+    // Delete user by ID
+    delete: async (userId: string) => {
+      return apiService.authenticatedRequest(`/users/${userId}`, { method: 'DELETE' });
+    },
+
+    // Reset user password
+    resetPassword: async (userId: string, password: string) => {
+      return apiService.authenticatedRequest(`/users/password/reset/${userId}`, {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      });
     },
   },
 };

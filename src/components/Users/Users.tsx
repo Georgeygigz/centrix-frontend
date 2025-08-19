@@ -1,7 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaCopy, FaEyeSlash, FaKey } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
+import { apiService } from '../../services/api';
+import { User, UpdateUserRequest, PaginationParams } from '../../types/users';
 
 // Collapsible Section Component (same as SwitchBoard)
 interface CollapsibleSectionProps {
@@ -63,19 +65,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   );
 };
 
-// User interface
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  fullName: string;
-  role: 'root' | 'super_admin' | 'admin' | 'user';
-  status: 'active' | 'inactive' | 'suspended';
-  school?: string;
-  lastLogin?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 const Users: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,108 +87,162 @@ const Users: React.FC = () => {
   const [newUser, setNewUser] = useState<Partial<User>>({
     username: '',
     email: '',
-    fullName: '',
+    first_name: '',
+    last_name: '',
+    surname: '',
+    phone_number: '',
     role: 'user',
-    status: 'active',
-    school: ''
+    is_active: true,
+    is_staff: false,
+    school_id: ''
   });
 
   // Mock data for users
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      username: 'admin.root',
-      email: 'admin@centrix.com',
-      fullName: 'System Administrator',
-      role: 'root',
-      status: 'active',
-      lastLogin: '2024-01-20 14:30:00',
-      createdAt: '2024-01-01',
-      updatedAt: '2024-01-20'
-    },
-    {
-      id: '2',
-      username: 'super.admin1',
-      email: 'superadmin1@school.com',
-      fullName: 'John Smith',
-      role: 'super_admin',
-      status: 'active',
-      school: 'Central High School',
-      lastLogin: '2024-01-19 09:15:00',
-      createdAt: '2024-01-02',
-      updatedAt: '2024-01-19'
-    },
-    {
-      id: '3',
-      username: 'admin.school1',
-      email: 'admin@school1.com',
-      fullName: 'Sarah Johnson',
-      role: 'admin',
-      status: 'active',
-      school: 'North Elementary',
-      lastLogin: '2024-01-18 16:45:00',
-      createdAt: '2024-01-03',
-      updatedAt: '2024-01-18'
-    },
-    {
-      id: '4',
-      username: 'teacher.mike',
-      email: 'mike@school1.com',
-      fullName: 'Mike Wilson',
-      role: 'user',
-      status: 'active',
-      school: 'North Elementary',
-      lastLogin: '2024-01-17 11:20:00',
-      createdAt: '2024-01-04',
-      updatedAt: '2024-01-17'
-    },
-    {
-      id: '5',
-      username: 'teacher.lisa',
-      email: 'lisa@school1.com',
-      fullName: 'Lisa Brown',
-      role: 'user',
-      status: 'suspended',
-      school: 'North Elementary',
-      lastLogin: '2024-01-10 08:30:00',
-      createdAt: '2024-01-05',
-      updatedAt: '2024-01-15'
-    }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string>('');
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showCredentials, setShowCredentials] = useState<boolean>(false);
+  const [schools, setSchools] = useState<any[]>([]);
+  const [loadingSchools, setLoadingSchools] = useState<boolean>(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  
+  // Password reset state
+  const [isPasswordResetModalOpen, setIsPasswordResetModalOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
 
-  // Debounce search query
+  // Generate a secure password
+  const generatePassword = () => {
+    const length = 12;
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const numbers = "0123456789";
+    const symbols = "!@#$%^&*";
+    
+    let password = "";
+    
+    // Ensure at least one character from each required category
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length)); // At least one lowercase
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length)); // At least one uppercase
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length)); // At least one number
+    
+    // Fill the rest with random characters from all categories
+    const allChars = lowercase + uppercase + numbers + symbols;
+    for (let i = 3; i < length; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+    
+    // Shuffle the password to make it more random
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  // Copy text to clipboard
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast({
+        message: 'Copied to clipboard!',
+        type: 'success'
+      });
+      setTimeout(() => {
+        setToast(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+      setToast({
+        message: 'Failed to copy to clipboard',
+        type: 'error'
+      });
+      setTimeout(() => {
+        setToast(null);
+      }, 2000);
+    }
+  };
+
+  // Fetch schools from API
+  const fetchSchools = async () => {
+    try {
+      setLoadingSchools(true);
+      const response = await apiService.authenticatedRequest('/schools', { method: 'GET' });
+      setSchools(response.results || []);
+    } catch (err) {
+      console.error('Error fetching schools:', err);
+    } finally {
+      setLoadingSchools(false);
+    }
+  };
+
+  // Get current user role
+  const getCurrentUserRole = async () => {
+    try {
+      const response = await apiService.users.getAll();
+      setCurrentUserRole(response.user_role || '');
+    } catch (err) {
+      console.error('Error getting current user role:', err);
+    }
+  };
+
+  // Fetch users from API with pagination
+  const fetchUsers = useCallback(async (page: number = currentPage, search: string = debouncedSearchQuery) => {
+    try {
+      setLoading(true);
+      setError(null);
+      setCurrentPage(page);
+      
+      const params: PaginationParams = {
+        page,
+        page_size: pageSize,
+        search: search || undefined,
+        sort_by: sortBy || undefined,
+        sort_direction: sortDirection
+      };
+      
+      const response = await apiService.users.getAll(params);
+      setUsers(response.users || []);
+      setTotalCount(response.total_count || 0);
+      setTotalPages(response.total_pages || Math.ceil((response.total_count || 0) / pageSize));
+      setHasNext(response.has_next || false);
+      setHasPrevious(response.has_previous || false);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setError('Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, debouncedSearchQuery, pageSize, sortBy, sortDirection]);
+
+  // Load users, schools, and current user role on component mount
+  useEffect(() => {
+    fetchUsers(1);
+    fetchSchools();
+    getCurrentUserRole();
+  }, [fetchUsers]);
+
+  // Debounce search query and fetch users
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
+      fetchUsers(1, searchQuery);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, fetchUsers]);
 
-  const filteredAndSortedUsers = useMemo(() => {
-    let filtered = users.filter(user =>
-      user.username.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      user.fullName.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      user.role.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      (user.school && user.school.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))
-    );
-
-    if (sortBy) {
-      filtered.sort((a, b) => {
-        const aValue = a[sortBy as keyof User];
-        const bValue = b[sortBy as keyof User];
-        
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          const comparison = aValue.localeCompare(bValue);
-          return sortDirection === 'asc' ? comparison : -comparison;
-        }
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [users, debouncedSearchQuery, sortBy, sortDirection]);
+  // Use users directly since filtering and sorting is now handled server-side
+  const displayUsers = users;
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -207,6 +251,8 @@ const Users: React.FC = () => {
       setSortBy(column);
       setSortDirection('asc');
     }
+    // Fetch users with new sorting
+    fetchUsers(1, debouncedSearchQuery);
   };
 
   const getSortIcon = (column: string) => {
@@ -219,63 +265,67 @@ const Users: React.FC = () => {
   };
 
   const openAddDrawer = () => {
+    const password = generatePassword();
+    setGeneratedPassword(password);
+    setShowCredentials(false);
+    setShowPassword(false);
     setIsAddDrawerOpen(true);
     setActiveSection('basic-info');
     setFormErrors({});
+    // Reset school_id for root users
+    if (currentUserRole === 'root') {
+      setNewUser(prev => ({ ...prev, school_id: '' }));
+    }
   };
 
   const closeAddDrawer = () => {
     setIsAddDrawerOpen(false);
+    setShowCredentials(false);
+    setShowPassword(false);
+    setGeneratedPassword('');
     setNewUser({
       username: '',
       email: '',
-      fullName: '',
+      first_name: '',
+      last_name: '',
+      surname: '',
+      phone_number: '',
       role: 'user',
-      status: 'active',
-      school: ''
+      is_active: true,
+      is_staff: false,
+      school_id: ''
     });
   };
 
   const handleAddUser = async () => {
     try {
-      const newId = (users.length + 1).toString();
-      const user: User = {
-        id: newId,
-        username: newUser.username || '',
-        email: newUser.email || '',
-        fullName: newUser.fullName || '',
-        role: newUser.role || 'user',
-        status: newUser.status || 'active',
-        school: newUser.school,
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0]
+      // Prepare user data with password and rename school_id to school
+      const userData = {
+        ...newUser,
+        password: generatedPassword,
+        school: newUser.school_id // Rename school_id to school
       };
+      
+      // Remove school_id from the payload since we're using school
+      delete userData.school_id;
 
-      setUsers(prev => [...prev, user]);
+      // Call the API to create user using signup endpoint
+      await apiService.users.signup(userData);
+      
+      // Show credentials for copying
+      setShowCredentials(true);
       
       setToast({
-        message: 'User added successfully!',
+        message: 'User created successfully! Please copy the credentials below.',
         type: 'success'
       });
       
       setFormErrors({});
       
-      setNewUser({
-        username: '',
-        email: '',
-        fullName: '',
-        role: 'user',
-        status: 'active',
-        school: ''
-      });
-      
-      setTimeout(() => {
-        closeAddDrawer();
-      }, 100);
-      
+      // Don't close the drawer immediately - let user copy credentials
       setTimeout(() => {
         setToast(null);
-      }, 3000);
+      }, 5000);
       
     } catch (error) {
       console.error('Error adding user:', error);
@@ -290,7 +340,7 @@ const Users: React.FC = () => {
     }
   };
 
-  const handleNewUserInputChange = (field: keyof User, value: string) => {
+  const handleNewUserInputChange = (field: keyof User, value: string | boolean) => {
     setNewUser(prev => ({
       ...prev,
       [field]: value
@@ -315,6 +365,7 @@ const Users: React.FC = () => {
 
   const handleDeleteUser = async (user: User) => {
     try {
+      await apiService.users.delete(user.id);
       setUsers(prev => prev.filter(u => u.id !== user.id));
       setOpenDropdownId(null);
       setToast({
@@ -338,6 +389,56 @@ const Users: React.FC = () => {
     }
   };
 
+  const handlePasswordReset = (user: User) => {
+    setResetPasswordUser(user);
+    setResetPassword('');
+    setShowResetPassword(false);
+    setIsPasswordResetModalOpen(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleResetPasswordSubmit = async () => {
+    if (!resetPasswordUser || !resetPassword) return;
+
+    try {
+      setIsResettingPassword(true);
+      await apiService.users.resetPassword(resetPasswordUser.id, resetPassword);
+      
+      setPasswordResetSuccess(true);
+      
+      setToast({
+        message: `Password reset successfully for ${resetPasswordUser.email}`,
+        type: 'success'
+      });
+      
+      // Show the password and email for copying
+      setTimeout(() => {
+        setToast(null);
+      }, 8000);
+      
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      setToast({
+        message: 'Failed to reset password. Please try again.',
+        type: 'error'
+      });
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const closePasswordResetModal = () => {
+    setIsPasswordResetModalOpen(false);
+    setResetPasswordUser(null);
+    setResetPassword('');
+    setShowResetPassword(false);
+    setPasswordResetSuccess(false);
+  };
+
   const closeEditDrawer = () => {
     setIsEditDrawerOpen(false);
     setEditingUser(null);
@@ -347,9 +448,21 @@ const Users: React.FC = () => {
   const handleSaveUser = async () => {
     if (editingUser) {
       try {
-        setUsers(prev => prev.map(u => 
-          u.id === editingUser.id ? { ...editingUser, updatedAt: new Date().toISOString().split('T')[0] } : u
-        ));
+        // Only send the fields that can be updated according to the API
+        const updateData: UpdateUserRequest = {
+          first_name: editingUser.first_name,
+          last_name: editingUser.last_name,
+          surname: editingUser.surname,
+          phone_number: editingUser.phone_number,
+          role: editingUser.role,
+          is_active: editingUser.is_active,
+          is_staff: editingUser.is_staff
+        };
+
+        await apiService.users.update(editingUser.id, updateData);
+        
+        // Refresh the users list
+        fetchUsers();
         
         setToast({
           message: 'User updated successfully!',
@@ -377,7 +490,7 @@ const Users: React.FC = () => {
     }
   };
 
-  const handleInputChange = (field: keyof User, value: string) => {
+  const handleInputChange = (field: keyof User, value: string | boolean) => {
     if (editingUser) {
       setEditingUser({
         ...editingUser,
@@ -409,31 +522,7 @@ const Users: React.FC = () => {
     };
   }, []);
 
-  const toggleDropdown = (userId: string, event: React.MouseEvent) => {
-    if (openDropdownId === userId) {
-      setOpenDropdownId(null);
-    } else {
-      const button = event.currentTarget as HTMLElement;
-      const buttonRect = button.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const viewportWidth = window.innerWidth;
-      const dropdownHeight = 80;
-      const dropdownWidth = 128;
-      
-      let x = buttonRect.right - dropdownWidth;
-      let y = buttonRect.bottom + 4;
-      
-      if (buttonRect.bottom + dropdownHeight > viewportHeight) {
-        y = buttonRect.top - dropdownHeight - 4;
-      }
-      
-      if (x < 0) x = 0;
-      if (x + dropdownWidth > viewportWidth) x = viewportWidth - dropdownWidth;
-      
-      setDropdownCoords({ x, y });
-      setOpenDropdownId(userId);
-    }
-  };
+
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -539,10 +628,12 @@ const Users: React.FC = () => {
                 >
                   <option value="">Sort by</option>
                   <option value="username">Username</option>
-                  <option value="fullName">Full Name</option>
+                  <option value="first_name">First Name</option>
+                  <option value="last_name">Last Name</option>
+                  <option value="email">Email</option>
                   <option value="role">Role</option>
-                  <option value="status">Status</option>
-                  <option value="createdAt">Created Date</option>
+                  <option value="is_active">Status</option>
+                  <option value="created_at">Created Date</option>
                 </select>
 
                 {/* Add New User Button */}
@@ -562,106 +653,175 @@ const Users: React.FC = () => {
         {/* Tab Content */}
         {activeTab === 'users' && (
           <div className="bg-white rounded-md shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Username</span>
-                        {getSortIcon('username')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      <span>Full Name</span>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      <span>Email</span>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Role</span>
-                        {getSortIcon('role')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      <span>School</span>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('status')}>
-                      <div className="flex items-center space-x-1">
-                        <span>Status</span>
-                        {getSortIcon('status')}
-                      </div>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      <span>Last Login</span>
-                    </th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredAndSortedUsers.map((user, index) => (
-                    <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
-                        {user.username}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {user.fullName}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {user.email}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {getRoleBadge(user.role)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {user.school || '-'}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {getStatusBadge(user.status)}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                        {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : '-'}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
-                        <div className="flex items-center space-x-1">
-                          <button
-                            onClick={() => {/* View details */}}
-                            className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
-                            title="View Details"
-                          >
-                            {FaEye({ className: "w-3 h-3" })}
-                          </button>
-                          
-                          {/* Dropdown Menu */}
-                          <PermissionGate permissions={['access_admin_panel']}>
-                            <div className="relative" data-dropdown-container>
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  toggleDropdown(user.id, e);
-                                }}
-                                className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
-                                  openDropdownId === user.id 
-                                    ? 'text-blue-600 bg-blue-50' 
-                                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                                }`}
-                                title="More Options"
-                              >
-                                {FaEllipsisV({ className: "w-3 h-3" })}
-                              </button>
+            {loading && (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <span className="ml-2 text-sm text-gray-600">Loading users...</span>
+              </div>
+            )}
+            
+            {error && (
+              <div className="p-4 text-center">
+                <div className="text-red-600 text-sm mb-2">{error}</div>
+                <button
+                  onClick={() => fetchUsers(1)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            
+            {!loading && !error && (
+              <>
+                <div className="overflow-x-auto border-0">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
+                          <div className="flex items-center space-x-1">
+                            <span>Username</span>
+                            {getSortIcon('username')}
+                          </div>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          <span>First Name</span>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          <span>Last Name</span>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          <span>Email</span>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          <span>Phone</span>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
+                          <div className="flex items-center space-x-1">
+                            <span>Role</span>
+                            {getSortIcon('role')}
+                          </div>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
+                          <div className="flex items-center space-x-1">
+                            <span>Status</span>
+                            {getSortIcon('is_active')}
+                          </div>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          <span>School</span>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                          <div className="flex items-center space-x-1">
+                            <span>Created At</span>
+                            {getSortIcon('created_at')}
+                          </div>
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {displayUsers.map((user: User, index: number) => (
+                        <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                            {user.username}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {user.first_name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {user.last_name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {user.email}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {user.phone_number || '-'}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {getRoleBadge(user.role)}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {getStatusBadge(user.is_active ? 'active' : 'inactive')}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {user.school?.name || '-'}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                            <div className="flex items-center justify-center">
+                              <PermissionGate permissions={['access_admin_panel']}>
+                                <div className="relative">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenDropdownId(openDropdownId === user.id ? null : user.id);
+                                      if (openDropdownId !== user.id) {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setDropdownCoords({
+                                          x: rect.left,
+                                          y: rect.bottom + window.scrollY
+                                        });
+                                      }
+                                    }}
+                                    className={`p-1 rounded-md transition-colors duration-200 ${
+                                      openDropdownId === user.id
+                                        ? 'text-blue-600 bg-blue-50' 
+                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                    title="More Options"
+                                  >
+                                    {FaEllipsisV({ className: "w-3 h-3" })}
+                                  </button>
+                                </div>
+                              </PermissionGate>
                             </div>
-                          </PermissionGate>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            
+            {/* Pagination - Outside table container */}
+            {!loading && !error && totalCount > 0 && (
+              <>
+                {/* Gray row above pagination */}
+                <div className="h-4 mt-8 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
+                <div className="flex items-center justify-between p-4 rounded-b-lg border-0" style={{ backgroundColor: 'rgb(249,250,251)' }}>
+                  <div className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="font-medium">{totalCount}</span> results
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => fetchUsers(currentPage - 1)}
+                      disabled={!hasPrevious}
+                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'rgb(249,250,251)' }}
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+                      Page {currentPage} of {totalPages} ({totalPages > 1 ? `${totalPages} pages` : '1 page'})
+                    </span>
+                    <button 
+                      onClick={() => fetchUsers(currentPage + 1)}
+                      disabled={!hasNext}
+                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'rgb(249,250,251)' }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -723,6 +883,21 @@ const Users: React.FC = () => {
                 Edit
               </button>
             </PermissionGate>
+            {(currentUserRole === 'root' || currentUserRole === 'super_admin') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const user = users.find(u => u.id === openDropdownId);
+                  if (user) {
+                    handlePasswordReset(user);
+                  }
+                }}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 transition-colors duration-200"
+              >
+                {FaKey({ className: "w-3 h-3 mr-2" })}
+                Pass Reset
+              </button>
+            )}
             <PermissionGate permissions={['access_admin_panel']}>
               <button
                 onClick={(e) => {
@@ -813,17 +988,45 @@ const Users: React.FC = () => {
                     />
                   </div>
 
-                  {/* Full Name */}
+                  {/* First Name */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Full Name *
+                      First Name *
                     </label>
                     <input
                       type="text"
-                      value={newUser.fullName}
-                      onChange={(e) => handleNewUserInputChange('fullName', e.target.value)}
+                      value={newUser.first_name}
+                      onChange={(e) => handleNewUserInputChange('first_name', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter full name"
+                      placeholder="Enter first name"
+                    />
+                  </div>
+
+                  {/* Last Name */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newUser.last_name}
+                      onChange={(e) => handleNewUserInputChange('last_name', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter last name"
+                    />
+                  </div>
+
+                  {/* Surname */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Surname
+                    </label>
+                    <input
+                      type="text"
+                      value={newUser.surname}
+                      onChange={(e) => handleNewUserInputChange('surname', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      placeholder="Enter surname"
                     />
                   </div>
 
@@ -853,59 +1056,213 @@ const Users: React.FC = () => {
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
-                      <option value="super_admin">Super Admin</option>
-                      <option value="root">Root</option>
+                      {currentUserRole === 'root' && <option value="super_admin">Super Admin</option>}
+                      {currentUserRole === 'root' && <option value="root">Root</option>}
+                      {currentUserRole === 'super_admin' && <option value="super_admin">Super Admin</option>}
                     </select>
                   </div>
 
-                  {/* Status */}
+                  {/* Phone Number */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Status *
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 text-xs">+254</span>
+                      </div>
+                      <input
+                        type="tel"
+                        value={newUser.phone_number?.replace('+254', '') || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
+                          handleNewUserInputChange('phone_number', phoneWithPrefix);
+                        }}
+                        className="w-full pl-12 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="700000000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Active Status */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                      Active Status *
                     </label>
                     <select
-                      value={newUser.status}
-                      onChange={(e) => handleNewUserInputChange('status', e.target.value)}
+                      value={newUser.is_active ? 'true' : 'false'}
+                      onChange={(e) => handleNewUserInputChange('is_active', e.target.value === 'true')}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                     >
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
                     </select>
                   </div>
 
-                  {/* School */}
+                  {/* Staff Status */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      School
+                      Staff Status
                     </label>
-                    <input
-                      type="text"
-                      value={newUser.school}
-                      onChange={(e) => handleNewUserInputChange('school', e.target.value)}
+                    <select
+                      value={newUser.is_staff ? 'true' : 'false'}
+                      onChange={(e) => handleNewUserInputChange('is_staff', e.target.value === 'true')}
                       className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter school name"
-                    />
+                    >
+                      <option value="false">Regular User</option>
+                      <option value="true">Staff Member</option>
+                    </select>
                   </div>
+
+                  {/* School Selection - Only for root users */}
+                  {currentUserRole === 'root' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        School *
+                      </label>
+                      {loadingSchools ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span className="text-xs text-gray-500">Loading schools...</span>
+                        </div>
+                      ) : (
+                        <select
+                          value={newUser.school_id}
+                          onChange={(e) => handleNewUserInputChange('school_id', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          required
+                        >
+                          <option value="">Select a school</option>
+                          {schools.map((school) => (
+                            <option key={school.id} value={school.id}>
+                              {school.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
                 </CollapsibleSection>
+
+                {/* Credentials Section - Show after successful user creation */}
+                {showCredentials && (
+                  <CollapsibleSection 
+                    title="User Credentials" 
+                    defaultExpanded={true}
+                    isActive={activeSection === 'credentials'}
+                    onSectionClick={() => setActiveSection('credentials')}
+                  >
+                    <div className="space-y-4">
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="text-xs text-yellow-800 mb-3">
+                          <strong>Important:</strong> Please copy these credentials and share them securely with the user. The password will not be shown again.
+                        </div>
+                        
+                        {/* Email */}
+                        <div className="mb-3">
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            Email
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={newUser.email}
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-mono"
+                            />
+                            <button
+                              onClick={() => copyToClipboard(newUser.email || '')}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                              title="Copy email"
+                            >
+                              {FaCopy({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="mb-3">
+                          <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            Password
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              value={generatedPassword}
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-mono"
+                            />
+                            <button
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                              title={showPassword ? "Hide password" : "Show password"}
+                            >
+                              {showPassword ? FaEyeSlash({ className: "w-3 h-3" }) : FaEye({ className: "w-3 h-3" })}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(generatedPassword)}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                              title="Copy password"
+                            >
+                              {FaCopy({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Copy All Button */}
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => copyToClipboard(`Email: ${newUser.email}\nPassword: ${generatedPassword}`)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
+                          >
+                            Copy Email & Password
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </CollapsibleSection>
+                )}
               </div>
             </div>
 
             {/* Drawer Footer */}
             <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
-              <button
-                onClick={closeAddDrawer}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddUser}
-                disabled={!newUser.username || !newUser.email || !newUser.fullName}
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
-              >
-                Add User
-              </button>
+              {!showCredentials ? (
+                <>
+                  <button
+                    onClick={closeAddDrawer}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddUser}
+                    disabled={
+                      !newUser.username || 
+                      !newUser.email || 
+                      !newUser.first_name || 
+                      !newUser.last_name ||
+                      (currentUserRole === 'root' && !newUser.school_id)
+                    }
+                    className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                  >
+                    Add User
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      closeAddDrawer();
+                      fetchUsers(); // Refresh the users list
+                    }}
+                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
+                  >
+                    Done
+                  </button>
+                </>
+              )}
             </div>
           </>
         </div>
@@ -958,17 +1315,45 @@ const Users: React.FC = () => {
                       />
                     </div>
 
-                    {/* Full Name */}
+                    {/* First Name */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Full Name *
+                        First Name *
                       </label>
                       <input
                         type="text"
-                        value={editingUser.fullName}
-                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                        value={editingUser.first_name}
+                        onChange={(e) => handleInputChange('first_name', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter full name"
+                        placeholder="Enter first name"
+                      />
+                    </div>
+
+                    {/* Last Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Last Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.last_name}
+                        onChange={(e) => handleInputChange('last_name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="Enter last name"
+                      />
+                    </div>
+
+                    {/* Surname */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Surname
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.surname}
+                        onChange={(e) => handleInputChange('surname', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        placeholder="Enter surname"
                       />
                     </div>
 
@@ -998,40 +1383,92 @@ const Users: React.FC = () => {
                       >
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
-                        <option value="super_admin">Super Admin</option>
-                        <option value="root">Root</option>
+                        {currentUserRole === 'root' && <option value="super_admin">Super Admin</option>}
+                        {currentUserRole === 'root' && <option value="root">Root</option>}
+                        {currentUserRole === 'super_admin' && <option value="super_admin">Super Admin</option>}
                       </select>
                     </div>
 
-                    {/* Status */}
+                    {/* Phone Number */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Status *
+                        Phone Number
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <span className="text-gray-500 text-xs">+254</span>
+                        </div>
+                        <input
+                          type="tel"
+                          value={editingUser.phone_number?.replace('+254', '') || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
+                            handleInputChange('phone_number', phoneWithPrefix);
+                          }}
+                          className="w-full pl-12 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="700000000"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Active Status */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Active Status *
                       </label>
                       <select
-                        value={editingUser.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
+                        value={editingUser.is_active ? 'true' : 'false'}
+                        onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                        <option value="suspended">Suspended</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
                       </select>
                     </div>
 
-                    {/* School */}
+                    {/* Staff Status */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        School
+                        Staff Status
                       </label>
-                      <input
-                        type="text"
-                        value={editingUser.school}
-                        onChange={(e) => handleInputChange('school', e.target.value)}
+                      <select
+                        value={editingUser.is_staff ? 'true' : 'false'}
+                        onChange={(e) => handleInputChange('is_staff', e.target.value === 'true')}
                         className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter school name"
-                      />
+                      >
+                        <option value="false">Regular User</option>
+                        <option value="true">Staff Member</option>
+                      </select>
                     </div>
+
+                    {/* School Selection - Only for root users */}
+                    {currentUserRole === 'root' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          School
+                        </label>
+                        {loadingSchools ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            <span className="text-xs text-gray-500">Loading schools...</span>
+                          </div>
+                        ) : (
+                          <select
+                            value={editingUser.school_id || editingUser.school?.id || ''}
+                            onChange={(e) => handleInputChange('school_id', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          >
+                            <option value="">Select a school</option>
+                            {schools.map((school) => (
+                              <option key={school.id} value={school.id}>
+                                {school.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
                   </CollapsibleSection>
                 </div>
               </div>
@@ -1050,6 +1487,218 @@ const Users: React.FC = () => {
                 >
                   Save Changes
                 </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Password Reset Drawer */}
+      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
+        isPasswordResetModalOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+      }`}>
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
+          isPasswordResetModalOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}>
+          {resetPasswordUser && (
+            <>
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 font-elegant">Reset Password</h2>
+                  <p className="text-xs text-gray-500 mt-1 font-modern">
+                    Reset password for {resetPasswordUser.email}
+                  </p>
+                </div>
+                <button
+                  onClick={closePasswordResetModal}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                >
+                  {FaTimes({ className: "w-4 h-4" })}
+                </button>
+              </div>
+
+              {/* Drawer Content */}
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-6 space-y-4">
+                  {!passwordResetSuccess ? (
+                    <>
+                      {/* Password Input */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          New Password *
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type={showResetPassword ? "text" : "password"}
+                            value={resetPassword}
+                            onChange={(e) => setResetPassword(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                            placeholder="Enter new password"
+                          />
+                          <button
+                            onClick={() => setShowResetPassword(!showResetPassword)}
+                            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200"
+                            title={showResetPassword ? "Hide password" : "Show password"}
+                          >
+                            {showResetPassword ? FaEyeSlash({ className: "w-4 h-4" }) : FaEye({ className: "w-4 h-4" })}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Generate Password Button */}
+                      <div>
+                        <button
+                          onClick={() => setResetPassword(generatePassword())}
+                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
+                        >
+                          Generate Secure Password
+                        </button>
+                      </div>
+
+                      {/* Display Generated Password Info */}
+                      {resetPassword && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="text-xs text-blue-800 mb-2">
+                            <strong>New Password:</strong>
+                          </div>
+                          <div className="flex items-center space-x-2 mb-3">
+                            <input
+                              type={showResetPassword ? "text" : "password"}
+                              value={resetPassword}
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 text-xs font-mono"
+                            />
+                            <button
+                              onClick={() => copyToClipboard(resetPassword)}
+                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                              title="Copy password"
+                            >
+                              {FaCopy({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            <strong>User Email:</strong> {resetPasswordUser.email}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Success State */
+                    <div className="text-center space-y-4">
+                      <div className="text-green-600 mb-4">
+                        {FaCheckCircle({ className: "w-16 h-16 mx-auto" })}
+                      </div>
+                      <h4 className="text-lg font-semibold text-gray-900">Password Reset Successful!</h4>
+                      <p className="text-sm text-gray-600">
+                        The password has been reset for <strong>{resetPasswordUser.email}</strong>
+                      </p>
+                      
+                      {/* Display Credentials */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                        <div className="text-xs text-green-800 mb-3">
+                          <strong>New Credentials:</strong>
+                        </div>
+                        
+                        {/* Email */}
+                        <div className="mb-3">
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Email
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              value={resetPasswordUser.email}
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-green-50 text-xs font-mono"
+                            />
+                            <button
+                              onClick={() => copyToClipboard(resetPasswordUser.email)}
+                              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+                              title="Copy email"
+                            >
+                              {FaCopy({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Password */}
+                        <div className="mb-3">
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            New Password
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type={showResetPassword ? "text" : "password"}
+                              value={resetPassword}
+                              readOnly
+                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-green-50 text-xs font-mono"
+                            />
+                            <button
+                              onClick={() => setShowResetPassword(!showResetPassword)}
+                              className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                              title={showResetPassword ? "Hide password" : "Show password"}
+                            >
+                              {showResetPassword ? FaEyeSlash({ className: "w-3 h-3" }) : FaEye({ className: "w-3 h-3" })}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(resetPassword)}
+                              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+                              title="Copy password"
+                            >
+                              {FaCopy({ className: "w-3 h-3" })}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Copy All Button */}
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() => copyToClipboard(`Email: ${resetPasswordUser.email}\nPassword: ${resetPassword}`)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-xs font-medium"
+                          >
+                            Copy Email & Password
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Drawer Footer */}
+              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+                {!passwordResetSuccess ? (
+                  <>
+                    <button
+                      onClick={closePasswordResetModal}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleResetPasswordSubmit}
+                      disabled={!resetPassword || isResettingPassword}
+                      className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    >
+                      {isResettingPassword ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Resetting...</span>
+                        </div>
+                      ) : (
+                        'Reset Password'
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={closePasswordResetModal}
+                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
+                  >
+                    Done
+                  </button>
+                )}
               </div>
             </>
           )}
