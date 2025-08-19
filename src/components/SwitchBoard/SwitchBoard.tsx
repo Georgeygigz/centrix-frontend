@@ -434,6 +434,8 @@ const SwitchBoard: React.FC = () => {
           feature_flag_display_name: relatedFeature?.display_name || '',
           scope_type: stateData.scope_type,
           scope_id: stateData.scope_id,
+          school_name: null,
+          username: null,
           is_enabled: stateData.is_enabled,
           percentage: stateData.percentage,
           start_date: stateData.start_date,
@@ -1127,6 +1129,18 @@ const SwitchBoard: React.FC = () => {
                           {getSortIcon('scope_id')}
                         </div>
                       </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('school_name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>School Name</span>
+                          {getSortIcon('school_name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Username</span>
+                          {getSortIcon('username')}
+                        </div>
+                      </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_enabled')}>
                         <div className="flex items-center space-x-1">
                           <span>Is Enabled</span>
@@ -1173,6 +1187,12 @@ const SwitchBoard: React.FC = () => {
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                           {state.scope_id || '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.school_name || '-'}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          {state.username || '-'}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

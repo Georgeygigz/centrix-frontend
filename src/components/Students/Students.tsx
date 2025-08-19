@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
-import { Student } from '../../types/dashboard';
+import { Student, Stream, Class } from '../../types/dashboard';
 import StudentModal from './StudentModal';
 import { apiService, convertStudentToCreateRequest, getChangedFields } from '../../services/api';
 import { PermissionGate } from '../RBAC';
@@ -96,6 +96,10 @@ const Students: React.FC = () => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [originalStudent, setOriginalStudent] = useState<Student | null>(null);
+  const [editingStream, setEditingStream] = useState<Stream | null>(null);
+  const [originalStream, setOriginalStream] = useState<Stream | null>(null);
+  const [editingClass, setEditingClass] = useState<Class | null>(null);
+  const [originalClass, setOriginalClass] = useState<Class | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [activeSection, setActiveSection] = useState<string>('basic-info');
@@ -107,27 +111,50 @@ const Students: React.FC = () => {
     admissionNumber: '',
     fullName: '',
     dateOfBirth: '',
-    gender: 'Male',
+    gender: 'M',
     dateOfAdmission: '',
     
-    // Academic Info (Required)
+    // Academic Info
     classOnAdmission: '',
-    
-    // Parent Info (Partial optional)
-    guardianName: '',
-    guardianContact: '',
-    alternativeContact: '',
-    
-    // Others (Optional)
-    address: '',
+    currentClass: '',
     lastSchoolAttended: '',
-    boardingStatus: '',
+    
+    // Parent/Guardian Info
+    guardianName: '',
+    guardianPhone: '',
+    guardianRelationship: '',
+    
+    // Others
+    address: '',
+    boardingStatus: 'Day',
     exemptedFromReligiousInstruction: false,
-    dateOfLeaving: ''
+    birthCertificateNo: '',
+    image: '',
+    dateOfLeaving: '',
+    schoolLeavingCertificateNumber: '',
+    remarks: ''
+  });
+
+  const [newStream, setNewStream] = useState<Partial<Stream>>({
+    name: '',
+    code: '',
+    description: ''
+  });
+
+  const [newClass, setNewClass] = useState<Partial<Class> & { streamId?: string }>({
+    name: '',
+    code: '',
+    streamId: '',
+    level: 0,
+    capacity: 0
   });
 
   const [students, setStudents] = useState<Student[]>([]);
+  const [streams, setStreams] = useState<Stream[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingStreams, setIsLoadingStreams] = useState(false);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(false);
@@ -144,40 +171,49 @@ const Students: React.FC = () => {
       dateOfBirth: apiStudent.date_of_birth || apiStudent.dateOfBirth,
       gender: apiStudent.gender,
       dateOfAdmission: apiStudent.date_of_admission || apiStudent.dateOfAdmission,
-      classOnAdmission: apiStudent.class_on_admission || apiStudent.classOnAdmission,
-      guardianName: apiStudent.guardian_name || apiStudent.guardianName,
-      guardianContact: apiStudent.contact_1 || apiStudent.guardian_contact || apiStudent.guardianContact,
-      alternativeContact: apiStudent.contact_2 || apiStudent.alternativeContact,
-      address: apiStudent.address,
+      classOnAdmission: apiStudent.class_on_admission?.id || apiStudent.class_on_admission_id || apiStudent.classOnAdmission,
+      currentClass: apiStudent.current_class?.id || apiStudent.current_class_id || apiStudent.currentClass,
+      // Store full class objects for display
+      class_on_admission: apiStudent.class_on_admission,
+      current_class: apiStudent.current_class,
       lastSchoolAttended: apiStudent.last_school_attended || apiStudent.lastSchoolAttended,
+      guardianName: apiStudent.guardian_name || apiStudent.guardianName,
+      guardianPhone: apiStudent.guardian_phone || apiStudent.guardianPhone,
+      guardianRelationship: apiStudent.guardian_relationship || apiStudent.guardianRelationship,
+      address: apiStudent.address,
       boardingStatus: apiStudent.boarding_status || apiStudent.boardingStatus,
       exemptedFromReligiousInstruction: apiStudent.exempted_from_religious_instruction || apiStudent.exemptedFromReligiousInstruction,
+      birthCertificateNo: apiStudent.birth_certificate_no || apiStudent.birthCertificateNo,
+      image: apiStudent.image,
       dateOfLeaving: apiStudent.date_of_leaving || apiStudent.dateOfLeaving,
+      schoolLeavingCertificateNumber: apiStudent.school_leaving_certificate_number || apiStudent.schoolLeavingCertificateNumber,
+      remarks: apiStudent.remarks,
       // Legacy fields
       class: apiStudent.class_on_admission || apiStudent.class,
       parentName: apiStudent.guardian_name || apiStudent.parentName,
-      contactInfo: apiStudent.contact_1 || apiStudent.guardian_contact || apiStudent.contactInfo,
+      contactInfo: apiStudent.guardian_phone || apiStudent.contactInfo,
       // Keep original API fields for backward compatibility
       admission_number: apiStudent.admission_number,
       pupil_name: apiStudent.pupil_name,
       date_of_birth: apiStudent.date_of_birth,
       date_of_admission: apiStudent.date_of_admission,
-      class_on_admission: apiStudent.class_on_admission,
-      guardian_name: apiStudent.guardian_name,
-      guardian_contact: apiStudent.contact_1,
+      class_on_admission_id: apiStudent.class_on_admission?.id || apiStudent.class_on_admission_id,
+      current_class_id: apiStudent.current_class?.id || apiStudent.current_class_id,
       last_school_attended: apiStudent.last_school_attended,
+      guardian_name: apiStudent.guardian_name,
+      guardian_phone: apiStudent.guardian_phone,
+      guardian_relationship: apiStudent.guardian_relationship,
       boarding_status: apiStudent.boarding_status,
       exempted_from_religious_instruction: apiStudent.exempted_from_religious_instruction,
+      birth_certificate_no: apiStudent.birth_certificate_no,
       date_of_leaving: apiStudent.date_of_leaving,
+      school_leaving_certificate_number: apiStudent.school_leaving_certificate_number,
       is_current_student: apiStudent.is_current_student,
       created_at: apiStudent.created_at,
       updated_at: apiStudent.updated_at,
       deleted: apiStudent.deleted,
       contact_1: apiStudent.contact_1,
       contact_2: apiStudent.contact_2,
-      image: apiStudent.image,
-      school_leaving_certificate_number: apiStudent.school_leaving_certificate_number,
-      remarks: apiStudent.remarks,
     };
   };
 
@@ -194,39 +230,78 @@ const Students: React.FC = () => {
   }, [searchQuery, activeTab, isStudentAdmissionBlocked]);
 
   // Load students data from API with tenant support
-  useEffect(() => {
-    const loadStudents = async () => {
-      try {
-        setIsLoading(true);
-        const data = await apiService.students.getAll(currentPage, itemsPerPage, debouncedSearchQuery || undefined);
-        
-        // Transform the API response data
-        const rawStudents = data.results || data || [];
-        const transformedStudents = rawStudents.map(transformStudentData);
-        
-        setStudents(transformedStudents);
-        
-        // Set pagination metadata
-        setTotalCount(data.count || 0);
-        setHasNextPage(!!data.next);
-        setHasPreviousPage(!!data.previous);
-      } catch (error) {
-        console.error('Error loading students:', error);
-        // Fallback to empty array if loading fails
-        setStudents([]);
-        setTotalCount(0);
-        setHasNextPage(false);
-        setHasPreviousPage(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadStudents = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await apiService.students.getAll(currentPage, itemsPerPage, debouncedSearchQuery || undefined);
+      
+      // Transform the API response data
+      const rawStudents = data.results || data || [];
+      const transformedStudents = rawStudents.map(transformStudentData);
+      
+      setStudents(transformedStudents);
+      
+      // Set pagination metadata
+      setTotalCount(data.count || 0);
+      setHasNextPage(!!data.next);
+      setHasPreviousPage(!!data.previous);
+    } catch (error) {
+      console.error('Error loading students:', error);
+      // Fallback to empty array if loading fails
+      setStudents([]);
+      setTotalCount(0);
+      setHasNextPage(false);
+      setHasPreviousPage(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, itemsPerPage, debouncedSearchQuery]);
 
+  useEffect(() => {
     // Only load students if admission is not blocked or we're not on admission tab
     if (activeTab !== 'admission' || !isStudentAdmissionBlocked) {
       loadStudents();
     }
-  }, [currentPage, debouncedSearchQuery, activeTab, isStudentAdmissionBlocked]); // Reload when page, debounced search query, or tab/block status changes
+  }, [currentPage, debouncedSearchQuery, activeTab, isStudentAdmissionBlocked, loadStudents]); // Reload when page, debounced search query, or tab/block status changes
+
+  // Load streams data from API
+  useEffect(() => {
+    const loadStreams = async () => {
+      try {
+        setIsLoadingStreams(true);
+        const response = await apiService.students.getStreams();
+        // The authenticatedRequest method already extracts responseData.data
+        setStreams(response || []);
+      } catch (error) {
+        console.error('Error loading streams:', error);
+        setStreams([]);
+      } finally {
+        setIsLoadingStreams(false);
+      }
+    };
+
+    loadStreams();
+  }, []); // Load once when component mounts
+
+  // Load classes data from API
+  useEffect(() => {
+    const loadClasses = async () => {
+      try {
+        setIsLoadingClasses(true);
+        const response = await apiService.students.getClasses();
+        // The authenticatedRequest method already extracts responseData.data
+
+        setClasses(response || []);
+      } catch (error) {
+        console.error('Error loading classes:', error);
+        setClasses([]);
+      } finally {
+        setIsLoadingClasses(false);
+      }
+    };
+
+    loadClasses();
+  }, []); // Load once when component mounts
 
   const filteredAndSortedStudents = useMemo(() => {
     // Since we're doing server-side search, we only need to handle sorting
@@ -293,133 +368,175 @@ const Students: React.FC = () => {
       address: '',
       dateOfAdmission: ''
     });
+    setNewStream({
+      name: '',
+      code: '',
+      description: ''
+    });
+    setNewClass({
+      name: '',
+      code: '',
+      streamId: '',
+      level: 0,
+      capacity: 0
+    });
   };
 
   const handleAddStudent = async () => {
     try {
+      if (activeTab === 'admission') {
         const studentData = convertStudentToCreateRequest(newStudent);
-
-        const response = await apiService.students.create(studentData);
+        await apiService.students.create(studentData);
         
-        // Transform the API response to match the component's expected format
-        const transformedStudent = transformStudentData(response);
+        // Re-fetch the students list to get the complete data with full class objects
+        await loadStudents();
         
-        // Add the new student to the list
-        setStudents(prev => [...prev, transformedStudent]);
-        
-        // Show success toast
         setToast({
           message: 'Student added successfully!',
           type: 'success'
         });
+      } else if (activeTab === 'streams') {
+        // TODO: Add stream creation API call
+        console.log('Adding stream:', newStream);
+        setToast({
+          message: 'Stream added successfully!',
+          type: 'success'
+        });
+      } else if (activeTab === 'classes') {
+        // TODO: Add class creation API call
+        console.log('Adding class:', newClass);
+        setToast({
+          message: 'Class added successfully!',
+          type: 'success'
+        });
+      }
+      
+      // Clear form errors
+      setFormErrors({});
+      
+             // Clear the form
+       setNewStudent({
+         admissionNumber: '',
+         fullName: '',
+         dateOfBirth: '',
+         gender: 'M',
+         dateOfAdmission: '',
+         classOnAdmission: '',
+         currentClass: '',
+         lastSchoolAttended: '',
+         guardianName: '',
+         guardianPhone: '',
+         guardianRelationship: '',
+         address: '',
+         boardingStatus: 'Day',
+         exemptedFromReligiousInstruction: false,
+         birthCertificateNo: '',
+         image: '',
+         dateOfLeaving: '',
+         schoolLeavingCertificateNumber: '',
+         remarks: ''
+       });
+      
+      setNewStream({
+        name: '',
+        code: '',
+        description: ''
+      });
+      
+      setNewClass({
+        name: '',
+        code: '',
+        streamId: '',
+        level: 0,
+        capacity: 0
+      });
+      
+      // Close drawer after a short delay to ensure form is cleared
+      setTimeout(() => {
+        closeAddDrawer();
+      }, 100);
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error adding item:', error);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
         
-        // Clear form errors
-        setFormErrors({});
+        // Convert snake_case to camelCase for frontend fields
+        const transformedErrors: { [key: string]: string[] } = {};
         
-        // Clear the form
-        setNewStudent({
-          admissionNumber: '',
-          fullName: '',
-          dateOfBirth: '',
-          gender: 'Male',
-          dateOfAdmission: '',
-          classOnAdmission: '',
-          guardianName: '',
-          guardianContact: '',
-          alternativeContact: '',
-          address: '',
-          lastSchoolAttended: '',
-          boardingStatus: '',
-          exemptedFromReligiousInstruction: false,
-          dateOfLeaving: ''
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+          
+          // Special case: map 'pupil_name' to 'fullName' for consistency
+          if (key === 'pupil_name') {
+            camelCaseKey = 'fullName';
+          }
+          
+          transformedErrors[camelCaseKey] = value as string[];
         });
         
-        // Close drawer after a short delay to ensure form is cleared
-        setTimeout(() => {
-          closeAddDrawer();
-        }, 100);
+        setFormErrors(transformedErrors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else if (error.response?.data) {
+        // Try different error structures
         
-        // Auto-hide toast after 3 seconds
-        setTimeout(() => {
-          setToast(null);
-        }, 3000);
-        
-      } catch (error: any) {
-        console.error('Error adding student:', error);
-        
-        // Handle validation errors
-        if (error.response?.data?.errors) {
+        if (typeof error.response.data === 'object' && error.response.data !== null) {
+          // Try to extract errors from different possible structures
+          const possibleErrors = error.response.data.errors || error.response.data;
           
-          // Convert snake_case to camelCase for frontend fields
-          const transformedErrors: { [key: string]: string[] } = {};
-          
-          Object.entries(error.response.data.errors).forEach(([key, value]) => {
-            let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+          if (typeof possibleErrors === 'object' && possibleErrors !== null) {
+            // Convert to camelCase if needed
+            const transformedErrors: { [key: string]: string[] } = {};
             
-            // Special case: map 'pupil_name' to 'fullName' for consistency
-            if (key === 'pupil_name') {
-              camelCaseKey = 'fullName';
-            }
+            Object.entries(possibleErrors).forEach(([key, value]) => {
+              let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+              if (key === 'pupil_name') {
+                camelCaseKey = 'fullName';
+              }
+              transformedErrors[camelCaseKey] = Array.isArray(value) ? value as string[] : [String(value)];
+            });
             
-            transformedErrors[camelCaseKey] = value as string[];
-          });
-          
-          setFormErrors(transformedErrors);
-          setToast({
-            message: error.response.data.message || 'Please fix the validation errors below.',
-            type: 'error'
-          });
-        } else if (error.response?.data) {
-          // Try different error structures
-          
-          if (typeof error.response.data === 'object' && error.response.data !== null) {
-            // Try to extract errors from different possible structures
-            const possibleErrors = error.response.data.errors || error.response.data;
-            
-            if (typeof possibleErrors === 'object' && possibleErrors !== null) {
-              // Convert to camelCase if needed
-              const transformedErrors: { [key: string]: string[] } = {};
-              
-              Object.entries(possibleErrors).forEach(([key, value]) => {
-                let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-                if (key === 'pupil_name') {
-                  camelCaseKey = 'fullName';
-                }
-                transformedErrors[camelCaseKey] = Array.isArray(value) ? value as string[] : [String(value)];
-              });
-              
-              setFormErrors(transformedErrors);
-              setToast({
-                message: 'Please fix the validation errors below.',
-                type: 'error'
-              });
-            } else {
-              setFormErrors({});
-              setToast({
-                message: 'Failed to add student. Please try again.',
-                type: 'error'
-              });
-            }
+            setFormErrors(transformedErrors);
+            setToast({
+              message: 'Please fix the validation errors below.',
+              type: 'error'
+            });
           } else {
             setFormErrors({});
             setToast({
-              message: 'Failed to add student. Please try again.',
+              message: 'Failed to add item. Please try again.',
               type: 'error'
             });
           }
         } else {
           setFormErrors({});
           setToast({
-            message: 'Failed to add student. Please try again.',
+            message: 'Failed to add item. Please try again.',
             type: 'error'
           });
         }
-        
-        // Auto-hide error toast after 5 seconds
-        setTimeout(() => {
-          setToast(null);
-        }, 5000);
+      } else {
+        setFormErrors({});
+        setToast({
+          message: 'Failed to add item. Please try again.',
+          type: 'error'
+        });
       }
+      
+      // Auto-hide error toast after 5 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    }
   };
 
   // Get field error by frontend field name (now simplified since errors are stored in camelCase)
@@ -448,6 +565,40 @@ const Students: React.FC = () => {
       });
     }
   };
+
+  const handleNewStreamInputChange = (field: keyof Stream, value: string) => {
+    setNewStream(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleNewClassInputChange = (field: keyof Class | 'streamId', value: string | number) => {
+    setNewClass(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -523,6 +674,72 @@ const Students: React.FC = () => {
     setEditFormErrors({}); // Clear any previous errors
   };
 
+  const handleEditStream = (stream: Stream) => {
+    setEditingStream(stream);
+    setOriginalStream(stream); // Store original data for comparison
+    setIsEditDrawerOpen(true);
+    setOpenDropdownId(null);
+    setEditActiveSection('stream-info'); // Reset to first section when opening
+    setEditFormErrors({}); // Clear any previous errors
+  };
+
+  const handleEditClass = (classItem: Class) => {
+    setEditingClass(classItem);
+    setOriginalClass(classItem); // Store original data for comparison
+    setIsEditDrawerOpen(true);
+    setOpenDropdownId(null);
+    setEditActiveSection('class-info'); // Reset to first section when opening
+    setEditFormErrors({}); // Clear any previous errors
+  };
+
+  // Check if stream has been modified
+  const isStreamModified = () => {
+    if (!editingStream || !originalStream) return false;
+    return (
+      editingStream.name !== originalStream.name ||
+      editingStream.code !== originalStream.code ||
+      editingStream.description !== originalStream.description
+    );
+  };
+
+  // Check if class has been modified
+  const isClassModified = () => {
+    if (!editingClass || !originalClass) return false;
+    return (
+      editingClass.name !== originalClass.name ||
+      editingClass.code !== originalClass.code ||
+      editingClass.stream?.id !== originalClass.stream?.id ||
+      editingClass.level !== originalClass.level ||
+      editingClass.capacity !== originalClass.capacity
+    );
+  };
+
+  // Check if student has been modified
+  const isStudentModified = () => {
+    if (!editingStudent || !originalStudent) return false;
+    return (
+      editingStudent.admissionNumber !== originalStudent.admissionNumber ||
+      editingStudent.fullName !== originalStudent.fullName ||
+      editingStudent.dateOfBirth !== originalStudent.dateOfBirth ||
+      editingStudent.gender !== originalStudent.gender ||
+      editingStudent.dateOfAdmission !== originalStudent.dateOfAdmission ||
+      editingStudent.classOnAdmission !== originalStudent.classOnAdmission ||
+      editingStudent.currentClass !== originalStudent.currentClass ||
+      editingStudent.lastSchoolAttended !== originalStudent.lastSchoolAttended ||
+      editingStudent.guardianName !== originalStudent.guardianName ||
+      editingStudent.guardianPhone !== originalStudent.guardianPhone ||
+      editingStudent.guardianRelationship !== originalStudent.guardianRelationship ||
+      editingStudent.address !== originalStudent.address ||
+      editingStudent.boardingStatus !== originalStudent.boardingStatus ||
+      editingStudent.exemptedFromReligiousInstruction !== originalStudent.exemptedFromReligiousInstruction ||
+      editingStudent.birthCertificateNo !== originalStudent.birthCertificateNo ||
+      editingStudent.image !== originalStudent.image ||
+      editingStudent.dateOfLeaving !== originalStudent.dateOfLeaving ||
+      editingStudent.schoolLeavingCertificateNumber !== originalStudent.schoolLeavingCertificateNumber ||
+      editingStudent.remarks !== originalStudent.remarks
+    );
+  };
+
   const handleDeleteStudent = async (student: Student) => {
     try {
       if (student.id) {
@@ -542,6 +759,10 @@ const Students: React.FC = () => {
     setIsEditDrawerOpen(false);
     setEditingStudent(null);
     setOriginalStudent(null);
+    setEditingStream(null);
+    setOriginalStream(null);
+    setEditingClass(null);
+    setOriginalClass(null);
     setEditFormErrors({}); // Clear errors when closing
   };
 
@@ -567,15 +788,10 @@ const Students: React.FC = () => {
           throw new Error('Student ID is required for update');
         }
 
-        const response = await apiService.students.update(studentId, changedFields);
+        await apiService.students.update(studentId, changedFields);
         
-        // Transform the response to match our component format
-        const transformedResponse = transformStudentData(response);
-        
-        // Update the student in the list using ID as unique identifier
-        setStudents(prev => prev.map(student => 
-          student.id === studentId ? transformedResponse : student
-        ));
+        // Re-fetch the students list to get the complete data with full class objects
+        await loadStudents();
         
         // Show success toast
         setToast({
@@ -672,10 +888,200 @@ const Students: React.FC = () => {
     }
   };
 
+  const handleSaveStream = async () => {
+    if (!editingStream || !originalStream) return;
+
+    try {
+      // Check if any changes were made
+      if (!isStreamModified()) {
+        setToast({
+          message: 'No changes detected.',
+          type: 'error'
+        });
+        return;
+      }
+
+      // Prepare the update data
+      const updateData = {
+        name: editingStream.name,
+        code: editingStream.code,
+        description: editingStream.description
+      };
+
+      const response = await apiService.students.updateStream(editingStream.id, updateData);
+      
+      // Update the streams list
+      setStreams(prev => prev.map(stream => 
+        stream.id === editingStream.id ? response : stream
+      ));
+      
+      setToast({
+        message: 'Stream updated successfully!',
+        type: 'success'
+      });
+      
+      // Clear form errors
+      setEditFormErrors({});
+      
+      // Close drawer
+      closeEditDrawer();
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error updating stream:', error);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        const transformedErrors: { [key: string]: string[] } = {};
+        
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          transformedErrors[key] = value as string[];
+        });
+        
+        setEditFormErrors(transformedErrors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        setEditFormErrors({});
+        setToast({
+          message: 'Failed to update stream. Please try again.',
+          type: 'error'
+        });
+      }
+      
+      // Auto-hide error toast after 5 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    }
+  };
+
+  const handleSaveClass = async () => {
+    if (!editingClass || !originalClass) return;
+
+    try {
+      // Check if any changes were made
+      if (!isClassModified()) {
+        setToast({
+          message: 'No changes detected.',
+          type: 'error'
+        });
+        return;
+      }
+
+      // Prepare the update data
+      const updateData = {
+        name: editingClass.name,
+        code: editingClass.code,
+        stream_id: editingClass.stream?.id,
+        level: editingClass.level,
+        capacity: editingClass.capacity
+      };
+
+      const response = await apiService.students.updateClass(editingClass.id, updateData);
+      
+      // Update the classes list
+      setClasses(prev => prev.map(classItem => 
+        classItem.id === editingClass.id ? response : classItem
+      ));
+      
+      setToast({
+        message: 'Class updated successfully!',
+        type: 'success'
+      });
+      
+      // Clear form errors
+      setEditFormErrors({});
+      
+      // Close drawer
+      closeEditDrawer();
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error updating class:', error);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        const transformedErrors: { [key: string]: string[] } = {};
+        
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          let camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+          if (key === 'stream_id') {
+            camelCaseKey = 'streamId';
+          }
+          transformedErrors[camelCaseKey] = value as string[];
+        });
+        
+        setEditFormErrors(transformedErrors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        setEditFormErrors({});
+        setToast({
+          message: 'Failed to update class. Please try again.',
+          type: 'error'
+        });
+      }
+      
+      // Auto-hide error toast after 5 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    }
+  };
+
   const handleInputChange = (field: keyof Student, value: string | boolean) => {
     if (editingStudent) {
       setEditingStudent({
         ...editingStudent,
+        [field]: value
+      });
+      
+      // Clear error for this field when user starts typing
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  const handleEditStreamInputChange = (field: keyof Stream, value: string) => {
+    if (editingStream) {
+      setEditingStream({
+        ...editingStream,
+        [field]: value
+      });
+      
+      // Clear error for this field when user starts typing
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  const handleEditClassInputChange = (field: keyof Class | 'streamId', value: string | number) => {
+    if (editingClass) {
+      setEditingClass({
+        ...editingClass,
         [field]: value
       });
       
@@ -730,6 +1136,26 @@ const Students: React.FC = () => {
                   Admission
                 </button>
                 <button 
+                  onClick={() => setActiveTab('classes')}
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                    activeTab === 'classes' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Classes
+                </button>
+                <button 
+                  onClick={() => setActiveTab('streams')}
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                    activeTab === 'streams' 
+                      ? 'border-blue-500 text-blue-600' 
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Streams
+                </button>
+                <button 
                   onClick={() => setActiveTab('academic')}
                   className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
                     activeTab === 'academic' 
@@ -778,7 +1204,15 @@ const Students: React.FC = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search students..."
+                    placeholder={
+                      activeTab === 'admission' ? 'Search students...' :
+                      activeTab === 'classes' ? 'Search classes...' :
+                      activeTab === 'streams' ? 'Search streams...' :
+                      activeTab === 'academic' ? 'Search academic...' :
+                      activeTab === 'financial' ? 'Search financial...' :
+                      activeTab === 'attendance' ? 'Search attendance...' :
+                      'Search...'
+                    }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
@@ -817,14 +1251,57 @@ const Students: React.FC = () => {
                   }`}
                 >
                   <option value="">Sort by</option>
-                  <option value="admissionNumber">Admission Number</option>
-                  <option value="fullName">Full Name</option>
-                  <option value="class">Class</option>
-                  <option value="gender">Gender</option>
-                  <option value="dateOfAdmission">Date of Admission</option>
+                  {activeTab === 'admission' && (
+                    <>
+                      <option value="admissionNumber">Admission Number</option>
+                      <option value="fullName">Full Name</option>
+                      <option value="class">Class</option>
+                      <option value="gender">Gender</option>
+                      <option value="dateOfAdmission">Date of Admission</option>
+                    </>
+                  )}
+                  {activeTab === 'classes' && (
+                    <>
+                      <option value="name">Class Name</option>
+                      <option value="code">Class Code</option>
+                      <option value="stream.name">Stream</option>
+                      <option value="capacity">Capacity</option>
+                      <option value="created_at">Created At</option>
+                    </>
+                  )}
+                  {activeTab === 'streams' && (
+                    <>
+                      <option value="name">Stream Name</option>
+                      <option value="code">Stream Code</option>
+                      <option value="description">Description</option>
+                      <option value="created_at">Created At</option>
+                    </>
+                  )}
+                  {activeTab === 'academic' && (
+                    <>
+                      <option value="subject">Subject</option>
+                      <option value="grade">Grade</option>
+                      <option value="teacher">Teacher</option>
+                    </>
+                  )}
+                  {activeTab === 'financial' && (
+                    <>
+                      <option value="feeType">Fee Type</option>
+                      <option value="amount">Amount</option>
+                      <option value="dueDate">Due Date</option>
+                      <option value="status">Status</option>
+                    </>
+                  )}
+                  {activeTab === 'attendance' && (
+                    <>
+                      <option value="date">Date</option>
+                      <option value="status">Status</option>
+                      <option value="student">Student</option>
+                    </>
+                  )}
                 </select>
 
-                {/* Add New Student Button */}
+                {/* Add New Button - Dynamic based on active tab */}
                 <PermissionGate permissions={['student_crud']}>
                   <DisabledButtonWithTooltip
                     tooltipMessage={isStudentAdmissionBlocked ? blockMessage : ''}
@@ -836,7 +1313,12 @@ const Students: React.FC = () => {
                       disabled={isStudentAdmissionBlocked}
                       className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      + Add Student
+                      {activeTab === 'admission' && '+ Add Student'}
+                      {activeTab === 'classes' && '+ Add Class'}
+                      {activeTab === 'streams' && '+ Add Stream'}
+                      {activeTab === 'academic' && '+ Add Academic'}
+                      {activeTab === 'financial' && '+ Add Financial'}
+                      {activeTab === 'attendance' && '+ Add Attendance'}
                     </button>
                   </DisabledButtonWithTooltip>
                 </PermissionGate>
@@ -921,7 +1403,13 @@ const Students: React.FC = () => {
                           {student.fullName}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          {student.classOnAdmission || student.class || ''}
+                          {student.current_class ? 
+                            `${student.current_class.name} - ${student.current_class.stream?.name || 'No Stream'}` : 
+                            (student.class_on_admission ? 
+                              `${student.class_on_admission.name} - ${student.class_on_admission.stream?.name || 'No Stream'}` : 
+                              (student.classOnAdmission || student.class || '')
+                            )
+                          }
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
                           {student.gender}
@@ -966,6 +1454,225 @@ const Students: React.FC = () => {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Classes Tab */}
+        {activeTab === 'classes' && (
+          <div className="bg-white rounded-md shadow-sm relative">
+            {isLoadingClasses ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading classes...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Class Name</span>
+                          {getSortIcon('name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Class Code</span>
+                          {getSortIcon('code')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stream.name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Stream</span>
+                          {getSortIcon('stream.name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('capacity')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Capacity</span>
+                          {getSortIcon('capacity')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Created At</span>
+                          {getSortIcon('created_at')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {classes.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                          No classes found
+                        </td>
+                      </tr>
+                    ) : (
+                      classes.map((classItem, index) => (
+                        <tr key={classItem.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                            {classItem.name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {classItem.code}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {classItem.stream?.name || 'N/A'}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {classItem.capacity}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {new Date(classItem.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => {/* Handle view */}}
+                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+                                title="View Details"
+                              >
+                                {FaEye({ className: "w-3 h-3" })}
+                              </button>
+                              
+                              <PermissionGate permissions={['student_crud']}>
+                                <div className="relative" data-dropdown-container>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      toggleDropdown(classItem.id, e);
+                                    }}
+                                    className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
+                                      openDropdownId === classItem.id 
+                                        ? 'text-blue-600 bg-blue-50' 
+                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                    title="More Options"
+                                  >
+                                    {FaEllipsisV({ className: "w-3 h-3" })}
+                                  </button>
+                                </div>
+                              </PermissionGate>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Streams Tab */}
+        {activeTab === 'streams' && (
+          <div className="bg-white rounded-md shadow-sm relative">
+            {isLoadingStreams ? (
+              <div className="p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-2 text-sm text-gray-600">Loading streams...</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Stream Name</span>
+                          {getSortIcon('name')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Stream Code</span>
+                          {getSortIcon('code')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('description')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Description</span>
+                          {getSortIcon('description')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Created At</span>
+                          {getSortIcon('created_at')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {streams.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                          No streams found
+                        </td>
+                      </tr>
+                    ) : (
+                      streams.map((stream, index) => (
+                        <tr key={stream.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                            {stream.name}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {stream.code}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {stream.description}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                            {new Date(stream.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => {/* Handle view */}}
+                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
+                                title="View Details"
+                              >
+                                {FaEye({ className: "w-3 h-3" })}
+                              </button>
+                              
+                              <PermissionGate permissions={['student_crud']}>
+                                <div className="relative" data-dropdown-container>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      toggleDropdown(stream.id, e);
+                                    }}
+                                    className={`p-1 rounded-md transition-colors duration-200 cursor-pointer ${
+                                      openDropdownId === stream.id 
+                                        ? 'text-blue-600 bg-blue-50' 
+                                        : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                                    }`}
+                                    title="More Options"
+                                  >
+                                    {FaEllipsisV({ className: "w-3 h-3" })}
+                                  </button>
+                                </div>
+                              </PermissionGate>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1065,13 +1772,27 @@ const Students: React.FC = () => {
         <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
           isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
-          {editingStudent && (
+          {(editingStudent || editingClass || editingStream) && (
             <>
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
                               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit Student</h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">Update student information</p>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">
+                  {activeTab === 'admission' && 'Edit Student'}
+                  {activeTab === 'classes' && 'Edit Class'}
+                  {activeTab === 'streams' && 'Edit Stream'}
+                  {activeTab === 'academic' && 'Edit Academic'}
+                  {activeTab === 'financial' && 'Edit Financial'}
+                  {activeTab === 'attendance' && 'Edit Attendance'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">
+                  {activeTab === 'admission' && 'Update student information'}
+                  {activeTab === 'classes' && 'Update class information'}
+                  {activeTab === 'streams' && 'Update stream information'}
+                  {activeTab === 'academic' && 'Update academic information'}
+                  {activeTab === 'financial' && 'Update financial information'}
+                  {activeTab === 'attendance' && 'Update attendance information'}
+                </p>
               </div>
                 <button
                   onClick={closeEditDrawer}
@@ -1100,11 +1821,17 @@ const Students: React.FC = () => {
                         'fullName': 'Full Name',
                         'dateOfBirth': 'Date of Birth',
                         'dateOfAdmission': 'Date of Admission',
-                        'classOnAdmission': 'Class on Admission',
+                        'classOnAdmission': 'Class on Admission ID',
+                        'currentClass': 'Current Class ID',
+                        'lastSchoolAttended': 'Last School Attended',
                         'guardianName': 'Guardian Name',
-                        'guardianContact': 'Guardian Contact',
+                        'guardianPhone': 'Guardian Phone',
+                        'guardianRelationship': 'Guardian Relationship',
                         'boardingStatus': 'Boarding Status',
-                        'address': 'Address'
+                        'address': 'Address',
+                        'birthCertificateNo': 'Birth Certificate Number',
+                        'schoolLeavingCertificateNumber': 'School Leaving Certificate Number',
+                        'remarks': 'Remarks'
                       };
                       
                       const displayName = fieldNameMapping[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -1123,301 +1850,535 @@ const Students: React.FC = () => {
               )}
               
               <div className="p-6 space-y-4">
-                {/* Basic Info Section */}
-                <CollapsibleSection 
-                  title="Basic Information *" 
-                  defaultExpanded={true}
-                  isActive={editActiveSection === 'basic-info'}
-                  onSectionClick={() => setEditActiveSection('basic-info')}
-                >
-                  {/* Admission Number */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Admission Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.admissionNumber}
-                      onChange={(e) => handleInputChange('admissionNumber', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('admissionNumber') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter admission number"
-                    />
-                    {getEditFieldErrorByFrontendName('admissionNumber') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('admissionNumber')}</p>
-                    )}
-                  </div>
-
-                  {/* Full Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Full Names *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.fullName}
-                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('fullName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter full names"
-                    />
-                    {getEditFieldErrorByFrontendName('fullName') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('fullName')}</p>
-                    )}
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date Of Birth *
-                    </label>
-                    <input
-                      type="date"
-                      value={editingStudent.dateOfBirth}
-                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('dateOfBirth') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                    />
-                    {getEditFieldErrorByFrontendName('dateOfBirth') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfBirth')}</p>
-                    )}
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Gender *
-                    </label>
-                    <select
-                      value={editingStudent.gender}
-                      onChange={(e) => handleInputChange('gender', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('gender') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                {/* Student Edit Form */}
+                {editingStudent && (
+                  <>
+                    {/* Basic Info Section */}
+                    <CollapsibleSection 
+                      title="Basic Information *" 
+                      defaultExpanded={true}
+                      isActive={editActiveSection === 'basic-info'}
+                      onSectionClick={() => setEditActiveSection('basic-info')}
                     >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {getEditFieldErrorByFrontendName('gender') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('gender')}</p>
-                    )}
-                  </div>
+                      {/* Admission Number */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Admission Number *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.admissionNumber}
+                          onChange={(e) => handleInputChange('admissionNumber', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('admissionNumber') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter admission number"
+                        />
+                        {getEditFieldErrorByFrontendName('admissionNumber') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('admissionNumber')}</p>
+                        )}
+                      </div>
 
-                  {/* Date of Admission */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date Of Admission *
-                    </label>
-                    <input
-                      type="date"
-                      value={editingStudent.dateOfAdmission}
-                      onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('dateOfAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                    />
-                    {getEditFieldErrorByFrontendName('dateOfAdmission') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfAdmission')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                      {/* Full Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Full Names *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.fullName}
+                          onChange={(e) => handleInputChange('fullName', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('fullName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter full names"
+                        />
+                        {getEditFieldErrorByFrontendName('fullName') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('fullName')}</p>
+                        )}
+                      </div>
 
-                {/* Academic Info Section */}
-                <CollapsibleSection 
-                  title="Academic Information *" 
-                  defaultExpanded={true}
-                  isActive={editActiveSection === 'academic-info'}
-                  onSectionClick={() => setEditActiveSection('academic-info')}
-                >
-                  {/* Class On Admission */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Class On Admission *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.classOnAdmission}
-                      onChange={(e) => handleInputChange('classOnAdmission', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('classOnAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter class on admission"
-                    />
-                    {getEditFieldErrorByFrontendName('classOnAdmission') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('classOnAdmission')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                      {/* Date of Birth */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date Of Birth *
+                        </label>
+                        <input
+                          type="date"
+                          value={editingStudent.dateOfBirth}
+                          onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('dateOfBirth') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        />
+                        {getEditFieldErrorByFrontendName('dateOfBirth') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfBirth')}</p>
+                        )}
+                      </div>
 
-                {/* Parent Info Section */}
-                <CollapsibleSection 
-                  title="Parent Information" 
-                  defaultExpanded={false}
-                  isActive={editActiveSection === 'parent-info'}
-                  onSectionClick={() => setEditActiveSection('parent-info')}
-                >
-                  {/* Guardian Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Guardian Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.guardianName}
-                      onChange={(e) => handleInputChange('guardianName', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('guardianName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter guardian name"
-                    />
-                    {getEditFieldErrorByFrontendName('guardianName') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianName')}</p>
-                    )}
-                  </div>
+                      {/* Gender */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Gender *
+                        </label>
+                        <select
+                          value={editingStudent.gender}
+                          onChange={(e) => handleInputChange('gender', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('gender') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {getEditFieldErrorByFrontendName('gender') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('gender')}</p>
+                        )}
+                      </div>
 
-                  {/* Guardian Contact */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Guardian Contact *
-                    </label>
-                    <input
-                      type="tel"
-                      value={editingStudent.guardianContact}
-                      onChange={(e) => handleInputChange('guardianContact', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('guardianContact') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter guardian contact"
-                    />
-                    {getEditFieldErrorByFrontendName('guardianContact') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianContact')}</p>
-                    )}
-                  </div>
+                      {/* Date of Admission */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date Of Admission *
+                        </label>
+                        <input
+                          type="date"
+                          value={editingStudent.dateOfAdmission}
+                          onChange={(e) => handleInputChange('dateOfAdmission', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('dateOfAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        />
+                        {getEditFieldErrorByFrontendName('dateOfAdmission') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfAdmission')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
 
-                  {/* Alternative Contact */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Alternative Contact
-                    </label>
-                    <input
-                      type="tel"
-                      value={editingStudent.alternativeContact}
-                      onChange={(e) => handleInputChange('alternativeContact', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('alternativeContact') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter alternative contact"
-                    />
-                    {getEditFieldErrorByFrontendName('alternativeContact') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('alternativeContact')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Others Section */}
-                <CollapsibleSection 
-                  title="Other Information" 
-                  defaultExpanded={false}
-                  isActive={editActiveSection === 'other-info'}
-                  onSectionClick={() => setEditActiveSection('other-info')}
-                >
-                  {/* Address */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Address
-                    </label>
-                    <textarea
-                      value={editingStudent.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      rows={3}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
-                        getEditFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter address"
-                    />
-                    {getEditFieldErrorByFrontendName('address') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('address')}</p>
-                    )}
-                  </div>
-
-                  {/* Last School Attended */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Last School Attended
-                    </label>
-                    <input
-                      type="text"
-                      value={editingStudent.lastSchoolAttended}
-                      onChange={(e) => handleInputChange('lastSchoolAttended', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('lastSchoolAttended') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter last school attended"
-                    />
-                    {getEditFieldErrorByFrontendName('lastSchoolAttended') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('lastSchoolAttended')}</p>
-                    )}
-                  </div>
-
-                  {/* Boarding Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Boarding Status
-                    </label>
-                    <select
-                      value={editingStudent.boardingStatus}
-                      onChange={(e) => handleInputChange('boardingStatus', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('boardingStatus') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                    {/* Academic Info Section */}
+                    <CollapsibleSection 
+                      title="Academic Information *" 
+                      defaultExpanded={true}
+                      isActive={editActiveSection === 'academic-info'}
+                      onSectionClick={() => setEditActiveSection('academic-info')}
                     >
-                      <option value="">Select boarding status</option>
-                      <option value="Day">Day</option>
-                      <option value="Boarding">Boarding</option>
-                    </select>
-                    {getEditFieldErrorByFrontendName('boardingStatus') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('boardingStatus')}</p>
-                    )}
-                  </div>
+                      {/* Class On Admission */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Class On Admission *
+                        </label>
+                        <select
+                          value={editingStudent.classOnAdmission}
+                          onChange={(e) => handleInputChange('classOnAdmission', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('classOnAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select class on admission</option>
+                          {classes.map((classItem) => (
+                            <option key={classItem.id} value={classItem.id}>
+                              {classItem.name} - {classItem.stream?.name || 'No Stream'}
+                            </option>
+                          ))}
+                        </select>
+                        {getEditFieldErrorByFrontendName('classOnAdmission') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('classOnAdmission')}</p>
+                        )}
+                      </div>
 
-                  {/* Exempted From Religious Instruction */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Exempted From Religious Instruction
-                    </label>
-                    <div className="flex items-center space-x-2">
+                      {/* Current Class */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Current Class *
+                        </label>
+                        <select
+                          value={editingStudent.currentClass}
+                          onChange={(e) => handleInputChange('currentClass', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('currentClass') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select current class</option>
+                          {classes.map((classItem) => (
+                            <option key={classItem.id} value={classItem.id}>
+                              {classItem.name} - {classItem.stream?.name || 'No Stream'}
+                            </option>
+                          ))}
+                        </select>
+                        {getEditFieldErrorByFrontendName('currentClass') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('currentClass')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
+
+                    {/* Parent Info Section */}
+                    <CollapsibleSection 
+                      title="Parent Information" 
+                      defaultExpanded={false}
+                      isActive={editActiveSection === 'parent-info'}
+                      onSectionClick={() => setEditActiveSection('parent-info')}
+                    >
+                      {/* Guardian Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.guardianName}
+                          onChange={(e) => handleInputChange('guardianName', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('guardianName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter guardian name"
+                        />
+                        {getEditFieldErrorByFrontendName('guardianName') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianName')}</p>
+                        )}
+                      </div>
+
+                      {/* Guardian Phone */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={editingStudent.guardianPhone}
+                          onChange={(e) => handleInputChange('guardianPhone', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('guardianPhone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter guardian phone"
+                        />
+                        {getEditFieldErrorByFrontendName('guardianPhone') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianPhone')}</p>
+                        )}
+                      </div>
+
+                      {/* Guardian Relationship */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Relationship
+                        </label>
+                        <select
+                          value={editingStudent.guardianRelationship}
+                          onChange={(e) => handleInputChange('guardianRelationship', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('guardianRelationship') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select relationship</option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {getEditFieldErrorByFrontendName('guardianRelationship') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('guardianRelationship')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
+
+                    {/* Others Section */}
+                    <CollapsibleSection 
+                      title="Other Information" 
+                      defaultExpanded={false}
+                      isActive={editActiveSection === 'other-info'}
+                      onSectionClick={() => setEditActiveSection('other-info')}
+                    >
+                      {/* Address */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Address
+                        </label>
+                        <textarea
+                          value={editingStudent.address}
+                          onChange={(e) => handleInputChange('address', e.target.value)}
+                          rows={3}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                            getEditFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter address"
+                        />
+                        {getEditFieldErrorByFrontendName('address') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('address')}</p>
+                        )}
+                      </div>
+
+                      {/* Last School Attended */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Last School Attended
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.lastSchoolAttended}
+                          onChange={(e) => handleInputChange('lastSchoolAttended', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('lastSchoolAttended') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter last school attended"
+                        />
+                        {getEditFieldErrorByFrontendName('lastSchoolAttended') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('lastSchoolAttended')}</p>
+                        )}
+                      </div>
+
+                      {/* Birth Certificate Number */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Birth Certificate Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.birthCertificateNo}
+                          onChange={(e) => handleInputChange('birthCertificateNo', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('birthCertificateNo') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter birth certificate number"
+                        />
+                        {getEditFieldErrorByFrontendName('birthCertificateNo') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('birthCertificateNo')}</p>
+                        )}
+                      </div>
+
+                      {/* Boarding Status */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Boarding Status
+                        </label>
+                        <select
+                          value={editingStudent.boardingStatus}
+                          onChange={(e) => handleInputChange('boardingStatus', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('boardingStatus') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select boarding status</option>
+                          <option value="Day">Day</option>
+                          <option value="Boarding">Boarding</option>
+                        </select>
+                        {getEditFieldErrorByFrontendName('boardingStatus') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('boardingStatus')}</p>
+                        )}
+                      </div>
+
+                      {/* Exempted From Religious Instruction */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Exempted From Religious Instruction
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={editingStudent.exemptedFromReligiousInstruction}
+                            onChange={(e) => handleInputChange('exemptedFromReligiousInstruction', e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                        </div>
+                      </div>
+
+                      {/* Date of Leaving */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date of Leaving
+                        </label>
+                        <input
+                          type="date"
+                          value={editingStudent.dateOfLeaving}
+                          onChange={(e) => handleInputChange('dateOfLeaving', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getEditFieldErrorByFrontendName('dateOfLeaving') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        />
+                        {getEditFieldErrorByFrontendName('dateOfLeaving') && (
+                          <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfLeaving')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
+                  </>
+                )}
+
+                {/* Stream Edit Form */}
+                {editingStream && (
+                  <CollapsibleSection 
+                    title="Stream Information *" 
+                    defaultExpanded={true}
+                    isActive={editActiveSection === 'stream-info'}
+                    onSectionClick={() => setEditActiveSection('stream-info')}
+                  >
+                    {/* Stream Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream Name *
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={editingStudent.exemptedFromReligiousInstruction}
-                        onChange={(e) => handleInputChange('exemptedFromReligiousInstruction', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        type="text"
+                        value={editingStream.name}
+                        onChange={(e) => handleEditStreamInputChange('name', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream name"
                       />
-                      <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                      {getEditFieldErrorByFrontendName('name') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('name')}</p>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Date of Leaving */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date of Leaving
-                    </label>
-                    <input
-                      type="date"
-                      value={editingStudent.dateOfLeaving}
-                      onChange={(e) => handleInputChange('dateOfLeaving', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getEditFieldErrorByFrontendName('dateOfLeaving') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                    />
-                    {getEditFieldErrorByFrontendName('dateOfLeaving') && (
-                      <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('dateOfLeaving')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                    {/* Stream Code */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStream.code}
+                        onChange={(e) => handleEditStreamInputChange('code', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('code') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream code"
+                      />
+                      {getEditFieldErrorByFrontendName('code') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('code')}</p>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Description
+                      </label>
+                      <textarea
+                        value={editingStream.description}
+                        onChange={(e) => handleEditStreamInputChange('description', e.target.value)}
+                        rows={3}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                          getEditFieldErrorByFrontendName('description') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream description"
+                      />
+                      {getEditFieldErrorByFrontendName('description') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('description')}</p>
+                      )}
+                    </div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Class Edit Form */}
+                {editingClass && (
+                  <CollapsibleSection 
+                    title="Class Information *" 
+                    defaultExpanded={true}
+                    isActive={editActiveSection === 'class-info'}
+                    onSectionClick={() => setEditActiveSection('class-info')}
+                  >
+                    {/* Class Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Class Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingClass.name}
+                        onChange={(e) => handleEditClassInputChange('name', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class name"
+                      />
+                      {getEditFieldErrorByFrontendName('name') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('name')}</p>
+                      )}
+                    </div>
+
+                    {/* Class Code */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Class Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingClass.code}
+                        onChange={(e) => handleEditClassInputChange('code', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('code') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class code"
+                      />
+                      {getEditFieldErrorByFrontendName('code') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('code')}</p>
+                      )}
+                    </div>
+
+                    {/* Stream Selection */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream *
+                      </label>
+                      <select
+                        value={editingClass.stream?.id || ''}
+                        onChange={(e) => handleEditClassInputChange('streamId', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('streamId') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                      >
+                        <option value="">Select a stream</option>
+                        {streams.map((stream) => (
+                          <option key={stream.id} value={stream.id}>
+                            {stream.name} ({stream.code})
+                          </option>
+                        ))}
+                      </select>
+                      {getEditFieldErrorByFrontendName('streamId') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('streamId')}</p>
+                      )}
+                    </div>
+
+                    {/* Level */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Level *
+                      </label>
+                      <input
+                        type="number"
+                        value={editingClass.level}
+                        onChange={(e) => handleEditClassInputChange('level', parseInt(e.target.value) || 0)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('level') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class level"
+                      />
+                      {getEditFieldErrorByFrontendName('level') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('level')}</p>
+                      )}
+                    </div>
+
+                    {/* Capacity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Capacity *
+                      </label>
+                      <input
+                        type="number"
+                        value={editingClass.capacity}
+                        onChange={(e) => handleEditClassInputChange('capacity', parseInt(e.target.value) || 0)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getEditFieldErrorByFrontendName('capacity') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class capacity"
+                      />
+                      {getEditFieldErrorByFrontendName('capacity') && (
+                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('capacity')}</p>
+                      )}
+                    </div>
+                  </CollapsibleSection>
+                )}
               </div>
             </div>
 
@@ -1430,8 +2391,28 @@ const Students: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={handleSaveStudent}
-                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
+                  onClick={() => {
+                    if (editingStudent) {
+                      handleSaveStudent();
+                    } else if (editingStream) {
+                      handleSaveStream();
+                    } else if (editingClass) {
+                      handleSaveClass();
+                    }
+                  }}
+                  disabled={
+                    (editingStudent && !isStudentModified()) ||
+                    (editingStream && !isStreamModified()) ||
+                    (editingClass && !isClassModified()) ||
+                    false
+                  }
+                  className={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                    (editingStudent && !isStudentModified()) ||
+                    (editingStream && !isStreamModified()) ||
+                    (editingClass && !isClassModified())
+                      ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                      : 'text-white bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
                   Save Changes
                 </button>
@@ -1452,8 +2433,22 @@ const Students: React.FC = () => {
             {/* Drawer Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New Student</h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">Enter student information</p>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">
+                  {activeTab === 'admission' && 'Add New Student'}
+                  {activeTab === 'classes' && 'Add New Class'}
+                  {activeTab === 'streams' && 'Add New Stream'}
+                  {activeTab === 'academic' && 'Add New Academic'}
+                  {activeTab === 'financial' && 'Add New Financial'}
+                  {activeTab === 'attendance' && 'Add New Attendance'}
+                </h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">
+                  {activeTab === 'admission' && 'Enter student information'}
+                  {activeTab === 'classes' && 'Enter class information'}
+                  {activeTab === 'streams' && 'Enter stream information'}
+                  {activeTab === 'academic' && 'Enter academic information'}
+                  {activeTab === 'financial' && 'Enter financial information'}
+                  {activeTab === 'attendance' && 'Enter attendance information'}
+                </p>
               </div>
               <button
                 onClick={closeAddDrawer}
@@ -1482,11 +2477,17 @@ const Students: React.FC = () => {
                         'fullName': 'Full Name',
                         'dateOfBirth': 'Date of Birth',
                         'dateOfAdmission': 'Date of Admission',
-                        'classOnAdmission': 'Class on Admission',
+                        'classOnAdmission': 'Class on Admission ID',
+                        'currentClass': 'Current Class ID',
+                        'lastSchoolAttended': 'Last School Attended',
                         'guardianName': 'Guardian Name',
-                        'guardianContact': 'Guardian Contact',
+                        'guardianPhone': 'Guardian Phone',
+                        'guardianRelationship': 'Guardian Relationship',
                         'boardingStatus': 'Boarding Status',
-                        'address': 'Address'
+                        'address': 'Address',
+                        'birthCertificateNo': 'Birth Certificate Number',
+                        'schoolLeavingCertificateNumber': 'School Leaving Certificate Number',
+                        'remarks': 'Remarks'
                       };
                       
                       const displayName = fieldNameMapping[field] || field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -1505,286 +2506,520 @@ const Students: React.FC = () => {
               )}
               
               <div className="p-6 space-y-4">
-                {/* Basic Info Section */}
-                <CollapsibleSection 
-                  title="Basic Information *" 
-                  defaultExpanded={true}
-                  isActive={activeSection === 'basic-info'}
-                  onSectionClick={() => setActiveSection('basic-info')}
-                >
-                  {/* Admission Number */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Admission Number *
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.admissionNumber}
-                      onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('admissionNumber') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter admission number"
-                    />
-                    {getFieldErrorByFrontendName('admissionNumber') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('admissionNumber')}</p>
-                    )}
-                  </div>
-
-                  {/* Full Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Full Names *
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.fullName}
-                      onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('fullName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter full names"
-                    />
-                    {getFieldErrorByFrontendName('fullName') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('fullName')}</p>
-                    )}
-                  </div>
-
-                  {/* Date of Birth */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date Of Birth *
-                    </label>
-                    <input
-                      type="date"
-                      value={newStudent.dateOfBirth}
-                      onChange={(e) => handleNewStudentInputChange('dateOfBirth', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('dateOfBirth') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                    />
-                    {getFieldErrorByFrontendName('dateOfBirth') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('dateOfBirth')}</p>
-                    )}
-                  </div>
-
-                  {/* Gender */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Gender *
-                    </label>
-                    <select
-                      value={newStudent.gender}
-                      onChange={(e) => handleNewStudentInputChange('gender', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('gender') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                {/* Student Form */}
+                {activeTab === 'admission' && (
+                  <>
+                    {/* Basic Info Section */}
+                    <CollapsibleSection 
+                      title="Basic Information *" 
+                      defaultExpanded={true}
+                      isActive={activeSection === 'basic-info'}
+                      onSectionClick={() => setActiveSection('basic-info')}
                     >
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {getFieldErrorByFrontendName('gender') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('gender')}</p>
-                    )}
-                  </div>
+                      {/* Admission Number */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Admission Number *
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.admissionNumber}
+                          onChange={(e) => handleNewStudentInputChange('admissionNumber', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('admissionNumber') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter admission number"
+                        />
+                        {getFieldErrorByFrontendName('admissionNumber') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('admissionNumber')}</p>
+                        )}
+                      </div>
 
-                  {/* Date of Admission */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date Of Admission *
-                    </label>
-                    <input
-                      type="date"
-                      value={newStudent.dateOfAdmission}
-                      onChange={(e) => handleNewStudentInputChange('dateOfAdmission', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('dateOfAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                    />
-                    {getFieldErrorByFrontendName('dateOfAdmission') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('dateOfAdmission')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                      {/* Full Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Full Names *
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.fullName}
+                          onChange={(e) => handleNewStudentInputChange('fullName', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('fullName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter full names"
+                        />
+                        {getFieldErrorByFrontendName('fullName') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('fullName')}</p>
+                        )}
+                      </div>
 
-                {/* Academic Info Section */}
-                <CollapsibleSection 
-                  title="Academic Information *" 
-                  defaultExpanded={true}
-                  isActive={activeSection === 'academic-info'}
-                  onSectionClick={() => setActiveSection('academic-info')}
-                >
-                  {/* Class On Admission */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Class On Admission *
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.classOnAdmission}
-                      onChange={(e) => handleNewStudentInputChange('classOnAdmission', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('classOnAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter class on admission"
-                    />
-                    {getFieldErrorByFrontendName('classOnAdmission') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('classOnAdmission')}</p>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                      {/* Date of Birth */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date Of Birth *
+                        </label>
+                        <input
+                          type="date"
+                          value={newStudent.dateOfBirth}
+                          onChange={(e) => handleNewStudentInputChange('dateOfBirth', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('dateOfBirth') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        />
+                        {getFieldErrorByFrontendName('dateOfBirth') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('dateOfBirth')}</p>
+                        )}
+                      </div>
 
-                {/* Parent Info Section */}
-                <CollapsibleSection 
-                  title="Parent Information" 
-                  defaultExpanded={false}
-                  isActive={activeSection === 'parent-info'}
-                  onSectionClick={() => setActiveSection('parent-info')}
-                >
-                  {/* Guardian Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Guardian Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.guardianName}
-                      onChange={(e) => handleNewStudentInputChange('guardianName', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('guardianName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter guardian name"
-                    />
-                    {getFieldErrorByFrontendName('guardianName') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('guardianName')}</p>
-                    )}
-                  </div>
+                      {/* Gender */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Gender *
+                        </label>
+                        <select
+                          value={newStudent.gender}
+                          onChange={(e) => handleNewStudentInputChange('gender', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('gender') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {getFieldErrorByFrontendName('gender') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('gender')}</p>
+                        )}
+                      </div>
 
-                  {/* Guardian Contact */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Guardian Contact *
-                    </label>
-                    <input
-                      type="tel"
-                      value={newStudent.guardianContact}
-                      onChange={(e) => handleNewStudentInputChange('guardianContact', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('guardianContact') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter guardian contact"
-                    />
-                    {getFieldErrorByFrontendName('guardianContact') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('guardianContact')}</p>
-                    )}
-                  </div>
+                      {/* Date of Admission */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date Of Admission *
+                        </label>
+                        <input
+                          type="date"
+                          value={newStudent.dateOfAdmission}
+                          onChange={(e) => handleNewStudentInputChange('dateOfAdmission', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('dateOfAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        />
+                        {getFieldErrorByFrontendName('dateOfAdmission') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('dateOfAdmission')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
 
-                  {/* Alternative Contact */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Alternative Contact
-                    </label>
-                    <input
-                      type="tel"
-                      value={newStudent.alternativeContact}
-                      onChange={(e) => handleNewStudentInputChange('alternativeContact', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter alternative contact"
-                    />
-                  </div>
-                </CollapsibleSection>
-
-                {/* Others Section */}
-                <CollapsibleSection 
-                  title="Other Information" 
-                  defaultExpanded={false}
-                  isActive={activeSection === 'other-info'}
-                  onSectionClick={() => setActiveSection('other-info')}
-                >
-                  {/* Address */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Address
-                    </label>
-                    <textarea
-                      value={newStudent.address}
-                      onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
-                      rows={3}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
-                        getFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter address"
-                    />
-                    {getFieldErrorByFrontendName('address') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('address')}</p>
-                    )}
-                  </div>
-
-                  {/* Last School Attended */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Last School Attended
-                    </label>
-                    <input
-                      type="text"
-                      value={newStudent.lastSchoolAttended}
-                      onChange={(e) => handleNewStudentInputChange('lastSchoolAttended', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter last school attended"
-                    />
-                  </div>
-
-                  {/* Boarding Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Boarding Status
-                    </label>
-                    <select
-                      value={newStudent.boardingStatus}
-                      onChange={(e) => handleNewStudentInputChange('boardingStatus', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('boardingStatus') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                    {/* Academic Info Section */}
+                    <CollapsibleSection 
+                      title="Academic Information *" 
+                      defaultExpanded={true}
+                      isActive={activeSection === 'academic-info'}
+                      onSectionClick={() => setActiveSection('academic-info')}
                     >
-                      <option value="">Select boarding status</option>
-                      <option value="Day">Day</option>
-                      <option value="Boarding">Boarding</option>
-                    </select>
-                    {getFieldErrorByFrontendName('boardingStatus') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('boardingStatus')}</p>
-                    )}
-                  </div>
+                      {/* Class On Admission */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Class On Admission *
+                        </label>
+                        <select
+                          value={newStudent.classOnAdmission}
+                          onChange={(e) => handleNewStudentInputChange('classOnAdmission', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('classOnAdmission') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select class on admission</option>
+                          {classes.map((classItem) => (
+                            <option key={classItem.id} value={classItem.id}>
+                              {classItem.name} - {classItem.stream?.name || 'No Stream'}
+                            </option>
+                          ))}
+                        </select>
+                        {getFieldErrorByFrontendName('classOnAdmission') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('classOnAdmission')}</p>
+                        )}
+                      </div>
 
-                  {/* Exempted From Religious Instruction */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Exempted From Religious Instruction
-                    </label>
-                    <div className="flex items-center space-x-2">
+                      {/* Current Class */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Current Class *
+                        </label>
+                        <select
+                          value={newStudent.currentClass}
+                          onChange={(e) => handleNewStudentInputChange('currentClass', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('currentClass') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select current class</option>
+                          {classes.map((classItem) => (
+                            <option key={classItem.id} value={classItem.id}>
+                              {classItem.name} - {classItem.stream?.name || 'No Stream'}
+                            </option>
+                          ))}
+                        </select>
+                        {getFieldErrorByFrontendName('currentClass') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('currentClass')}</p>
+                        )}
+                      </div>
+                    </CollapsibleSection>
+
+                    {/* Parent Info Section */}
+                    <CollapsibleSection 
+                      title="Parent Information" 
+                      defaultExpanded={false}
+                      isActive={activeSection === 'parent-info'}
+                      onSectionClick={() => setActiveSection('parent-info')}
+                    >
+                      {/* Guardian Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.guardianName}
+                          onChange={(e) => handleNewStudentInputChange('guardianName', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('guardianName') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter guardian name"
+                        />
+                        {getFieldErrorByFrontendName('guardianName') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('guardianName')}</p>
+                        )}
+                      </div>
+
+                      {/* Guardian Phone */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Phone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={newStudent.guardianPhone}
+                          onChange={(e) => handleNewStudentInputChange('guardianPhone', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('guardianPhone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter guardian phone"
+                        />
+                        {getFieldErrorByFrontendName('guardianPhone') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('guardianPhone')}</p>
+                        )}
+                      </div>
+
+                      {/* Guardian Relationship */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Guardian Relationship
+                        </label>
+                        <select
+                          value={newStudent.guardianRelationship}
+                          onChange={(e) => handleNewStudentInputChange('guardianRelationship', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        >
+                          <option value="">Select relationship</option>
+                          <option value="Father">Father</option>
+                          <option value="Mother">Mother</option>
+                          <option value="Guardian">Guardian</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    </CollapsibleSection>
+
+                    {/* Others Section */}
+                    <CollapsibleSection 
+                      title="Other Information" 
+                      defaultExpanded={false}
+                      isActive={activeSection === 'other-info'}
+                      onSectionClick={() => setActiveSection('other-info')}
+                    >
+                      {/* Address */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Address
+                        </label>
+                        <textarea
+                          value={newStudent.address}
+                          onChange={(e) => handleNewStudentInputChange('address', e.target.value)}
+                          rows={3}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                            getFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter address"
+                        />
+                        {getFieldErrorByFrontendName('address') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('address')}</p>
+                        )}
+                      </div>
+
+                      {/* Last School Attended */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Last School Attended
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.lastSchoolAttended}
+                          onChange={(e) => handleNewStudentInputChange('lastSchoolAttended', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                          placeholder="Enter last school attended"
+                        />
+                      </div>
+
+                      {/* Birth Certificate Number */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Birth Certificate Number
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.birthCertificateNo}
+                          onChange={(e) => handleNewStudentInputChange('birthCertificateNo', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('birthCertificateNo') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                          placeholder="Enter birth certificate number"
+                        />
+                        {getFieldErrorByFrontendName('birthCertificateNo') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('birthCertificateNo')}</p>
+                        )}
+                      </div>
+
+                      {/* Boarding Status */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Boarding Status
+                        </label>
+                        <select
+                          value={newStudent.boardingStatus}
+                          onChange={(e) => handleNewStudentInputChange('boardingStatus', e.target.value)}
+                          className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                            getFieldErrorByFrontendName('boardingStatus') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                          }`}
+                        >
+                          <option value="">Select boarding status</option>
+                          <option value="Day">Day</option>
+                          <option value="Boarding">Boarding</option>
+                        </select>
+                        {getFieldErrorByFrontendName('boardingStatus') && (
+                          <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('boardingStatus')}</p>
+                        )}
+                      </div>
+
+                      {/* Exempted From Religious Instruction */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Exempted From Religious Instruction
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={newStudent.exemptedFromReligiousInstruction}
+                            onChange={(e) => handleNewStudentInputChange('exemptedFromReligiousInstruction', e.target.checked)}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                        </div>
+                      </div>
+
+                      {/* Date of Leaving */}
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                          Date of Leaving
+                        </label>
+                        <input
+                          type="date"
+                          value={newStudent.dateOfLeaving}
+                          onChange={(e) => handleNewStudentInputChange('dateOfLeaving', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        />
+                      </div>
+                    </CollapsibleSection>
+                  </>
+                )}
+
+                {/* Stream Form */}
+                {activeTab === 'streams' && (
+                  <CollapsibleSection 
+                    title="Stream Information *" 
+                    defaultExpanded={true}
+                    isActive={activeSection === 'stream-info'}
+                    onSectionClick={() => setActiveSection('stream-info')}
+                  >
+                    {/* Stream Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream Name *
+                      </label>
                       <input
-                        type="checkbox"
-                        checked={newStudent.exemptedFromReligiousInstruction}
-                        onChange={(e) => handleNewStudentInputChange('exemptedFromReligiousInstruction', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        type="text"
+                        value={newStream?.name || ''}
+                        onChange={(e) => handleNewStreamInputChange('name', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream name"
                       />
-                      <span className="text-xs text-gray-600">Yes, exempted from religious instruction</span>
+                      {getFieldErrorByFrontendName('name') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('name')}</p>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Date of Leaving */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Date of Leaving
-                    </label>
-                    <input
-                      type="date"
-                      value={newStudent.dateOfLeaving}
-                      onChange={(e) => handleNewStudentInputChange('dateOfLeaving', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                    />
-                  </div>
-                </CollapsibleSection>
+                    {/* Stream Code */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={newStream?.code || ''}
+                        onChange={(e) => handleNewStreamInputChange('code', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('code') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream code"
+                      />
+                      {getFieldErrorByFrontendName('code') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('code')}</p>
+                      )}
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Description
+                      </label>
+                      <textarea
+                        value={newStream?.description || ''}
+                        onChange={(e) => handleNewStreamInputChange('description', e.target.value)}
+                        rows={3}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
+                          getFieldErrorByFrontendName('description') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter stream description"
+                      />
+                      {getFieldErrorByFrontendName('description') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('description')}</p>
+                      )}
+                    </div>
+                  </CollapsibleSection>
+                )}
+
+                {/* Class Form */}
+                {activeTab === 'classes' && (
+                  <CollapsibleSection 
+                    title="Class Information *" 
+                    defaultExpanded={true}
+                    isActive={activeSection === 'class-info'}
+                    onSectionClick={() => setActiveSection('class-info')}
+                  >
+                    {/* Class Name */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Class Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newClass?.name || ''}
+                        onChange={(e) => handleNewClassInputChange('name', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class name"
+                      />
+                      {getFieldErrorByFrontendName('name') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('name')}</p>
+                      )}
+                    </div>
+
+                    {/* Class Code */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Class Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={newClass?.code || ''}
+                        onChange={(e) => handleNewClassInputChange('code', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('code') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class code"
+                      />
+                      {getFieldErrorByFrontendName('code') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('code')}</p>
+                      )}
+                    </div>
+
+                    {/* Stream Selection */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Stream *
+                      </label>
+                      <select
+                        value={newClass?.streamId || ''}
+                        onChange={(e) => handleNewClassInputChange('streamId', e.target.value)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('streamId') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                      >
+                        <option value="">Select a stream</option>
+                        {streams.map((stream) => (
+                          <option key={stream.id} value={stream.id}>
+                            {stream.name} ({stream.code})
+                          </option>
+                        ))}
+                      </select>
+                      {getFieldErrorByFrontendName('streamId') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('streamId')}</p>
+                      )}
+                    </div>
+
+                    {/* Level */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Level *
+                      </label>
+                      <input
+                        type="number"
+                        value={newClass?.level || ''}
+                        onChange={(e) => handleNewClassInputChange('level', parseInt(e.target.value) || 0)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('level') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class level"
+                      />
+                      {getFieldErrorByFrontendName('level') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('level')}</p>
+                      )}
+                    </div>
+
+                    {/* Capacity */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                        Capacity *
+                      </label>
+                      <input
+                        type="number"
+                        value={newClass?.capacity || ''}
+                        onChange={(e) => handleNewClassInputChange('capacity', parseInt(e.target.value) || 0)}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                          getFieldErrorByFrontendName('capacity') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="Enter class capacity"
+                      />
+                      {getFieldErrorByFrontendName('capacity') && (
+                        <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('capacity')}</p>
+                      )}
+                    </div>
+                  </CollapsibleSection>
+                )}
               </div>
             </div>
 
@@ -1796,12 +3031,32 @@ const Students: React.FC = () => {
               >
                 Cancel
               </button>
+
               <button
                 onClick={handleAddStudent}
-                disabled={!newStudent.fullName || !newStudent.admissionNumber}
+                disabled={
+                  (activeTab === 'admission' && (
+                    !newStudent.fullName || 
+                    !newStudent.admissionNumber ||
+                    !newStudent.dateOfBirth ||
+                    !newStudent.dateOfAdmission ||
+                    !newStudent.classOnAdmission ||
+                    !newStudent.currentClass ||
+                    !newStudent.guardianName ||
+                    !newStudent.guardianPhone ||
+                    !newStudent.address
+                  )) ||
+                  (activeTab === 'streams' && (!newStream.name || !newStream.code)) ||
+                  (activeTab === 'classes' && (!newClass.name || !newClass.code || !newClass.streamId))
+                }
                 className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
               >
-                Add Student
+                {activeTab === 'admission' && 'Add Student'}
+                {activeTab === 'classes' && 'Add Class'}
+                {activeTab === 'streams' && 'Add Stream'}
+                {activeTab === 'academic' && 'Add Academic'}
+                {activeTab === 'financial' && 'Add Financial'}
+                {activeTab === 'attendance' && 'Add Attendance'}
               </button>
             </div>
           </>
@@ -1829,14 +3084,26 @@ const Students: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isStudentAdmissionBlocked) {
-                      const student = students.find(s => s.id === openDropdownId);
-                      if (student) {
-                        handleEditStudent(student);
+                    if (activeTab === 'admission') {
+                      if (!isStudentAdmissionBlocked) {
+                        const student = students.find(s => s.id === openDropdownId);
+                        if (student) {
+                          handleEditStudent(student);
+                        }
+                      }
+                    } else if (activeTab === 'classes') {
+                      const classItem = classes.find(c => c.id === openDropdownId);
+                      if (classItem) {
+                        handleEditClass(classItem);
+                      }
+                    } else if (activeTab === 'streams') {
+                      const stream = streams.find(s => s.id === openDropdownId);
+                      if (stream) {
+                        handleEditStream(stream);
                       }
                     }
                   }}
-                  disabled={isStudentAdmissionBlocked}
+                  disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
                   className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {FaEdit({ className: "w-3 h-3 mr-2" })}
@@ -1853,14 +3120,28 @@ const Students: React.FC = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isStudentAdmissionBlocked) {
-                      const student = students.find(s => s.id === openDropdownId);
-                      if (student) {
-                        handleDeleteStudent(student);
+                    if (activeTab === 'admission') {
+                      if (!isStudentAdmissionBlocked) {
+                        const student = students.find(s => s.id === openDropdownId);
+                        if (student) {
+                          handleDeleteStudent(student);
+                        }
+                      }
+                    } else if (activeTab === 'classes') {
+                      const classItem = classes.find(c => c.id === openDropdownId);
+                      if (classItem) {
+                        // TODO: Handle delete class
+                        console.log('Delete class:', classItem);
+                      }
+                    } else if (activeTab === 'streams') {
+                      const stream = streams.find(s => s.id === openDropdownId);
+                      if (stream) {
+                        // TODO: Handle delete stream
+                        console.log('Delete stream:', stream);
                       }
                     }
                   }}
-                  disabled={isStudentAdmissionBlocked}
+                  disabled={activeTab === 'admission' && isStudentAdmissionBlocked}
                   className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {FaTrash({ className: "w-3 h-3 mr-2" })}

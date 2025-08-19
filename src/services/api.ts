@@ -1,4 +1,4 @@
-import { Student, CreateStudentRequest, CreateSchoolRequest } from '../types/dashboard';
+import { Student, CreateStudentRequest, CreateSchoolRequest, Class, Stream } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 import { UpdateUserRequest, PaginationParams } from '../types/users';
 
@@ -260,6 +260,32 @@ export const apiService = {
     getDetailedFeatureStatus: async () => {
       return apiService.authenticatedRequest('/students/features/detailed-status', { method: 'GET' });
     },
+
+    // Get all streams
+    getStreams: async () => {
+      return apiService.authenticatedRequest('/students/streams/', { method: 'GET' });
+    },
+
+    // Get all classes
+    getClasses: async () => {
+      return apiService.authenticatedRequest('/students/classes/', { method: 'GET' });
+    },
+
+    // Update a class
+    updateClass: async (id: string, classData: Partial<Class>) => {
+      return apiService.authenticatedRequest(`/students/classes/${id}/`, { 
+        method: 'PUT',
+        body: JSON.stringify(classData)
+      });
+    },
+
+    // Update a stream
+    updateStream: async (id: string, streamData: Partial<Stream>) => {
+      return apiService.authenticatedRequest(`/students/streams/${id}/`, { 
+        method: 'PUT',
+        body: JSON.stringify(streamData)
+      });
+    },
   },
 
   // Feature Flags API
@@ -499,18 +525,21 @@ export const convertStudentToCreateRequest = (student: Partial<Student>): Create
     admission_number: student.admissionNumber || student.admission_number || '',
     pupil_name: student.fullName || student.pupil_name || '',
     date_of_birth: student.dateOfBirth || student.date_of_birth || '',
-    gender: student.gender || '',
+    gender: student.gender || 'M',
     date_of_admission: student.dateOfAdmission || student.date_of_admission || '',
-    class_on_admission: student.classOnAdmission || student.class_on_admission || student.class || '',
+    class_on_admission_id: student.classOnAdmission || student.class_on_admission_id || student.class || '',
+    current_class_id: student.currentClass || student.current_class_id || '',
     guardian_name: student.guardianName || student.guardian_name || student.parentName || '',
-    contact_1: student.guardianContact || student.contact_1 || student.guardian_contact || student.contactInfo || '',
-    contact_2: student.alternativeContact || student.contact_2 || '',
+    guardian_phone: student.guardianPhone || student.guardian_phone || '',
+    guardian_relationship: student.guardianRelationship || student.guardian_relationship || '',
     address: student.address || '',
     last_school_attended: student.lastSchoolAttended || student.last_school_attended || '',
-    boarding_status: student.boardingStatus || student.boarding_status || '',
+    boarding_status: student.boardingStatus || student.boarding_status || 'Day',
     exempted_from_religious_instruction: student.exemptedFromReligiousInstruction || student.exempted_from_religious_instruction || false,
+    birth_certificate_no: student.birthCertificateNo || student.birth_certificate_no || '',
+    image: student.image || '',
     date_of_leaving: student.dateOfLeaving || student.date_of_leaving || '',
-    school_leaving_certificate_number: student.school_leaving_certificate_number || '',
+    school_leaving_certificate_number: student.schoolLeavingCertificateNumber || student.school_leaving_certificate_number || '',
     remarks: student.remarks || '',
   };
 };
@@ -542,20 +571,24 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
     changes.date_of_admission = editedStudent.dateOfAdmission || '';
   }
   
-  if (normalizeValue(originalStudent.classOnAdmission || originalStudent.class_on_admission || originalStudent.class) !== normalizeValue(editedStudent.classOnAdmission)) {
-    changes.class_on_admission = editedStudent.classOnAdmission || '';
+  if (normalizeValue(originalStudent.classOnAdmission || originalStudent.class_on_admission_id || originalStudent.class) !== normalizeValue(editedStudent.classOnAdmission)) {
+    changes.class_on_admission_id = editedStudent.classOnAdmission || '';
+  }
+  
+  if (normalizeValue(originalStudent.currentClass || originalStudent.current_class_id) !== normalizeValue(editedStudent.currentClass)) {
+    changes.current_class_id = editedStudent.currentClass || '';
   }
   
   if (normalizeValue(originalStudent.guardianName || originalStudent.guardian_name || originalStudent.parentName) !== normalizeValue(editedStudent.guardianName)) {
     changes.guardian_name = editedStudent.guardianName || '';
   }
   
-  if (normalizeValue(originalStudent.guardianContact || originalStudent.contact_1 || originalStudent.guardian_contact || originalStudent.contactInfo) !== normalizeValue(editedStudent.guardianContact)) {
-    changes.contact_1 = editedStudent.guardianContact || '';
+  if (normalizeValue(originalStudent.guardianPhone || originalStudent.guardian_phone) !== normalizeValue(editedStudent.guardianPhone)) {
+    changes.guardian_phone = editedStudent.guardianPhone || '';
   }
   
-  if (normalizeValue(originalStudent.alternativeContact || originalStudent.contact_2) !== normalizeValue(editedStudent.alternativeContact)) {
-    changes.contact_2 = editedStudent.alternativeContact || '';
+  if (normalizeValue(originalStudent.guardianRelationship || originalStudent.guardian_relationship) !== normalizeValue(editedStudent.guardianRelationship)) {
+    changes.guardian_relationship = editedStudent.guardianRelationship || '';
   }
   
   if (normalizeValue(originalStudent.address) !== normalizeValue(editedStudent.address)) {
@@ -572,6 +605,10 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
   
   if (originalStudent.exemptedFromReligiousInstruction !== editedStudent.exemptedFromReligiousInstruction) {
     changes.exempted_from_religious_instruction = editedStudent.exemptedFromReligiousInstruction || false;
+  }
+  
+  if (normalizeValue(originalStudent.birthCertificateNo || originalStudent.birth_certificate_no) !== normalizeValue(editedStudent.birthCertificateNo)) {
+    changes.birth_certificate_no = editedStudent.birthCertificateNo || '';
   }
   
   if (normalizeValue(originalStudent.dateOfLeaving || originalStudent.date_of_leaving) !== normalizeValue(editedStudent.dateOfLeaving)) {

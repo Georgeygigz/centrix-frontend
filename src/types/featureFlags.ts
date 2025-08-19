@@ -24,6 +24,8 @@ export interface FeatureFlagState {
   feature_flag_display_name: string;
   scope_type: string;
   scope_id: string | null;
+  school_name: string | null;
+  username: string | null;
   is_enabled: boolean;
   percentage: number;
   start_date: string | null;
