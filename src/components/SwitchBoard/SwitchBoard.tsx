@@ -121,72 +121,51 @@ const SwitchBoard: React.FC = () => {
   useEffect(() => {
     // Only load data if user is authenticated and auth loading is complete
     if (!authLoading && isAuthenticated) {
-      console.log('User is authenticated, loading feature flags and states...');
-      console.log('Auth token:', apiService.getToken());
-      
       const loadData = async () => {
         setIsLoading(true);
         try {
           // Load feature flags
-          console.log('Loading feature flags...');
           const featureFlagsData = await apiService.featureFlags.getAll();
-          console.log('Feature Flags API Response:', featureFlagsData);
           
           // Handle different response structures for feature flags
           let featureFlags: FeatureFlag[] = [];
           if (featureFlagsData && featureFlagsData.status === 'success' && featureFlagsData.data && featureFlagsData.data.results) {
-            console.log('Using correct feature flags API response structure');
             featureFlags = featureFlagsData.data.results;
           } else if (Array.isArray(featureFlagsData)) {
-            console.log('Using direct feature flags array response');
             featureFlags = featureFlagsData;
           } else if (featureFlagsData && Array.isArray(featureFlagsData.data)) {
-            console.log('Using feature flags data array response');
             featureFlags = featureFlagsData.data;
           } else if (featureFlagsData && featureFlagsData.features && Array.isArray(featureFlagsData.features)) {
-            console.log('Using feature flags features array response');
             featureFlags = featureFlagsData.features;
           } else if (featureFlagsData && featureFlagsData.status === 'error') {
-            console.warn('Feature flags API returned error:', featureFlagsData.message);
             throw new Error(featureFlagsData.message || 'Feature Flags API Error');
           } else {
-            console.warn('Unexpected feature flags API response structure:', featureFlagsData);
             featureFlags = [];
             throw new Error('Unexpected feature flags API response structure');
           }
           
-          console.log('Final feature flags:', featureFlags);
           setFeatures(featureFlags);
 
           // Load feature flag states
-          console.log('Loading feature flag states...');
           const featureFlagStatesData = await apiService.featureFlagStates.getAll();
-          console.log('Feature Flag States API Response:', featureFlagStatesData);
           
           // Handle different response structures for feature flag states
           let states: FeatureFlagState[] = [];
           if (featureFlagStatesData && featureFlagStatesData.status === 'success' && featureFlagStatesData.data && featureFlagStatesData.data.results) {
-            console.log('Using correct feature flag states API response structure');
             states = featureFlagStatesData.data.results;
           } else if (Array.isArray(featureFlagStatesData)) {
-            console.log('Using direct feature flag states array response');
             states = featureFlagStatesData;
           } else if (featureFlagStatesData && Array.isArray(featureFlagStatesData.data)) {
-            console.log('Using feature flag states data array response');
             states = featureFlagStatesData.data;
           } else if (featureFlagStatesData && featureFlagStatesData.states && Array.isArray(featureFlagStatesData.states)) {
-            console.log('Using feature flag states states array response');
             states = featureFlagStatesData.states;
           } else if (featureFlagStatesData && featureFlagStatesData.status === 'error') {
-            console.warn('Feature flag states API returned error:', featureFlagStatesData.message);
             // Don't throw error for states, just set empty array
             states = [];
           } else {
-            console.warn('Unexpected feature flag states API response structure:', featureFlagStatesData);
             states = [];
           }
           
-          console.log('Final feature flag states:', states);
           setFeatureFlagStates(states);
           
         } catch (error) {
@@ -208,7 +187,6 @@ const SwitchBoard: React.FC = () => {
       loadData();
     } else if (!authLoading && !isAuthenticated) {
       // User is not authenticated, show empty state or redirect
-      console.log('User not authenticated, showing empty state');
       setFeatures([]);
       setFeatureFlagStates([]);
     }
@@ -436,10 +414,7 @@ const SwitchBoard: React.FC = () => {
         end_date: formatDateForAPI(newState.end_date ?? null)
       };
 
-      console.log('Creating new feature flag state with data:', stateData);
-
       const response = await apiService.featureFlagStates.create(stateData);
-      console.log('API Response:', response);
       
       // Handle different response structures
       let newFeatureFlagState: FeatureFlagState;
@@ -675,7 +650,7 @@ const SwitchBoard: React.FC = () => {
           end_date: formatDateForAPI(editingState.end_date)
         };
 
-        console.log('Updating feature flag state:', editingState.id, 'with data:', updateData);
+
 
         const updatedState = await apiService.featureFlagStates.update(editingState.id, updateData);
         

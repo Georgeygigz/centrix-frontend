@@ -91,7 +91,6 @@ const StudentAdmissionBlocked: React.FC<StudentAdmissionBlockedProps> = ({
             }`}
             onClick={() => {
               // You can add navigation or contact functionality here
-              console.log('Action button clicked');
             }}
           >
             {getActionText()}

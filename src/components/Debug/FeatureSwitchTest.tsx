@@ -20,9 +20,7 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testFeatureCheck = async () => {
     try {
-      console.log('Testing feature check...');
       const result = await featureSwitchService.checkFeature('student_admission_billing');
-      console.log('Feature check result:', result);
     } catch (error) {
       console.error('Feature check error:', error);
     }
@@ -30,12 +28,10 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testBulkFeatureCheck = async () => {
     try {
-      console.log('Testing bulk feature check...');
       const result = await featureSwitchService.checkFeaturesBulk([
         'student_admission_billing',
         'student_admission_maintenance'
       ]);
-      console.log('Bulk feature check result:', result);
     } catch (error) {
       console.error('Bulk feature check error:', error);
     }
@@ -43,9 +39,7 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testGetFeatureFlags = async () => {
     try {
-      console.log('Testing get feature flags...');
       const result = await featureSwitchService.getFeatureFlags();
-      console.log('Feature flags result:', result);
     } catch (error) {
       console.error('Get feature flags error:', error);
     }
@@ -53,9 +47,7 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testGetFeatureFlagStates = async () => {
     try {
-      console.log('Testing get feature flag states...');
       const result = await featureSwitchService.getFeatureFlagStates();
-      console.log('Feature flag states result:', result);
     } catch (error) {
       console.error('Get feature flag states error:', error);
     }
@@ -63,9 +55,7 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testGetStudentAdmissionFeatureData = async () => {
     try {
-      console.log('Testing get student admission feature data...');
       const result = await featureSwitchService.getStudentAdmissionFeatureData();
-      console.log('Student admission feature data:', result);
     } catch (error) {
       console.error('Get student admission feature data error:', error);
     }
@@ -73,9 +63,7 @@ const FeatureSwitchTest: React.FC = () => {
 
   const testGetDetailedStatus = async () => {
     try {
-      console.log('Testing get detailed status...');
       const result = await featureSwitchService.getStudentAdmissionDetailedStatus();
-      console.log('Detailed status result:', result);
     } catch (error) {
       console.error('Get detailed status error:', error);
     }
