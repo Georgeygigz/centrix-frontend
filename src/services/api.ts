@@ -1,4 +1,4 @@
-import { Student, CreateStudentRequest, CreateSchoolRequest, Class, Stream } from '../types/dashboard';
+import { Student, CreateStudentRequest, CreateSchoolRequest, Class, Stream, StudentQueryParams } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 import { UpdateUserRequest, PaginationParams } from '../types/users';
 
@@ -194,12 +194,61 @@ export const apiService = {
 
   // Students API
   students: {
-    // Get all students for current school with pagination support
-    getAll: async (page: number = 1, pageSize: number = 20, search?: string) => {
-      let url = `/students/admissions?page=${page}&page_size=${pageSize}`;
+    // Get all students for current school with pagination and filtering support
+    getAll: async (params: StudentQueryParams = {}) => {
+      const {
+        page = 1,
+        page_size = 20,
+        search,
+        admission_year,
+        boarding_status,
+        class_on_admission,
+        current_only,
+        exempted_from_religious_instruction,
+        gender,
+        max_age,
+        min_age,
+        ordering
+      } = params;
+
+      let url = `/students/admissions?page=${page}&page_size=${page_size}`;
+      
+      // Add search parameter
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
+      
+      // Add filtering parameters
+      if (admission_year !== undefined) {
+        url += `&admission_year=${admission_year}`;
+      }
+      if (boarding_status) {
+        url += `&boarding_status=${encodeURIComponent(boarding_status)}`;
+      }
+      if (class_on_admission) {
+        url += `&class_on_admission=${encodeURIComponent(class_on_admission)}`;
+      }
+      if (current_only) {
+        url += `&current_only=${encodeURIComponent(current_only)}`;
+      }
+      if (exempted_from_religious_instruction !== undefined) {
+        url += `&exempted_from_religious_instruction=${exempted_from_religious_instruction}`;
+      }
+      if (gender) {
+        url += `&gender=${encodeURIComponent(gender)}`;
+      }
+      if (max_age !== undefined) {
+        url += `&max_age=${max_age}`;
+      }
+      if (min_age !== undefined) {
+        url += `&min_age=${min_age}`;
+      }
+      
+      // Add ordering parameter
+      if (ordering) {
+        url += `&ordering=${encodeURIComponent(ordering)}`;
+      }
+      
       return apiService.authenticatedRequest(url, { method: 'GET' });
     },
 

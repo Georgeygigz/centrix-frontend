@@ -28,6 +28,14 @@ export interface CombinedStatus {
 }
 
 export interface DetailedStatus {
+  exempt_from_restrictions: {
+    users: string[];
+    schools: string[];
+  };
+  to_be_restricted: {
+    users: string[];
+    schools: string[];
+  };
   billing_status: FeatureStatusItem[];
   maintenance_status: FeatureStatusItem[];
   combined_status: CombinedStatus;
