@@ -93,6 +93,28 @@ export interface CreateStudentRequest {
   remarks?: string;
 }
 
+export interface StudentQueryParams {
+  // Pagination
+  page?: number;
+  page_size?: number;
+  
+  // Search
+  search?: string;
+  
+  // Filtering
+  admission_year?: number;
+  boarding_status?: string;
+  class_on_admission?: string;
+  current_only?: string;
+  exempted_from_religious_instruction?: boolean;
+  gender?: string;
+  max_age?: number;
+  min_age?: number;
+  
+  // Sorting
+  ordering?: string;
+}
+
 export interface DashboardState {
   currentPage: string;
   sidebarCollapsed: boolean;

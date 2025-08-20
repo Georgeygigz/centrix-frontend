@@ -32,18 +32,26 @@ export const useFeatureSwitch = (): UseFeatureSwitchReturn => {
     if (isRootUser) {
       setStudentAdmissionDetailedStatus({
         detailed_status: {
+          exempt_from_restrictions: {
+            users: [],
+            schools: []
+          },
+          to_be_restricted: {
+            users: [],
+            schools: []
+          },
           billing_status: [],
           maintenance_status: [],
           combined_status: {
-            is_enabled: false, // Root users are never blocked
+            is_enabled: true, // Root users are never blocked
             billing_blocked: false,
             maintenance_blocked: false,
             billing_status: {
-              is_enabled: false,
+              is_enabled: true,
               message: 'Root user - billing restrictions bypassed'
             },
             maintenance_status: {
-              is_enabled: false,
+              is_enabled: true,
               message: 'Root user - maintenance restrictions bypassed'
             },
             message: 'Root user - all features enabled'
@@ -67,18 +75,26 @@ export const useFeatureSwitch = (): UseFeatureSwitchReturn => {
       // Set default status if there's an error
       setStudentAdmissionDetailedStatus({
         detailed_status: {
+          exempt_from_restrictions: {
+            users: [],
+            schools: []
+          },
+          to_be_restricted: {
+            users: [],
+            schools: []
+          },
           billing_status: [],
           maintenance_status: [],
           combined_status: {
-            is_enabled: false, // Default to not blocked if there's an error
+            is_enabled: true, // Default to enabled if there's an error
             billing_blocked: false,
             maintenance_blocked: false,
             billing_status: {
-              is_enabled: false,
+              is_enabled: true,
               message: 'Feature is active'
             },
             maintenance_status: {
-              is_enabled: false,
+              is_enabled: true,
               message: 'Feature is active'
             },
             message: 'Unable to determine feature status'
@@ -101,7 +117,7 @@ export const useFeatureSwitch = (): UseFeatureSwitchReturn => {
 
   // Computed values - root users are never blocked
   const combinedStatus = studentAdmissionDetailedStatus?.detailed_status?.combined_status;
-  const isStudentAdmissionBlocked = isRootUser ? false : (combinedStatus?.is_enabled || false);
+  const isStudentAdmissionBlocked = isRootUser ? false : !(combinedStatus?.is_enabled || false);
   const isBillingBlocked = isRootUser ? false : (combinedStatus?.billing_blocked || false);
   const isMaintenanceBlocked = isRootUser ? false : (combinedStatus?.maintenance_blocked || false);
   const blockMessage = isRootUser ? 'Root user - all features enabled' : (combinedStatus?.message || '');
