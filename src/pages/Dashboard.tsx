@@ -5,6 +5,7 @@ import Students from '../components/Students/Students';
 import SwitchBoard from '../components/SwitchBoard/SwitchBoard';
 import Users from '../components/Users/Users';
 import Schools from '../components/Schools/Schools';
+import Parents from '../components/Parents/Parents';
 
 
 const Dashboard: React.FC = () => {
@@ -22,6 +23,7 @@ const Dashboard: React.FC = () => {
       'admin-panel': 'Admin Panel',
       'admin-schools': 'Admin - Schools',
       'admin-users': 'Admin - Users',
+      'admin-parents': 'Admin - Parents',
       'admin-features': 'Admin - Switch Board',
     };
     return pageTitles[page] || 'Dashboard';
@@ -46,6 +48,8 @@ const Dashboard: React.FC = () => {
                return <Schools />;
       case 'admin-users':
         return <Users />;
+      case 'admin-parents':
+        return <Parents />;
       case 'admin-features':
         return <SwitchBoard />;
 

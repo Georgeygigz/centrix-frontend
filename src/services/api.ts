@@ -1,6 +1,7 @@
 import { Student, CreateStudentRequest, CreateSchoolRequest, Class, Stream, StudentQueryParams } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 import { UpdateUserRequest, PaginationParams } from '../types/users';
+import { CreateParentRequest, UpdateParentRequest, ParentQueryParams } from '../types/parents';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -78,7 +79,8 @@ export const apiService = {
     const headers = apiService.getAuthHeaders();
     
     // Ensure proper URL construction (avoid double slashes)
-    const fullUrl = url.startsWith('/') ? `${API_BASE_URL}${url}` : `${API_BASE_URL}/${url}`;
+    const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+    const fullUrl = `${API_BASE_URL}/${cleanUrl}`;
     
     const response = await fetch(fullUrl, {
       ...options,
@@ -335,6 +337,31 @@ export const apiService = {
         body: JSON.stringify(streamData)
       });
     },
+
+    // Associate a parent with a student
+        associateParent: async (studentId: string, parentData: { 
+      parent: string;
+      relationship_type: string;
+      is_primary_contact: boolean;
+      is_emergency_contact: boolean;
+      can_pick_up: boolean;
+      notes: string;
+    }) => {
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}/parents`, {
+        method: 'POST',
+        body: JSON.stringify(parentData),
+      });
+    },
+    getParents: async (studentId: string) => {
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}/parents`, {
+        method: 'GET',
+      });
+    },
+    disassociateParent: async (studentId: string, relationshipId: string) => {
+      return apiService.authenticatedRequest(`/students/admissions/${studentId}/parents/${relationshipId}`, {
+        method: 'DELETE',
+      });
+    },
   },
 
   // Feature Flags API
@@ -564,6 +591,56 @@ export const apiService = {
         method: 'POST',
         body: JSON.stringify({ password }),
       });
+    },
+  },
+
+  // Parents API
+  parents: {
+    // Get all parents with pagination and filtering
+    getAll: async (params?: ParentQueryParams) => {
+      const queryParams = new URLSearchParams();
+      
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.page_size) queryParams.append('page_size', params.page_size.toString());
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.relationship) queryParams.append('relationship', params.relationship);
+      if (params?.ordering) queryParams.append('ordering', params.ordering);
+      
+      const queryString = queryParams.toString();
+      const url = queryString ? `/parents?${queryString}` : '/parents';
+      
+      return apiService.authenticatedRequest(url, { method: 'GET' });
+    },
+
+    // Get parent by ID
+    getById: async (parentId: string) => {
+      return apiService.authenticatedRequest(`/parents/${parentId}`, { method: 'GET' });
+    },
+
+    // Create new parent
+    create: async (parentData: CreateParentRequest) => {
+      return apiService.authenticatedRequest('/parents/', {
+        method: 'POST',
+        body: JSON.stringify(parentData),
+      });
+    },
+
+    // Update parent by ID
+    update: async (parentId: string, parentData: UpdateParentRequest) => {
+      return apiService.authenticatedRequest(`/parents/${parentId}`, {
+        method: 'PUT',
+        body: JSON.stringify(parentData),
+      });
+    },
+
+    // Delete parent by ID
+    delete: async (parentId: string) => {
+      return apiService.authenticatedRequest(`/parents/${parentId}`, { method: 'DELETE' });
+    },
+
+    // Get students for a specific parent
+    getStudents: async (parentId: string) => {
+      return apiService.authenticatedRequest(`/students/parents/${parentId}/students`, { method: 'GET' });
     },
   },
 };

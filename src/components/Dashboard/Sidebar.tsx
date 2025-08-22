@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool } from 'react-icons/fa';
+import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends } from 'react-icons/fa';
 import { NavigationItem } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
 import { useRoleBasedUI } from '../../hooks/usePermissions';
@@ -36,10 +36,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       children: userRole === 'super_admin' 
         ? [
             { id: 'admin-users', label: 'Users', icon: FaUsers },
+            { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
           ]
         : [
             { id: 'admin-schools', label: 'Schools', icon: FaSchool },
             { id: 'admin-users', label: 'Users', icon: FaUsers },
+            { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
             { id: 'admin-features', label: 'Switch Board', icon: FaCog },
           ],
     },

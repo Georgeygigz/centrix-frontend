@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaUserFriends } from 'react-icons/fa';
 import { Student, Stream, Class } from '../../types/dashboard';
+import { Parent } from '../../types/parents';
 import StudentModal from './StudentModal';
 import { apiService, convertStudentToCreateRequest, getChangedFields } from '../../services/api';
 import { PermissionGate } from '../RBAC';
@@ -102,6 +103,42 @@ const Students: React.FC = () => {
   const [originalClass, setOriginalClass] = useState<Class | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Add Parent state
+  const [isAddParentDrawerOpen, setIsAddParentDrawerOpen] = useState(false);
+  const [selectedStudentForParent, setSelectedStudentForParent] = useState<Student | null>(null);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [loadingParents, setLoadingParents] = useState(false);
+  const [newParentRelationship, setNewParentRelationship] = useState({
+    parent: '',
+    relationship_type: '',
+    is_primary_contact: false,
+    is_emergency_contact: false,
+    can_pick_up: false,
+    notes: ''
+  });
+  const [parentFormErrors, setParentFormErrors] = useState<{ [key: string]: string[] }>({});
+  const [parentSearchQuery, setParentSearchQuery] = useState('');
+  const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
+
+  // Close parent dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.parent-dropdown-container')) {
+        setIsParentDropdownOpen(false);
+        setParentSearchQuery('');
+      }
+    };
+
+    if (isParentDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isParentDropdownOpen]);
   const [activeSection, setActiveSection] = useState<string>('basic-info');
   const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
@@ -743,6 +780,109 @@ const Students: React.FC = () => {
     setEditingClass(null);
     setOriginalClass(null);
     setEditFormErrors({}); // Clear errors when closing
+  };
+
+  // Add Parent functions
+  const handleAddParent = (student: Student) => {
+    setSelectedStudentForParent(student);
+    setIsAddParentDrawerOpen(true);
+    setOpenDropdownId(null);
+    
+    // Reset form
+    setNewParentRelationship({
+      parent: '',
+      relationship_type: '',
+      is_primary_contact: false,
+      is_emergency_contact: false,
+      can_pick_up: false,
+      notes: ''
+    });
+    
+    // Fetch parents for dropdown
+    fetchParents();
+  };
+
+  const closeAddParentDrawer = () => {
+    setIsAddParentDrawerOpen(false);
+    setSelectedStudentForParent(null);
+    setNewParentRelationship({
+      parent: '',
+      relationship_type: '',
+      is_primary_contact: false,
+      is_emergency_contact: false,
+      can_pick_up: false,
+      notes: ''
+    });
+    setParentFormErrors({});
+  };
+
+  const fetchParents = async () => {
+    try {
+      setLoadingParents(true);
+      const response = await apiService.parents.getAll();
+      setParents(response.results || []);
+    } catch (error) {
+      console.error('Error fetching parents:', error);
+      setToast({
+        message: 'Failed to fetch parents. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setLoadingParents(false);
+    }
+  };
+
+  // Get field error for parent form
+  const getParentFieldError = (fieldName: string): string | null => {
+    return parentFormErrors[fieldName]?.[0] || null;
+  };
+
+  const handleAddParentSubmit = async () => {
+    if (!selectedStudentForParent || !selectedStudentForParent.id || !newParentRelationship.parent || !newParentRelationship.relationship_type) {
+      setToast({
+        message: 'Please fill in all required fields.',
+        type: 'error'
+      });
+      return;
+    }
+
+    try {
+      await apiService.students.associateParent(selectedStudentForParent.id, newParentRelationship);
+      
+      setToast({
+        message: 'Parent associated successfully!',
+        type: 'success'
+      });
+      
+      closeAddParentDrawer();
+      
+      // Refresh students list by calling the existing fetch function
+      // We'll just close the drawer for now since the parent association doesn't change the student list
+      
+    } catch (error: any) {
+      console.error('Error associating parent:', error);
+      console.log('Error response data:', error.response?.data);
+      
+      // Handle validation errors from API response
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        console.log('Setting form errors:', errors);
+        setParentFormErrors(errors);
+        
+        // Show general error message if there are non-field errors
+        if (errors.non_field_errors && errors.non_field_errors.length > 0) {
+          setToast({
+            message: errors.non_field_errors[0],
+            type: 'error'
+          });
+        }
+      } else {
+        setToast({
+          message: 'Failed to associate parent. Please try again.',
+          type: 'error'
+        });
+      }
+    }
   };
 
   const handleSaveStudent = async () => {
@@ -3090,6 +3230,25 @@ const Students: React.FC = () => {
                 </button>
               </DisabledButtonWithTooltip>
             </PermissionGate>
+            
+            {/* Add Parent button - only show for students */}
+            {activeTab === 'admission' && (
+              <PermissionGate permissions={['student_crud']}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const student = students.find(s => s.id === openDropdownId);
+                    if (student) {
+                      handleAddParent(student);
+                    }
+                  }}
+                  className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors duration-200"
+                >
+                  {FaUserFriends({ className: "w-3 h-3 mr-2" })}
+                  Add Parent
+                </button>
+              </PermissionGate>
+            )}
             <PermissionGate permissions={['student_crud']}>
               <DisabledButtonWithTooltip
                 tooltipMessage={!featureSwitchLoading && isStudentAdmissionBlocked ? blockMessage : ''}
@@ -3131,6 +3290,319 @@ const Students: React.FC = () => {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Add Parent Drawer */}
+      {isAddParentDrawerOpen && selectedStudentForParent && (
+        <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
+          isAddParentDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+        }`}>
+          <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
+            isAddParentDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}>
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add Parent</h2>
+                <p className="text-xs text-gray-500 mt-1 font-modern">
+                  Associate parent with {selectedStudentForParent.fullName || selectedStudentForParent.pupil_name}
+                </p>
+              </div>
+              <button
+                onClick={closeAddParentDrawer}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-6 space-y-4">
+                {/* General Error Display */}
+                {parentFormErrors.non_field_errors && parentFormErrors.non_field_errors.length > 0 && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-4 w-4 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-xs text-red-800">
+                          {parentFormErrors.non_field_errors[0]}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Parent Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Parent *
+                  </label>
+                  {loadingParents ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-xs text-gray-500">Loading parents...</span>
+                    </div>
+                  ) : (
+                    <div className="relative parent-dropdown-container">
+                      <div
+                        className={`w-full px-3 py-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200 bg-gray-50 focus-within:bg-white text-xs cursor-pointer ${
+                          getParentFieldError('parent') ? 'border-red-300 focus-within:ring-red-500' : 'border-gray-200'
+                        }`}
+                        onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={newParentRelationship.parent ? 'text-gray-900' : 'text-gray-500'}>
+                            {newParentRelationship.parent 
+                              ? parents.find(p => p.id === newParentRelationship.parent)?.full_name + ' (' + parents.find(p => p.id === newParentRelationship.parent)?.relationship + ')'
+                              : 'Select a parent'
+                            }
+                          </span>
+                          <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isParentDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                      
+                      {isParentDropdownOpen && (
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
+                          {/* Search Input */}
+                          <div className="p-2 border-b border-gray-100">
+                            <input
+                              type="text"
+                              placeholder="Search parents..."
+                              value={parentSearchQuery}
+                              onChange={(e) => setParentSearchQuery(e.target.value)}
+                              className="w-full px-3 py-2 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                          
+                          {/* Parent List */}
+                          <div className="max-h-48 overflow-y-auto">
+                            {parents
+                              .filter(parent => 
+                                parent.full_name.toLowerCase().includes(parentSearchQuery.toLowerCase()) ||
+                                parent.relationship.toLowerCase().includes(parentSearchQuery.toLowerCase()) ||
+                                parent.email.toLowerCase().includes(parentSearchQuery.toLowerCase())
+                              )
+                              .map((parent) => (
+                                <div
+                                  key={parent.id}
+                                  className="px-3 py-2 text-xs hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                  onClick={() => {
+                                    setNewParentRelationship(prev => ({
+                                      ...prev,
+                                      parent: parent.id
+                                    }));
+                                    setIsParentDropdownOpen(false);
+                                    setParentSearchQuery('');
+                                    // Clear error when user makes a selection
+                                    if (parentFormErrors.parent) {
+                                      setParentFormErrors(prev => ({ ...prev, parent: [] }));
+                                    }
+                                  }}
+                                >
+                                  <div className="font-medium text-gray-900">{parent.full_name}</div>
+                                  <div className="text-gray-500 text-xs">
+                                    {parent.relationship} • {parent.email}
+                                  </div>
+                                </div>
+                              ))}
+                            
+                            {parents.filter(parent => 
+                              parent.full_name.toLowerCase().includes(parentSearchQuery.toLowerCase()) ||
+                              parent.relationship.toLowerCase().includes(parentSearchQuery.toLowerCase()) ||
+                              parent.email.toLowerCase().includes(parentSearchQuery.toLowerCase())
+                            ).length === 0 && (
+                              <div className="px-3 py-2 text-xs text-gray-500 text-center">
+                                No parents found
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {getParentFieldError('parent') && (
+                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('parent')}</p>
+                  )}
+                </div>
+
+                {/* Relationship Type */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Relationship Type *
+                  </label>
+                  <select
+                    value={newParentRelationship.relationship_type}
+                    onChange={(e) => {
+                      setNewParentRelationship(prev => ({
+                        ...prev,
+                        relationship_type: e.target.value
+                      }));
+                      // Clear error when user makes a selection
+                      if (parentFormErrors.relationship_type) {
+                        setParentFormErrors(prev => ({ ...prev, relationship_type: [] }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                      getParentFieldError('relationship_type') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                    }`}
+                  >
+                    <option value="">Select relationship</option>
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {getParentFieldError('relationship_type') && (
+                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('relationship_type')}</p>
+                  )}
+                </div>
+
+                {/* Checkboxes */}
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="is_primary_contact"
+                        checked={newParentRelationship.is_primary_contact}
+                        onChange={(e) => {
+                          setNewParentRelationship(prev => ({
+                            ...prev,
+                            is_primary_contact: e.target.checked
+                          }));
+                          // Clear error when user changes the checkbox
+                          if (parentFormErrors.is_primary_contact) {
+                            setParentFormErrors(prev => ({ ...prev, is_primary_contact: [] }));
+                          }
+                        }}
+                        className={`w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 ${
+                          getParentFieldError('is_primary_contact') ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <label htmlFor="is_primary_contact" className="ml-2 text-xs text-gray-700">
+                        Primary Contact
+                      </label>
+                    </div>
+                    {getParentFieldError('is_primary_contact') && (
+                      <p className="mt-1 ml-6 text-xs text-red-600">{getParentFieldError('is_primary_contact')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="is_emergency_contact"
+                        checked={newParentRelationship.is_emergency_contact}
+                        onChange={(e) => {
+                          setNewParentRelationship(prev => ({
+                            ...prev,
+                            is_emergency_contact: e.target.checked
+                          }));
+                          // Clear error when user changes the checkbox
+                          if (parentFormErrors.is_emergency_contact) {
+                            setParentFormErrors(prev => ({ ...prev, is_emergency_contact: [] }));
+                          }
+                        }}
+                        className={`w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 ${
+                          getParentFieldError('is_emergency_contact') ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <label htmlFor="is_emergency_contact" className="ml-2 text-xs text-gray-700">
+                        Emergency Contact
+                      </label>
+                    </div>
+                    {getParentFieldError('is_emergency_contact') && (
+                      <p className="mt-1 ml-6 text-xs text-red-600">{getParentFieldError('is_emergency_contact')}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="can_pick_up"
+                        checked={newParentRelationship.can_pick_up}
+                        onChange={(e) => {
+                          setNewParentRelationship(prev => ({
+                            ...prev,
+                            can_pick_up: e.target.checked
+                          }));
+                          // Clear error when user changes the checkbox
+                          if (parentFormErrors.can_pick_up) {
+                            setParentFormErrors(prev => ({ ...prev, can_pick_up: [] }));
+                          }
+                        }}
+                        className={`w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 ${
+                          getParentFieldError('can_pick_up') ? 'border-red-300' : ''
+                        }`}
+                      />
+                      <label htmlFor="can_pick_up" className="ml-2 text-xs text-gray-700">
+                        Can Pick Up
+                      </label>
+                    </div>
+                    {getParentFieldError('can_pick_up') && (
+                      <p className="mt-1 ml-6 text-xs text-red-600">{getParentFieldError('can_pick_up')}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    Notes
+                  </label>
+                  <textarea
+                    value={newParentRelationship.notes}
+                    onChange={(e) => {
+                      setNewParentRelationship(prev => ({
+                        ...prev,
+                        notes: e.target.value
+                      }));
+                      // Clear error when user types
+                      if (parentFormErrors.notes) {
+                        setParentFormErrors(prev => ({ ...prev, notes: [] }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
+                      getParentFieldError('notes') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                    }`}
+                    placeholder="Additional notes about this parent relationship"
+                    rows={3}
+                  />
+                  {getParentFieldError('notes') && (
+                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('notes')}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+              <button
+                onClick={closeAddParentDrawer}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddParentSubmit}
+                disabled={!newParentRelationship.parent || !newParentRelationship.relationship_type}
+                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+              >
+                Add Parent
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       {/* Toast Notification */}
