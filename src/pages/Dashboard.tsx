@@ -6,6 +6,10 @@ import SwitchBoard from '../components/SwitchBoard/SwitchBoard';
 import Users from '../components/Users/Users';
 import Schools from '../components/Schools/Schools';
 import Parents from '../components/Parents/Parents';
+import { 
+  BillingDashboard, 
+  BillingPlans
+} from '../components/Billing';
 
 
 const Dashboard: React.FC = () => {
@@ -25,6 +29,11 @@ const Dashboard: React.FC = () => {
       'admin-users': 'Admin - Users',
       'admin-parents': 'Admin - Parents',
       'admin-features': 'Admin - Switch Board',
+      
+      // Billing pages
+      'admin-billing': 'Admin - Billing',
+      'admin-billing-dashboard': 'Admin - Billing Dashboard',
+      'admin-billing-plans': 'Admin - Billing Plans',
     };
     return pageTitles[page] || 'Dashboard';
   };
@@ -52,6 +61,14 @@ const Dashboard: React.FC = () => {
         return <Parents />;
       case 'admin-features':
         return <SwitchBoard />;
+
+      // Billing routes
+      case 'admin-billing':
+        return <div className="p-6 text-center text-gray-500">Billing - Select a sub-item from the sidebar</div>;
+      case 'admin-billing-dashboard':
+        return <BillingDashboard />;
+      case 'admin-billing-plans':
+        return <BillingPlans />;
 
       default:
         return <Students />;
