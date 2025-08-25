@@ -1,8 +1,7 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends } from 'react-icons/fa';
+import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends, FaCreditCard, FaChartLine, FaCogs } from 'react-icons/fa';
 import { NavigationItem } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
-import { useRoleBasedUI } from '../../hooks/usePermissions';
 import { useRBAC } from '../../context/RBACContext';
 
 interface SidebarProps {
@@ -12,8 +11,9 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
   const { logout } = useAuth();
-  const ui = useRoleBasedUI();
-  const { userRole } = useRBAC();
+  const { userRole, hasPermission } = useRBAC();
+  
+
   
   const navigationItems: NavigationItem[] = [
     {
@@ -33,19 +33,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       label: 'Admin Panel',
       icon: FaCog,
       requiredPermissions: ['access_admin_panel'],
-      children: userRole === 'super_admin' 
-        ? [
-            { id: 'admin-users', label: 'Users', icon: FaUsers },
-            { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
+      children: [
+        ...(userRole !== 'super_admin' ? [
+          { id: 'admin-schools', label: 'Schools', icon: FaSchool },
+        ] : []),
+        { id: 'admin-users', label: 'Users', icon: FaUsers },
+        { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
+        ...(userRole !== 'super_admin' ? [
+          { id: 'admin-features', label: 'Switch Board', icon: FaCog },
+        ] : []),
+        { 
+          id: 'admin-billing', 
+          label: 'Billing', 
+          icon: FaCreditCard,
+          requiredPermissions: ['access_billing'],
+          children: [
+            { id: 'admin-billing-dashboard', label: 'Dashboard', icon: FaChartLine },
+            { id: 'admin-billing-plans', label: 'Billing Plans', icon: FaCogs },
           ]
-        : [
-            { id: 'admin-schools', label: 'Schools', icon: FaSchool },
-            { id: 'admin-users', label: 'Users', icon: FaUsers },
-            { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
-            { id: 'admin-features', label: 'Switch Board', icon: FaCog },
-          ],
+        },
+      ],
     },
   ];
+
+
 
   return (
     <div className="w-56 bg-white h-screen shadow-lg border-r border-gray-200">
@@ -68,10 +79,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
         <ul className="space-y-1">
           {navigationItems.map((item) => {
             // Check if user has permission to see this navigation item
-            const hasPermission = !item.requiredPermissions || 
-              item.requiredPermissions.some(permission => ui.hasPermission(permission));
+            const hasItemPermission = !item.requiredPermissions || 
+              item.requiredPermissions.some(permission => hasPermission(permission));
             
-            if (!hasPermission) return null;
+
+            
+            if (!hasItemPermission) return null;
             
             return (
               <li key={item.id}>
@@ -93,25 +106,59 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
                 </button>
                 
                 {/* Sub-items */}
-                {item.children && (currentPage === item.id || item.children.some(child => child.id === currentPage)) && (
+                {item.children && (
                   <ul className="mt-1 ml-4 space-y-1">
-                    {item.children.map((subItem) => (
-                      <li key={subItem.id}>
-                        <button
-                          onClick={() => onPageChange(subItem.id)}
-                          className={`w-full flex items-center space-x-2 px-2 py-1 rounded text-left transition-all duration-200 ${
-                            currentPage === subItem.id
-                              ? 'text-blue-600 bg-blue-50'
-                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-                          }`}
-                        >
-                          {subItem.icon({ className: `w-3 h-3 ${currentPage === subItem.id ? 'text-blue-600' : 'text-gray-400'}` })}
-                          <span className="text-xs">{subItem.label}</span>
-                        </button>
-                      </li>
-                    ))}
+                    {item.children.map((subItem) => {
+                      // Check if user has permission to see this sub-item
+                      const hasSubItemPermission = !subItem.requiredPermissions || 
+                        subItem.requiredPermissions.some(permission => hasPermission(permission));
+                      
+
+                      
+                      if (!hasSubItemPermission) return null;
+                      
+                      return (
+                        <li key={subItem.id}>
+                          <button
+                            onClick={() => onPageChange(subItem.id)}
+                            className={`w-full flex items-center space-x-2 px-2 py-1 rounded text-left transition-all duration-200 ${
+                              currentPage === subItem.id
+                                ? 'text-blue-600 bg-blue-50'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                            }`}
+                          >
+                            {subItem.icon({ className: `w-3 h-3 ${currentPage === subItem.id ? 'text-blue-600' : 'text-gray-400'}` })}
+                            <span className="text-xs">{subItem.label}</span>
+                          </button>
+                          
+                          {/* Sub-sub-items (for billing children) */}
+                          {subItem.children && (currentPage === subItem.id || subItem.children.some(child => child.id === currentPage)) && (
+                            <ul className="mt-1 ml-4 space-y-1">
+                              {subItem.children.map((subSubItem) => (
+                                <li key={subSubItem.id}>
+                                  <button
+                                    onClick={() => onPageChange(subSubItem.id)}
+                                    className={`w-full flex items-center space-x-2 px-2 py-1 rounded text-left transition-all duration-200 ${
+                                      currentPage === subSubItem.id
+                                        ? 'text-blue-600 bg-blue-50'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                                    }`}
+                                  >
+                                    {subSubItem.icon({ className: `w-3 h-3 ${currentPage === subSubItem.id ? 'text-blue-600' : 'text-gray-400'}` })}
+                                    <span className="text-xs">{subSubItem.label}</span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
+
+
+
               </li>
             );
           })}

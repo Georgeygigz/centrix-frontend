@@ -17,7 +17,14 @@ export type Permission =
   | 'access_reports'
   | 'access_settings'
   | 'access_customer_support'
-  | 'access_admin_panel';
+  | 'access_admin_panel'
+  | 'access_billing'
+  | 'manage_billing_features'
+  | 'manage_billing_plans'
+  | 'view_billing_dashboard'
+  | 'manage_school_subscriptions'
+  | 'view_invoices'
+  | 'manage_invoices';
 
 // Permission matrix defining what each role can do
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
@@ -36,7 +43,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'access_reports',
     'access_settings',
     'access_customer_support',
-    'access_admin_panel'
+    'access_admin_panel',
+    'access_billing',
+    'manage_billing_features',
+    'manage_billing_plans',
+    'view_billing_dashboard',
+    'manage_school_subscriptions',
+    'view_invoices',
+    'manage_invoices'
   ],
   super_admin: [
     'view_own_school',
@@ -48,7 +62,14 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'access_reports',
     'access_settings',
     'access_customer_support',
-    'access_admin_panel'
+    'access_admin_panel',
+    'access_billing',
+    'manage_billing_features',
+    'manage_billing_plans',
+    'view_billing_dashboard',
+    'manage_school_subscriptions',
+    'view_invoices',
+    'manage_invoices'
   ],
   admin: [
     'view_own_school',
