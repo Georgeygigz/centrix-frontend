@@ -4,12 +4,25 @@ import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTra
 import { PermissionGate } from '../RBAC';
 import { apiService } from '../../services/api';
 import { User, UpdateUserRequest, PaginationParams } from '../../types/users';
-
-
-
-
+import { useFeatureSwitch } from '../../hooks/useFeatureSwitch';
+import DisabledButtonWithTooltip from '../Students/DisabledButtonWithTooltip';
+import { useAuth } from '../../context/AuthContext';
 
 const Users: React.FC = () => {
+  // Auth context
+  const { user } = useAuth();
+  
+  // Feature switch hook
+  const {
+    isStudentAdmissionBlocked,
+    blockMessage,
+    isLoading: featureSwitchLoading,
+    error: featureSwitchError,
+    refreshStatus: refreshFeatureStatus
+  } = useFeatureSwitch();
+
+  const isRootUser = user?.role === 'root';
+
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('');
@@ -20,6 +33,7 @@ const Users: React.FC = () => {
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [originalUser, setOriginalUser] = useState<User | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
@@ -130,15 +144,12 @@ const Users: React.FC = () => {
     }
   };
 
-  // Get current user role
-  const getCurrentUserRole = async () => {
-    try {
-      const response = await apiService.authenticatedRequest('/users/me', { method: 'GET' });
-      setCurrentUserRole(response.user_role || '');
-    } catch (err) {
-      console.error('Error getting current user role:', err);
+  // Get current user role from auth context
+  useEffect(() => {
+    if (user?.role) {
+      setCurrentUserRole(user.role);
     }
-  };
+  }, [user?.role]);
 
 
 
@@ -177,7 +188,6 @@ const Users: React.FC = () => {
       }
       
       await fetchSchools();
-      await getCurrentUserRole();
     };
     loadInitialData();
   }, [pageSize]); // Include pageSize dependency
@@ -355,7 +365,8 @@ const Users: React.FC = () => {
   };
 
   const handleEditUser = (user: User) => {
-    setEditingUser(user);
+    setEditingUser({ ...user });
+    setOriginalUser({ ...user });
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
     setEditFormErrors({});
@@ -440,6 +451,7 @@ const Users: React.FC = () => {
   const closeEditDrawer = () => {
     setIsEditDrawerOpen(false);
     setEditingUser(null);
+    setOriginalUser(null);
     setEditFormErrors({});
   };
 
@@ -537,6 +549,29 @@ const Users: React.FC = () => {
     }
   };
 
+  // Check if any changes have been made
+  const hasChanges = () => {
+    if (!editingUser || !originalUser) return false;
+    
+    const fieldsToCompare: (keyof User)[] = [
+      'first_name', 'last_name', 'surname', 'phone_number', 
+      'role', 'is_active', 'is_staff', 'school_id'
+    ];
+    
+    return fieldsToCompare.some(field => {
+      const originalValue = originalUser[field];
+      const currentValue = editingUser[field];
+      
+      // Handle boolean values
+      if (typeof originalValue === 'boolean' && typeof currentValue === 'boolean') {
+        return originalValue !== currentValue;
+      }
+      
+      // Handle string values
+      return String(originalValue || '') !== String(currentValue || '');
+    });
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -594,6 +629,16 @@ const Users: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-3 mb-4">
           {/* Tabs and Controls Row */}
           <div className="mb-3">
+            {/* Feature Status Indicator */}
+            {!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked && (
+              <div className="mb-3 p-2 rounded-md text-xs font-medium flex items-center space-x-2">
+                <div className="flex items-center space-x-1 text-red-700 bg-red-50 px-2 py-1 rounded">
+                  <span>🚫</span>
+                  <span>Student Admission Blocked - User Management Affected</span>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center justify-between">
               {/* Tabs */}
               <nav className="flex space-x-6">
@@ -631,6 +676,17 @@ const Users: React.FC = () => {
 
               {/* Search, Filter, and Sort Controls */}
               <div className="flex items-center space-x-2">
+                {/* Refresh Feature Status Button */}
+                {featureSwitchError && (
+                  <button
+                    onClick={refreshFeatureStatus}
+                    className="px-3 py-1.5 border border-red-300 bg-red-50 text-red-700 rounded-md text-xs font-medium hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-colors duration-200"
+                    title="Refresh feature status"
+                  >
+                    Refresh Status
+                  </button>
+                )}
+                
                 {/* Search */}
                 <div className="relative">
                   <input
@@ -638,15 +694,27 @@ const Users: React.FC = () => {
                     placeholder="Search users..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+                    disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
+                    className={`pl-8 pr-3 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent text-xs transition-colors duration-200 ${
+                      !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
+                        ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
+                    }`}
                   />
                   <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                    {FaSearch({ className: "h-3 w-3 text-gray-400" })}
+                    {FaSearch({ className: `h-3 w-3 ${!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked ? 'text-gray-300' : 'text-gray-400'}` })}
                   </div>
                 </div>
 
                 {/* Filter */}
-                <button className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                <button 
+                  disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
+                  className={`px-3 py-1.5 border rounded-md text-xs transition-colors duration-200 ${
+                    !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
+                      ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+                  }`}
+                >
                   Filter
                 </button>
 
@@ -659,7 +727,12 @@ const Users: React.FC = () => {
                       setSortDirection('asc');
                     }
                   }}
-                  className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+                  disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
+                  className={`px-3 py-1.5 border rounded-md text-xs focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200 ${
+                    !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
+                      ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-300 text-gray-700 focus:ring-blue-500 focus:border-transparent'
+                  }`}
                 >
                   <option value="">Sort by</option>
                   <option value="username">Username</option>
@@ -673,12 +746,19 @@ const Users: React.FC = () => {
 
                 {/* Add New User Button */}
                 <PermissionGate permissions={['access_admin_panel']}>
-                  <button
-                    onClick={openAddDrawer}
-                    className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+                  <DisabledButtonWithTooltip
+                    tooltipMessage={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked ? blockMessage : ''}
+                    disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
+                    className="inline-block"
                   >
-                    + Add User
-                  </button>
+                    <button
+                      onClick={openAddDrawer}
+                      disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
+                      className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      + Add User
+                    </button>
+                  </DisabledButtonWithTooltip>
                 </PermissionGate>
               </div>
             </div>
@@ -687,7 +767,25 @@ const Users: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'users' && (
-          <div className="bg-white rounded-md shadow-sm">
+          <div className="bg-white rounded-md shadow-sm relative">
+            {/* Grey overlay when student admission is blocked */}
+            {!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked && (
+              <div 
+                className="absolute inset-0 bg-gray-500 bg-opacity-15 z-10 flex items-center justify-center"
+                title={blockMessage}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-lg text-center">
+                  <div className="text-gray-600 mb-2">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">User Management Temporarily Unavailable</p>
+                  <p className="text-xs text-gray-600 mt-1">{blockMessage}</p>
+                </div>
+              </div>
+            )}
+            
             {loading && (
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1016,7 +1114,7 @@ const Users: React.FC = () => {
                 Edit
               </button>
             </PermissionGate>
-            {(currentUserRole === 'root' || currentUserRole === 'super_admin') && (
+            <PermissionGate permissions={['access_admin_panel']}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1030,7 +1128,7 @@ const Users: React.FC = () => {
                 {FaKey({ className: "w-3 h-3 mr-2" })}
                 Pass Reset
               </button>
-            )}
+            </PermissionGate>
             <PermissionGate permissions={['access_admin_panel']}>
               <button
                 onClick={(e) => {
@@ -1778,13 +1876,7 @@ const Users: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveUser}
-                disabled={
-                  !editingUser.username || 
-                  !editingUser.email || 
-                  !editingUser.first_name || 
-                  !editingUser.last_name ||
-                  (currentUserRole === 'root' && !editingUser.school_id)
-                }
+                disabled={!hasChanges()}
                 className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
               >
                 Update User
@@ -1794,26 +1886,31 @@ const Users: React.FC = () => {
         </div>
       )}
 
-      {/* Password Reset Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isPasswordResetModalOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
+            {/* Password Reset Drawer */}
+      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300 ease-out z-50 ${
+        isPasswordResetModalOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
       }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
+        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-300 ease-out flex flex-col ${
           isPasswordResetModalOpen ? 'translate-x-0' : 'translate-x-full'
         }`}>
           {resetPasswordUser && (
             <>
               {/* Drawer Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 font-elegant">Reset Password</h2>
-                  <p className="text-xs text-gray-500 mt-1 font-modern">
-                    Reset password for {resetPasswordUser.email}
-                  </p>
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-blue-100 rounded-xl">
+                    {FaKey({ className: "w-5 h-5 text-blue-600" })}
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">Reset Password</h2>
+                    <p className="text-sm text-gray-500">
+                      {resetPasswordUser.email}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={closePasswordResetModal}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200"
                 >
                   {FaTimes({ className: "w-4 h-4" })}
                 </button>
@@ -1823,99 +1920,101 @@ const Users: React.FC = () => {
               <div className="flex-1 overflow-y-auto">
                 <div className="p-6 space-y-4">
                   {!passwordResetSuccess ? (
-                    <>
-                      {/* Password Input */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          New Password *
+                    <div className="space-y-4">
+                      {/* Password Input Section */}
+                      <div className="space-y-3">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          New Password
                         </label>
                         <div className="flex items-center space-x-2">
-                          <input
-                            type={showResetPassword ? "text" : "password"}
-                            value={resetPassword}
-                            onChange={(e) => setResetPassword(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                            placeholder="Enter new password"
-                          />
-                          <button
-                            onClick={() => setShowResetPassword(!showResetPassword)}
-                            className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors duration-200"
-                            title={showResetPassword ? "Hide password" : "Show password"}
-                          >
-                            {showResetPassword ? FaEyeSlash({ className: "w-4 h-4" }) : FaEye({ className: "w-4 h-4" })}
-                          </button>
+                          <div className="relative flex-1">
+                            <input
+                              type={showResetPassword ? "text" : "password"}
+                              value={resetPassword}
+                              onChange={(e) => setResetPassword(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-sm"
+                              placeholder="Enter new password"
+                            />
+                            <button
+                              onClick={() => setShowResetPassword(!showResetPassword)}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                              title={showResetPassword ? "Hide password" : "Show password"}
+                            >
+                              {showResetPassword ? FaEyeSlash({ className: "w-4 h-4" }) : FaEye({ className: "w-4 h-4" })}
+                            </button>
+                          </div>
                         </div>
                       </div>
 
                       {/* Generate Password Button */}
-                      <div>
-                        <button
-                          onClick={() => setResetPassword(generatePassword())}
-                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
-                        >
-                          Generate Secure Password
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => setResetPassword(generatePassword())}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        🔐 Generate Secure Password
+                      </button>
 
-                      {/* Display Generated Password Info */}
+                      {/* Password Display */}
                       {resetPassword && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="text-xs text-blue-800 mb-2">
-                            <strong>New Password:</strong>
-                          </div>
-                          <div className="flex items-center space-x-2 mb-3">
-                            <input
-                              type={showResetPassword ? "text" : "password"}
-                              value={resetPassword}
-                              readOnly
-                              className="flex-1 px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 text-xs font-mono"
-                            />
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-semibold text-blue-800">Generated Password</span>
                             <button
                               onClick={() => copyToClipboard(resetPassword)}
-                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
                               title="Copy password"
                             >
                               {FaCopy({ className: "w-3 h-3" })}
                             </button>
                           </div>
-                          <div className="text-xs text-blue-600">
-                            <strong>User Email:</strong> {resetPasswordUser.email}
+                          <div className="bg-white border border-blue-200 rounded-lg p-3">
+                            <code className="text-sm font-mono text-blue-900 break-all">
+                              {showResetPassword ? resetPassword : '••••••••••••'}
+                            </code>
                           </div>
                         </div>
                       )}
-                    </>
+                    </div>
                   ) : (
                     /* Success State */
                     <div className="text-center space-y-4">
-                      <div className="text-green-600 mb-4">
-                        {FaCheckCircle({ className: "w-16 h-16 mx-auto" })}
+                      <div className="flex justify-center">
+                        <div className="p-4 bg-green-100 rounded-full">
+                          {FaCheckCircle({ className: "w-8 h-8 text-green-600" })}
+                        </div>
                       </div>
-                      <h4 className="text-lg font-semibold text-gray-900">Password Reset Successful!</h4>
-                      <p className="text-sm text-gray-600">
-                        The password has been reset for <strong>{resetPasswordUser.email}</strong>
-                      </p>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">Password Reset Successful!</h3>
+                        <p className="text-sm text-gray-600">
+                          New credentials for <span className="font-semibold">{resetPasswordUser.email}</span>
+                        </p>
+                      </div>
                       
-                      {/* Display Credentials */}
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                        <div className="text-xs text-green-800 mb-3">
-                          <strong>New Credentials:</strong>
+                      {/* Credentials Display */}
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-green-800">New Credentials</span>
+                          <button
+                            onClick={() => copyToClipboard(`Email: ${resetPasswordUser.email}\nPassword: ${resetPassword}`)}
+                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
+                          >
+                            Copy All
+                          </button>
                         </div>
                         
                         {/* Email */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            Email
-                          </label>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
                           <div className="flex items-center space-x-2">
                             <input
                               type="text"
                               value={resetPasswordUser.email}
                               readOnly
-                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-green-50 text-xs font-mono"
+                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-white text-sm font-mono"
                             />
                             <button
                               onClick={() => copyToClipboard(resetPasswordUser.email)}
-                              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+                              className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
                               title="Copy email"
                             >
                               {FaCopy({ className: "w-3 h-3" })}
@@ -1924,42 +2023,30 @@ const Users: React.FC = () => {
                         </div>
 
                         {/* Password */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            New Password
-                          </label>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
                           <div className="flex items-center space-x-2">
                             <input
                               type={showResetPassword ? "text" : "password"}
                               value={resetPassword}
                               readOnly
-                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-green-50 text-xs font-mono"
+                              className="flex-1 px-3 py-2 border border-green-200 rounded-lg bg-white text-sm font-mono"
                             />
                             <button
                               onClick={() => setShowResetPassword(!showResetPassword)}
-                              className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                              className="p-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
                               title={showResetPassword ? "Hide password" : "Show password"}
                             >
                               {showResetPassword ? FaEyeSlash({ className: "w-3 h-3" }) : FaEye({ className: "w-3 h-3" })}
                             </button>
                             <button
                               onClick={() => copyToClipboard(resetPassword)}
-                              className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
+                              className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200"
                               title="Copy password"
                             >
                               {FaCopy({ className: "w-3 h-3" })}
                             </button>
                           </div>
-                        </div>
-
-                        {/* Copy All Button */}
-                        <div className="flex justify-center">
-                          <button
-                            onClick={() => copyToClipboard(`Email: ${resetPasswordUser.email}\nPassword: ${resetPassword}`)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-xs font-medium"
-                          >
-                            Copy Email & Password
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -1973,14 +2060,14 @@ const Users: React.FC = () => {
                   <>
                     <button
                       onClick={closePasswordResetModal}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                      className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium text-sm"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleResetPasswordSubmit}
                       disabled={!resetPassword || isResettingPassword}
-                      className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                      className="px-6 py-2.5 text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
                     >
                       {isResettingPassword ? (
                         <div className="flex items-center space-x-2">
@@ -1995,7 +2082,7 @@ const Users: React.FC = () => {
                 ) : (
                   <button
                     onClick={closePasswordResetModal}
-                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
+                    className="px-6 py-2.5 text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
                     Done
                   </button>

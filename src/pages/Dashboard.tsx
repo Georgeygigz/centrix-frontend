@@ -6,14 +6,17 @@ import SwitchBoard from '../components/SwitchBoard/SwitchBoard';
 import Users from '../components/Users/Users';
 import Schools from '../components/Schools/Schools';
 import Parents from '../components/Parents/Parents';
+import { useRBAC } from '../context/RBACContext';
 import { 
   BillingDashboard, 
-  BillingPlans
+  BillingPlans,
+  SuperAdminBillingDashboard
 } from '../components/Billing';
 
 
 const Dashboard: React.FC = () => {
   const [currentPage, setCurrentPage] = useState('students');
+  const { userRole } = useRBAC();
 
   // Function to get page title based on current page
   const getPageTitle = (page: string): string => {
@@ -66,9 +69,21 @@ const Dashboard: React.FC = () => {
       case 'admin-billing':
         return <div className="p-6 text-center text-gray-500">Billing - Select a sub-item from the sidebar</div>;
       case 'admin-billing-dashboard':
-        return <BillingDashboard />;
+        // Show different billing dashboard based on user role
+        if (userRole === 'root') {
+          return <BillingDashboard />;
+        } else if (userRole === 'super_admin') {
+          return <SuperAdminBillingDashboard />;
+        } else {
+          return <div className="p-6 text-center text-gray-500">Access denied. Only root and super admin users can access billing.</div>;
+        }
       case 'admin-billing-plans':
-        return <BillingPlans />;
+        // Only root users can access billing plans
+        if (userRole === 'root') {
+          return <BillingPlans />;
+        } else {
+          return <div className="p-6 text-center text-gray-500">Access denied. Only root users can access billing plans.</div>;
+        }
 
       default:
         return <Students />;

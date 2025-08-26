@@ -69,7 +69,8 @@ const BillingPlans: React.FC = () => {
     discount_percent: '',
     notes: '',
     plan: '',
-    custom_plan_name: ''
+    custom_plan_name: '',
+    pricing_option: ''
   });
   const [subscriptionErrors, setSubscriptionErrors] = useState<{[key: string]: string}>({});
   const [subscriptionGeneralError, setSubscriptionGeneralError] = useState<string>('');
@@ -522,7 +523,8 @@ const BillingPlans: React.FC = () => {
         discount_percent: '',
         notes: '',
         plan: '',
-        custom_plan_name: ''
+        custom_plan_name: '',
+        pricing_option: ''
       });
       setSubscriptionErrors({});
       setSubscriptionGeneralError('');
@@ -543,6 +545,9 @@ const BillingPlans: React.FC = () => {
   const handleEditSubscription = async (subscription: any) => {
     try {
       console.log('Opening edit subscription drawer for:', subscription);
+      
+      // Close dropdown
+      setOpenDropdownId(null);
       
       // Fetch schools and billing plans if not already loaded
       if (schools.length === 0) {
@@ -568,7 +573,8 @@ const BillingPlans: React.FC = () => {
         discount_percent: subscription.discount_percent || '',
         notes: subscription.notes || '',
         plan: subscription.plan,
-        custom_plan_name: subscription.custom_plan_name || ''
+        custom_plan_name: subscription.custom_plan_name || '',
+        pricing_option: subscription.pricing_option || ''
       });
       
       // Clear any previous errors
@@ -608,8 +614,8 @@ const BillingPlans: React.FC = () => {
       console.log('Submitting subscription:', subscriptionForm);
       
       // Validate required fields
-      if (!subscriptionForm.school || !subscriptionForm.plan || !subscriptionForm.start_date) {
-        setToast({ message: 'Please fill in all required fields (School, Plan, Start Date)', type: 'error' });
+      if (!subscriptionForm.school || !subscriptionForm.plan || !subscriptionForm.start_date || !subscriptionForm.pricing_option) {
+        setToast({ message: 'Please fill in all required fields (School, Plan, Start Date, Pricing Option)', type: 'error' });
         return;
       }
       
@@ -632,7 +638,8 @@ const BillingPlans: React.FC = () => {
           custom_price: subscriptionForm.custom_price || '',
           discount_percent: subscriptionForm.discount_percent || '',
           notes: subscriptionForm.notes || '',
-          plan: subscriptionForm.plan
+          plan: subscriptionForm.plan,
+          pricing_option: subscriptionForm.pricing_option
         })
       });
       
@@ -698,8 +705,8 @@ const BillingPlans: React.FC = () => {
       }
       
       // Validate required fields
-      if (!subscriptionForm.school || !subscriptionForm.plan || !subscriptionForm.start_date) {
-        setToast({ message: 'Please fill in all required fields (School, Plan, Start Date)', type: 'error' });
+      if (!subscriptionForm.school || !subscriptionForm.plan || !subscriptionForm.start_date || !subscriptionForm.pricing_option) {
+        setToast({ message: 'Please fill in all required fields (School, Plan, Start Date, Pricing Option)', type: 'error' });
         return;
       }
       
@@ -722,7 +729,8 @@ const BillingPlans: React.FC = () => {
           custom_price: subscriptionForm.custom_price || '',
           discount_percent: subscriptionForm.discount_percent || '',
           notes: subscriptionForm.notes || '',
-          plan: subscriptionForm.plan
+          plan: subscriptionForm.plan,
+          pricing_option: subscriptionForm.pricing_option
         })
       });
       
@@ -1427,6 +1435,7 @@ const BillingPlans: React.FC = () => {
                 e.stopPropagation();
                 const subscription = subscriptions.find(s => s.id === openDropdownId);
                 if (subscription) {
+                  setOpenDropdownId(null);
                   setToast({ message: 'Delete subscription functionality coming soon!', type: 'success' });
                 }
               }}
@@ -1812,6 +1821,28 @@ const BillingPlans: React.FC = () => {
                     <p className="mt-1 text-xs text-red-600">{subscriptionErrors.custom_plan_name}</p>
                   )}
                 </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                    Pricing Option *
+                  </label>
+                  <select
+                    value={subscriptionForm.pricing_option}
+                    onChange={(e) => setSubscriptionForm({...subscriptionForm, pricing_option: e.target.value})}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white ${
+                      subscriptionErrors.pricing_option ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <option value="">Select pricing option</option>
+                    <option value="feature_based">Feature Based</option>
+                    <option value="student_based">Student Based</option>
+                    <option value="custom_price">Custom Price</option>
+                  </select>
+                  {subscriptionErrors.pricing_option && (
+                    <p className="mt-1 text-xs text-red-600">{subscriptionErrors.pricing_option}</p>
+                  )}
+                </div>
               </div>
 
               {/* Date Range */}
@@ -2127,6 +2158,28 @@ const BillingPlans: React.FC = () => {
                   />
                   {editSubscriptionErrors.custom_plan_name && (
                     <p className="mt-1 text-xs text-red-600">{editSubscriptionErrors.custom_plan_name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                    Pricing Option *
+                  </label>
+                  <select
+                    value={subscriptionForm.pricing_option}
+                    onChange={(e) => setSubscriptionForm({...subscriptionForm, pricing_option: e.target.value})}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white ${
+                      editSubscriptionErrors.pricing_option ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <option value="">Select pricing option</option>
+                    <option value="feature_based">Feature Based</option>
+                    <option value="student_based">Student Based</option>
+                    <option value="custom_price">Custom Price</option>
+                  </select>
+                  {editSubscriptionErrors.pricing_option && (
+                    <p className="mt-1 text-xs text-red-600">{editSubscriptionErrors.pricing_option}</p>
                   )}
                 </div>
               </div>

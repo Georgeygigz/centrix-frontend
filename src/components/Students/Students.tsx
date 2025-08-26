@@ -119,10 +119,19 @@ const Students: React.FC = () => {
     description: ''
   });
 
-  const [newClass, setNewClass] = useState<Partial<Class> & { streamId?: string }>({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [newClass, setNewClass] = useState<{
+    name: string;
+    code: string;
+    stream: string;
+    description: string;
+    level: number;
+    capacity: number;
+  }>({
     name: '',
     code: '',
-    streamId: '',
+    stream: '',
+    description: '',
     level: 0,
     capacity: 0
   });
@@ -205,6 +214,42 @@ const Students: React.FC = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Load streams data from API
+  const loadStreams = useCallback(async () => {
+    try {
+      setIsLoadingStreams(true);
+      const data = await apiService.students.getStreams();
+      
+      // Handle the response data
+      const streamsData = data.results || data || [];
+      setStreams(streamsData);
+    } catch (error) {
+      console.error('Error loading streams:', error);
+      setToast({
+        message: 'Failed to load streams. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setIsLoadingStreams(false);
+    }
+  }, []);
+
+  // Load classes data from API
+  const loadClasses = useCallback(async () => {
+    try {
+      setIsLoadingClasses(true);
+      const response = await apiService.students.getClasses();
+      // The authenticatedRequest method already extracts responseData.data
+
+      setClasses(response || []);
+    } catch (error) {
+      console.error('Error loading classes:', error);
+      setClasses([]);
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  }, []);
+
   // Load students data from API with tenant support
   const loadStudents = useCallback(async () => {
     try {
@@ -245,42 +290,13 @@ const Students: React.FC = () => {
 
   // Load streams data from API
   useEffect(() => {
-    const loadStreams = async () => {
-      try {
-        setIsLoadingStreams(true);
-        const response = await apiService.students.getStreams();
-        // The authenticatedRequest method already extracts responseData.data
-        setStreams(response || []);
-      } catch (error) {
-        console.error('Error loading streams:', error);
-        setStreams([]);
-      } finally {
-        setIsLoadingStreams(false);
-      }
-    };
-
     loadStreams();
-  }, []); // Load once when component mounts
+  }, [loadStreams]); // Load once when component mounts
 
   // Load classes data from API
   useEffect(() => {
-    const loadClasses = async () => {
-      try {
-        setIsLoadingClasses(true);
-        const response = await apiService.students.getClasses();
-        // The authenticatedRequest method already extracts responseData.data
-
-        setClasses(response || []);
-      } catch (error) {
-        console.error('Error loading classes:', error);
-        setClasses([]);
-      } finally {
-        setIsLoadingClasses(false);
-      }
-    };
-
     loadClasses();
-  }, []); // Load once when component mounts
+  }, [loadClasses]); // Load once when component mounts
 
   // Pagination logic - now using server-side pagination and sorting
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -330,43 +346,156 @@ const Students: React.FC = () => {
       code: '',
       description: ''
     });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setNewClass({
       name: '',
       code: '',
-      streamId: '',
+      stream: '',
+      description: '',
       level: 0,
       capacity: 0
     });
   };
 
-  const handleAddStudent = async () => {
+  const handleAddStream = async () => {
     try {
-      if (activeTab === 'admission') {
-        const studentData = convertStudentToCreateRequest(newStudent);
-        await apiService.students.create(studentData);
+      // Create stream via API
+      await apiService.students.createStream({
+        name: newStream.name || '',
+        code: newStream.code || '',
+        description: newStream.description || ''
+      });
+      
+      // Re-fetch the streams list to get the updated data
+      await loadStreams();
+      
+      setToast({
+        message: 'Stream added successfully!',
+        type: 'success'
+      });
+      
+      // Clear form errors
+      setFormErrors({});
+      
+      // Clear the form
+      setNewStream({
+        name: '',
+        code: '',
+        description: ''
+      });
+      
+      // Close drawer after a short delay to ensure form is cleared
+      setTimeout(() => {
+        closeAddDrawer();
+      }, 100);
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error adding stream:', error);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        const transformedErrors: { [key: string]: string[] } = {};
         
-        // Re-fetch the students list to get the complete data with full class objects
-        await loadStudents();
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          transformedErrors[key] = value as string[];
+        });
         
+        setFormErrors(transformedErrors);
+      } else {
         setToast({
-          message: 'Student added successfully!',
-          type: 'success'
-        });
-      } else if (activeTab === 'streams') {
-        // TODO: Add stream creation API call
-        console.log('Adding stream:', newStream);
-        setToast({
-          message: 'Stream added successfully!',
-          type: 'success'
-        });
-      } else if (activeTab === 'classes') {
-        // TODO: Add class creation API call
-        console.log('Adding class:', newClass);
-        setToast({
-          message: 'Class added successfully!',
-          type: 'success'
+          message: 'Failed to add stream. Please try again.',
+          type: 'error'
         });
       }
+    }
+  };
+
+  const handleAddClass = async () => {
+    try {
+      // Create class via API
+      await apiService.students.createClass({
+        name: newClass.name || '',
+        code: newClass.code || '',
+        stream: newClass.stream || '',
+        description: newClass.description || '',
+        level: newClass.level || undefined,
+        capacity: newClass.capacity || undefined
+      });
+      
+      // Re-fetch the classes list to get the updated data
+      await loadClasses();
+      
+      setToast({
+        message: 'Class added successfully!',
+        type: 'success'
+      });
+      
+      // Clear form errors
+      setFormErrors({});
+      
+      // Clear the form
+      setNewClass({
+        name: '',
+        code: '',
+        stream: '',
+        description: '',
+        level: 0,
+        capacity: 0
+      });
+      
+      // Close drawer after a short delay to ensure form is cleared
+      setTimeout(() => {
+        closeAddDrawer();
+      }, 100);
+      
+      // Auto-hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+      
+    } catch (error: any) {
+      console.error('Error adding class:', error);
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        const transformedErrors: { [key: string]: string[] } = {};
+        
+        Object.entries(error.response.data.errors).forEach(([key, value]) => {
+          transformedErrors[key] = value as string[];
+        });
+        
+        setFormErrors(transformedErrors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        setEditFormErrors({});
+        setToast({
+          message: 'Failed to add class. Please try again.',
+          type: 'error'
+        });
+      }
+    }
+  };
+
+  const handleAddStudent = async () => {
+    try {
+      const studentData = convertStudentToCreateRequest(newStudent);
+      await apiService.students.create(studentData);
+      
+      // Re-fetch the students list to get the complete data with full class objects
+      await loadStudents();
+      
+      setToast({
+        message: 'Student added successfully!',
+        type: 'success'
+      });
       
       // Clear form errors
       setFormErrors({});
@@ -400,10 +529,12 @@ const Students: React.FC = () => {
         description: ''
       });
       
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       setNewClass({
         name: '',
         code: '',
-        streamId: '',
+        stream: '',
+        description: '',
         level: 0,
         capacity: 0
       });
@@ -518,6 +649,22 @@ const Students: React.FC = () => {
     }
   };
 
+  const handleNewStreamInputChange = (field: keyof Stream, value: string) => {
+    setNewStream(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
 
 
 
@@ -600,7 +747,7 @@ const Students: React.FC = () => {
 
   const handleEditStream = (stream: Stream) => {
     setEditingStream(stream);
-    setOriginalStream(stream); // Store original data for comparison
+    setOriginalStream({ ...stream }); // Store original data for comparison (deep copy)
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
 
@@ -609,7 +756,7 @@ const Students: React.FC = () => {
 
   const handleEditClass = (classItem: Class) => {
     setEditingClass(classItem);
-    setOriginalClass(classItem); // Store original data for comparison
+    setOriginalClass({ ...classItem }); // Store original data for comparison (deep copy)
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
 
@@ -619,23 +766,33 @@ const Students: React.FC = () => {
   // Check if stream has been modified
   const isStreamModified = () => {
     if (!editingStream || !originalStream) return false;
-    return (
-      editingStream.name !== originalStream.name ||
-      editingStream.code !== originalStream.code ||
-      editingStream.description !== originalStream.description
-    );
+    
+    const nameChanged = editingStream.name !== originalStream.name;
+    const codeChanged = editingStream.code !== originalStream.code;
+    const descriptionChanged = editingStream.description !== originalStream.description;
+    
+    console.log('Stream modification check:', {
+      editingStream: { name: editingStream.name, code: editingStream.code, description: editingStream.description },
+      originalStream: { name: originalStream.name, code: originalStream.code, description: originalStream.description },
+      changes: { nameChanged, codeChanged, descriptionChanged }
+    });
+    
+    return nameChanged || codeChanged || descriptionChanged;
   };
 
   // Check if class has been modified
   const isClassModified = () => {
     if (!editingClass || !originalClass) return false;
-    return (
-      editingClass.name !== originalClass.name ||
-      editingClass.code !== originalClass.code ||
-      editingClass.stream?.id !== originalClass.stream?.id ||
-      editingClass.level !== originalClass.level ||
-      editingClass.capacity !== originalClass.capacity
-    );
+    
+    const nameChanged = editingClass.name !== originalClass.name;
+    const codeChanged = editingClass.code !== originalClass.code;
+    const streamChanged = (typeof editingClass.stream === 'string' ? editingClass.stream : editingClass.stream?.id) !== 
+                         (typeof originalClass.stream === 'string' ? originalClass.stream : originalClass.stream?.id);
+    const descriptionChanged = editingClass.description !== originalClass.description;
+    const levelChanged = editingClass.level !== originalClass.level;
+    const capacityChanged = editingClass.capacity !== originalClass.capacity;
+    
+    return nameChanged || codeChanged || streamChanged || descriptionChanged || levelChanged || capacityChanged;
   };
 
   // Check if student has been modified
@@ -835,7 +992,6 @@ const Students: React.FC = () => {
         setTimeout(() => {
           setToast(null);
         }, 3000);
-        
       } catch (error: any) {
         console.error('Error updating student:', error);
         
@@ -912,6 +1068,168 @@ const Students: React.FC = () => {
           setToast(null);
         }, 5000);
       }
+    } else if (editingStream && originalStream) {
+      try {
+        // Check if stream has been modified
+        if (!isStreamModified()) {
+          setToast({
+            message: 'No changes detected. Stream information is already up to date.',
+            type: 'success'
+          });
+          closeEditDrawer();
+          return;
+        }
+
+        // Update stream via API
+        const streamId = editingStream.id || originalStream.id;
+        if (!streamId) {
+          throw new Error('Stream ID is required for update');
+        }
+        
+        // Get only the changed fields for stream
+        const streamChangedFields: Partial<Stream> = {};
+        if (editingStream.name !== originalStream.name) {
+          streamChangedFields.name = editingStream.name;
+        }
+        if (editingStream.code !== originalStream.code) {
+          streamChangedFields.code = editingStream.code;
+        }
+        if (editingStream.description !== originalStream.description) {
+          streamChangedFields.description = editingStream.description;
+        }
+        
+        await apiService.students.updateStream(streamId, streamChangedFields);
+        
+        // Re-fetch the streams list to get the updated data
+        await loadStreams();
+        
+        // Show success toast
+        setToast({
+          message: 'Stream updated successfully!',
+          type: 'success'
+        });
+        
+        // Clear form errors
+        setEditFormErrors({});
+        
+        closeEditDrawer();
+        
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+      } catch (error: any) {
+        console.error('Error updating stream:', error);
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          const transformedErrors: { [key: string]: string[] } = {};
+          
+          Object.entries(error.response.data.errors).forEach(([key, value]) => {
+            transformedErrors[key] = value as string[];
+          });
+          
+          setEditFormErrors(transformedErrors);
+          setToast({
+            message: error.response.data.message || 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else {
+          setEditFormErrors({});
+          setToast({
+            message: 'Failed to update stream. Please try again.',
+            type: 'error'
+          });
+        }
+        
+        // Auto-hide error toast after 5 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 5000);
+      }
+    } else if (editingClass && originalClass) {
+      try {
+        // Check if class has been modified
+        if (!isClassModified()) {
+          setToast({
+            message: 'No changes detected. Class information is already up to date.',
+            type: 'success'
+          });
+          closeEditDrawer();
+          return;
+        }
+
+        // Update class via API
+        const classId = editingClass.id || originalClass.id;
+        if (!classId) {
+          throw new Error('Class ID is required for update');
+        }
+        
+        // Get only the changed fields for class
+        const apiData: any = {};
+        
+        if (editingClass.name !== originalClass.name) {
+          apiData.name = editingClass.name;
+        }
+        if (editingClass.code !== originalClass.code) {
+          apiData.code = editingClass.code;
+        }
+        if (editingClass.stream !== originalClass.stream) {
+          apiData.stream = typeof editingClass.stream === 'string' ? editingClass.stream : editingClass.stream?.id || '';
+        }
+        if (editingClass.description !== originalClass.description) {
+          apiData.description = editingClass.description;
+        }
+        
+        await apiService.students.updateClass(classId, apiData);
+        
+        // Re-fetch the classes list to get the updated data
+        await loadClasses();
+        
+        // Show success toast
+        setToast({
+          message: 'Class updated successfully!',
+          type: 'success'
+        });
+        
+        // Clear form errors
+        setEditFormErrors({});
+        
+        closeEditDrawer();
+        
+        // Auto-hide toast after 3 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 3000);
+      } catch (error: any) {
+        console.error('Error updating class:', error);
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          const transformedErrors: { [key: string]: string[] } = {};
+          
+          Object.entries(error.response.data.errors).forEach(([key, value]) => {
+            transformedErrors[key] = value as string[];
+          });
+          
+          setEditFormErrors(transformedErrors);
+          setToast({
+            message: error.response.data.message || 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else {
+          setEditFormErrors({});
+          setToast({
+            message: 'Failed to update class. Please try again.',
+            type: 'error'
+          });
+        }
+        
+        // Auto-hide error toast after 5 seconds
+        setTimeout(() => {
+          setToast(null);
+        }, 5000);
+      }
     }
   };
 
@@ -923,6 +1241,58 @@ const Students: React.FC = () => {
     if (editingStudent) {
       setEditingStudent({
         ...editingStudent,
+        [field]: value
+      });
+      
+      // Clear error for this field when user starts typing
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  const handleStreamInputChange = (field: keyof Stream, value: string) => {
+    if (editingStream) {
+      setEditingStream({
+        ...editingStream,
+        [field]: value
+      });
+      
+      // Clear error for this field when user starts typing
+      if (editFormErrors[field]) {
+        setEditFormErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  const handleNewClassInputChange = (field: keyof typeof newClass, value: string | number) => {
+    setNewClass(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error for this field when user starts typing
+    if (formErrors[field]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleClassInputChange = (field: keyof Class | 'stream', value: string | number) => {
+    if (editingClass) {
+      setEditingClass({
+        ...editingClass,
         [field]: value
       });
       
@@ -957,12 +1327,16 @@ const Students: React.FC = () => {
         <div className="bg-white rounded-md shadow-sm p-4 mb-4">
           {/* Tabs and Controls Row */}
           <div className="mb-4">
-            {/* Feature Status Indicator - Only show on admission tab */}
-            {!featureSwitchLoading && activeTab === 'admission' && !isRootUser && isStudentAdmissionBlocked && (
+            {/* Feature Status Indicator - Show on admission, classes, and streams tabs */}
+            {!featureSwitchLoading && (activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !isRootUser && isStudentAdmissionBlocked && (
               <div className="mb-3 p-2 rounded-md text-xs font-medium flex items-center space-x-2">
                 <div className="flex items-center space-x-1 text-red-700 bg-red-50 px-2 py-1 rounded">
                   <span>🚫</span>
-                  <span>Student Admission Blocked</span>
+                  <span>
+                    {activeTab === 'admission' && 'Student Admission Blocked'}
+                    {activeTab === 'classes' && 'Student Admission Blocked - Class Management Affected'}
+                    {activeTab === 'streams' && 'Student Admission Blocked - Stream Management Affected'}
+                  </span>
                 </div>
               </div>
             )}
@@ -1060,23 +1434,23 @@ const Students: React.FC = () => {
                     }
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    disabled={activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked}
+                    disabled={(activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
                     className={`pl-8 pr-3 py-1.5 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent text-xs transition-colors duration-200 ${
-                      activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked
+                      (activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
                         ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                         : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
                     }`}
                   />
                   <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                    {FaSearch({ className: `h-3 w-3 ${activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked ? 'text-gray-300' : 'text-gray-400'}` })}
+                    {FaSearch({ className: `h-3 w-3 ${(activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked ? 'text-gray-300' : 'text-gray-400'}` })}
                   </div>
                 </div>
 
                 {/* Filter */}
                 <button 
-                  disabled={activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked}
+                  disabled={(activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
                   className={`px-3 py-1.5 border rounded-md text-xs transition-colors duration-200 ${
-                    activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked
+                    (activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
                       ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                       : 'border-gray-300 text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
                   }`}
@@ -1088,9 +1462,9 @@ const Students: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  disabled={activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked}
+                  disabled={(activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
                   className={`px-3 py-1.5 border rounded-md text-xs focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200 ${
-                    activeTab === 'admission' && !featureSwitchLoading && isStudentAdmissionBlocked
+                    (activeTab === 'admission' || activeTab === 'classes' || activeTab === 'streams') && !featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked
                       ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                       : 'border-gray-300 text-gray-700 focus:ring-blue-500 focus:border-transparent'
                   }`}
@@ -1149,13 +1523,13 @@ const Students: React.FC = () => {
                 {/* Add New Button - Dynamic based on active tab */}
                 <PermissionGate permissions={['student_crud']}>
                   <DisabledButtonWithTooltip
-                    tooltipMessage={!featureSwitchLoading && isStudentAdmissionBlocked ? blockMessage : ''}
-                    disabled={!featureSwitchLoading && isStudentAdmissionBlocked}
+                    tooltipMessage={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked ? blockMessage : ''}
+                    disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
                     className="inline-block"
                   >
                     <button
                       onClick={openAddDrawer}
-                      disabled={!featureSwitchLoading && isStudentAdmissionBlocked}
+                      disabled={!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked}
                       className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {activeTab === 'admission' && '+ Add Student'}
@@ -1309,6 +1683,24 @@ const Students: React.FC = () => {
         {/* Classes Tab */}
         {activeTab === 'classes' && (
           <div className="bg-white rounded-md shadow-sm relative">
+            {/* Grey overlay when student admission is blocked */}
+            {!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked && (
+              <div 
+                className="absolute inset-0 bg-gray-500 bg-opacity-15 z-10 flex items-center justify-center"
+                title={blockMessage}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-lg text-center">
+                  <div className="text-gray-600 mb-2">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">Class Management Temporarily Unavailable</p>
+                  <p className="text-xs text-gray-600 mt-1">{blockMessage}</p>
+                </div>
+              </div>
+            )}
+            
             {isLoadingClasses ? (
               <div className="p-8 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1337,6 +1729,12 @@ const Students: React.FC = () => {
                           {getSortIcon('stream.name')}
                         </div>
                       </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('level')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Level</span>
+                          {getSortIcon('level')}
+                        </div>
+                      </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('capacity')}>
                         <div className="flex items-center space-x-1">
                           <span>Capacity</span>
@@ -1357,7 +1755,7 @@ const Students: React.FC = () => {
                   <tbody className="bg-white divide-y divide-gray-100">
                     {classes.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-3 py-6 text-center text-xs text-gray-500">
+                        <td colSpan={7} className="px-3 py-6 text-center text-xs text-gray-500">
                           No classes found
                         </td>
                       </tr>
@@ -1374,7 +1772,10 @@ const Students: React.FC = () => {
                             {classItem.stream?.name || 'N/A'}
                           </td>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                            {classItem.capacity}
+                            {classItem.level || 'N/A'}
+                          </td>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                            {classItem.capacity || 'N/A'}
                           </td>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {new Date(classItem.created_at).toLocaleDateString()}
@@ -1423,6 +1824,24 @@ const Students: React.FC = () => {
         {/* Streams Tab */}
         {activeTab === 'streams' && (
           <div className="bg-white rounded-md shadow-sm relative">
+            {/* Grey overlay when student admission is blocked */}
+            {!featureSwitchLoading && !isRootUser && isStudentAdmissionBlocked && (
+              <div 
+                className="absolute inset-0 bg-gray-500 bg-opacity-15 z-10 flex items-center justify-center"
+                title={blockMessage}
+              >
+                <div className="bg-white p-4 rounded-lg shadow-lg text-center">
+                  <div className="text-gray-600 mb-2">
+                    <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900">Stream Management Temporarily Unavailable</p>
+                  <p className="text-xs text-gray-600 mt-1">{blockMessage}</p>
+                </div>
+              </div>
+            )}
+            
             {isLoadingStreams ? (
               <div className="p-8 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1780,7 +2199,7 @@ const Students: React.FC = () => {
                           <option value="">Select a class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.name}
+                              {cls.name} - {cls.stream?.name || 'No Stream'}
                             </option>
                           ))}
                         </select>
@@ -1804,7 +2223,7 @@ const Students: React.FC = () => {
                           <option value="">Select a class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.name}
+                              {cls.name} - {cls.stream?.name || 'No Stream'}
                             </option>
                           ))}
                         </select>
@@ -1840,7 +2259,7 @@ const Students: React.FC = () => {
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                           <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
-                          Guardian Name *
+                          Guardian Name
                         </label>
                         <input
                           type="text"
@@ -1859,7 +2278,7 @@ const Students: React.FC = () => {
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                           <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
-                          Guardian Phone *
+                          Guardian Phone
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -1888,7 +2307,7 @@ const Students: React.FC = () => {
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                         <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
-                        Guardian Relationship *
+                        Guardian Relationship
                       </label>
                       <select
                         value={editingStudent.guardianRelationship}
@@ -2004,6 +2423,198 @@ const Students: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Stream Edit Form */}
+              {editingStream && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                        Stream Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStream.name}
+                        onChange={(e) => handleStreamInputChange('name', e.target.value)}
+                        placeholder="Enter stream name"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                          editFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.name && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.name[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Stream Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStream.code}
+                        onChange={(e) => handleStreamInputChange('code', e.target.value)}
+                        placeholder="Enter stream code"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          editFormErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.code && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.code[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                        Description
+                      </label>
+                      <textarea
+                        value={editingStream.description}
+                        onChange={(e) => handleStreamInputChange('description', e.target.value)}
+                        placeholder="Enter stream description"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white resize-none ${
+                          editFormErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.description && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.description[0]}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Class Edit Form */}
+              {editingClass && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                        Class Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingClass.name}
+                        onChange={(e) => handleClassInputChange('name', e.target.value)}
+                        placeholder="Enter class name"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                          editFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.name && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.name[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Class Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={editingClass.code}
+                        onChange={(e) => handleClassInputChange('code', e.target.value)}
+                        placeholder="Enter class code"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          editFormErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.code && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.code[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                        Stream *
+                      </label>
+                      <select
+                        value={typeof editingClass.stream === 'string' ? editingClass.stream : editingClass.stream?.id || ''}
+                        onChange={(e) => handleClassInputChange('stream', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                          editFormErrors.stream ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="">Select a stream</option>
+                        {streams.map((stream) => (
+                          <option key={stream.id} value={stream.id}>
+                            {stream.name} - {stream.code}
+                          </option>
+                        ))}
+                      </select>
+                      {editFormErrors.stream && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.stream[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                        Description
+                      </label>
+                      <textarea
+                        value={editingClass.description}
+                        onChange={(e) => handleClassInputChange('description', e.target.value)}
+                        placeholder="Enter class description"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white resize-none ${
+                          editFormErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.description && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.description[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                          Level (Optional)
+                        </label>
+                        <input
+                          type="number"
+                          value={editingClass.level || ''}
+                          onChange={(e) => handleClassInputChange('level', parseInt(e.target.value) || 0)}
+                          placeholder="Enter class level"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                            editFormErrors.level ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {editFormErrors.level && (
+                          <p className="mt-1 text-xs text-red-600">{editFormErrors.level[0]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                          Capacity (Optional)
+                        </label>
+                        <input
+                          type="number"
+                          value={editingClass.capacity || ''}
+                          onChange={(e) => handleClassInputChange('capacity', parseInt(e.target.value) || 0)}
+                          placeholder="Enter class capacity"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                            editFormErrors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {editFormErrors.capacity && (
+                          <p className="mt-1 text-xs text-red-600">{editFormErrors.capacity[0]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Drawer Footer */}
@@ -2024,7 +2635,9 @@ const Students: React.FC = () => {
                 }
                 className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
               >
-                Update Student
+                {editingStudent && 'Update Student'}
+                {editingStream && 'Update Stream'}
+                {editingClass && 'Update Class'}
               </button>
             </div>
           </div>
@@ -2201,7 +2814,7 @@ const Students: React.FC = () => {
                           <option value="">Select a class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.name}
+                              {cls.name} - {cls.stream?.name || 'No Stream'}
                             </option>
                           ))}
                         </select>
@@ -2225,7 +2838,7 @@ const Students: React.FC = () => {
                           <option value="">Select a class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.name}
+                              {cls.name} - {cls.stream?.name || 'No Stream'}
                             </option>
                           ))}
                         </select>
@@ -2261,7 +2874,7 @@ const Students: React.FC = () => {
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                           <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
-                          Guardian Name *
+                          Guardian Name
                         </label>
                         <input
                           type="text"
@@ -2280,7 +2893,7 @@ const Students: React.FC = () => {
                       <div className="space-y-1">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                           <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
-                          Guardian Phone *
+                          Guardian Phone
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -2309,7 +2922,7 @@ const Students: React.FC = () => {
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                         <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
-                        Guardian Relationship *
+                        Guardian Relationship
                       </label>
                       <select
                         value={newStudent.guardianRelationship}
@@ -2425,6 +3038,198 @@ const Students: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Stream Form */}
+              {activeTab === 'streams' && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                        Stream Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newStream.name}
+                        onChange={(e) => handleNewStreamInputChange('name', e.target.value)}
+                        placeholder="Enter stream name"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                          formErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.name[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Stream Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={newStream.code}
+                        onChange={(e) => handleNewStreamInputChange('code', e.target.value)}
+                        placeholder="Enter stream code"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          formErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.code && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.code[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                        Description
+                      </label>
+                      <textarea
+                        value={newStream.description}
+                        onChange={(e) => handleNewStreamInputChange('description', e.target.value)}
+                        placeholder="Enter stream description"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white resize-none ${
+                          formErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.description && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.description[0]}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Class Form */}
+              {activeTab === 'classes' && (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                        Class Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newClass.name}
+                        onChange={(e) => handleNewClassInputChange('name', e.target.value)}
+                        placeholder="Enter class name"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                          formErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.name && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.name[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Class Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={newClass.code}
+                        onChange={(e) => handleNewClassInputChange('code', e.target.value)}
+                        placeholder="Enter class code"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          formErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.code && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.code[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                        Stream *
+                      </label>
+                      <select
+                        value={newClass.stream || ''}
+                        onChange={(e) => handleNewClassInputChange('stream', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                          formErrors.stream ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="">Select a stream</option>
+                        {streams.map((stream) => (
+                          <option key={stream.id} value={stream.id}>
+                            {stream.name} - {stream.code}
+                          </option>
+                        ))}
+                      </select>
+                      {formErrors.stream && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.stream[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                        Description
+                      </label>
+                      <textarea
+                        value={newClass.description}
+                        onChange={(e) => handleNewClassInputChange('description', e.target.value)}
+                        placeholder="Enter class description"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white resize-none ${
+                          formErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.description && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.description[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                          Level (Optional)
+                        </label>
+                        <input
+                          type="number"
+                          value={newClass.level || ''}
+                          onChange={(e) => handleNewClassInputChange('level', parseInt(e.target.value) || 0)}
+                          placeholder="Enter class level"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                            formErrors.level ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {formErrors.level && (
+                          <p className="mt-1 text-xs text-red-600">{formErrors.level[0]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                          Capacity (Optional)
+                        </label>
+                        <input
+                          type="number"
+                          value={newClass.capacity || ''}
+                          onChange={(e) => handleNewClassInputChange('capacity', parseInt(e.target.value) || 0)}
+                          placeholder="Enter class capacity"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                            formErrors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {formErrors.capacity && (
+                          <p className="mt-1 text-xs text-red-600">{formErrors.capacity[0]}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Drawer Footer */}
@@ -2436,21 +3241,31 @@ const Students: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={handleAddStudent}
+                onClick={
+                  activeTab === 'admission' ? handleAddStudent :
+                  activeTab === 'streams' ? handleAddStream :
+                  activeTab === 'classes' ? handleAddClass :
+                  handleAddStudent
+                }
                 disabled={
-                  !newStudent.admissionNumber || 
-                  !newStudent.fullName || 
-                  !newStudent.dateOfBirth || 
-                  !newStudent.gender ||
-                  !newStudent.dateOfAdmission ||
-                  !newStudent.classOnAdmission ||
-                  !newStudent.guardianName ||
-                  !newStudent.guardianPhone ||
-                  !newStudent.guardianRelationship
+                  activeTab === 'admission' ? (
+                    !newStudent.admissionNumber || 
+                    !newStudent.fullName || 
+                    !newStudent.dateOfBirth || 
+                    !newStudent.gender ||
+                    !newStudent.dateOfAdmission ||
+                    !newStudent.classOnAdmission
+                  ) : activeTab === 'streams' ? (
+                    !newStream.name || !newStream.code
+                  ) : activeTab === 'classes' ? (
+                    !newClass.name || !newClass.code || !newClass.stream
+                  ) : false
                 }
                 className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
               >
-                Create Student
+                {activeTab === 'admission' && 'Create Student'}
+                {activeTab === 'streams' && 'Create Stream'}
+                {activeTab === 'classes' && 'Create Class'}
               </button>
             </div>
           </div>
