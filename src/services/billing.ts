@@ -13,7 +13,7 @@ export const billingService = {
   // Get dashboard statistics
   getDashboardStats: async (): Promise<BillingDashboardResponse> => {
     try {
-      const response = await apiService.authenticatedRequest('/billing/dashboard/', { method: 'GET' });
+      const response = await apiService.authenticatedRequest('/billing/dashboard', { method: 'GET' });
       return { success: true, data: response };
     } catch (error) {
       throw new Error('Failed to fetch dashboard statistics');
@@ -23,7 +23,7 @@ export const billingService = {
   // Get schools with billing status
   getSchoolsBilling: async (): Promise<SchoolsBillingResponse> => {
     try {
-      const response = await apiService.authenticatedRequest('/billing/schools/', { method: 'GET' });
+      const response = await apiService.authenticatedRequest('/billing/schools', { method: 'GET' });
       return { success: true, data: response };
     } catch (error) {
       throw new Error('Failed to fetch schools billing data');
@@ -34,7 +34,7 @@ export const billingService = {
 
   createBillingFeature: async (featureData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest('/billing/features/', {
+      const response = await apiService.authenticatedRequest('/billing/features', {
         method: 'POST',
         body: JSON.stringify(featureData),
       });
@@ -46,7 +46,7 @@ export const billingService = {
 
   updateBillingFeature: async (id: string, featureData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/features/${id}/`, {
+      const response = await apiService.authenticatedRequest(`/billing/features/${id}`, {
         method: 'PUT',
         body: JSON.stringify(featureData),
       });
@@ -58,7 +58,7 @@ export const billingService = {
 
   deleteBillingFeature: async (id: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/features/${id}/`, { method: 'DELETE' });
+      const response = await apiService.authenticatedRequest(`/billing/features/${id}`, { method: 'DELETE' });
       return response;
     } catch (error) {
       throw new Error('Failed to delete billing feature');
@@ -92,7 +92,7 @@ export const billingService = {
 
   createBillingPlan: async (planData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest('/billing/plans/', {
+      const response = await apiService.authenticatedRequest('/billing/plans', {
         method: 'POST',
         body: JSON.stringify(planData),
       });
@@ -104,7 +104,7 @@ export const billingService = {
 
   updateBillingPlan: async (id: string, planData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/plans/${id}/`, {
+      const response = await apiService.authenticatedRequest(`/billing/plans/${id}`, {
         method: 'PUT',
         body: JSON.stringify(planData),
       });
@@ -116,7 +116,7 @@ export const billingService = {
 
   deleteBillingPlan: async (id: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/plans/${id}/`, { method: 'DELETE' });
+      const response = await apiService.authenticatedRequest(`/billing/plans/${id}`, { method: 'DELETE' });
       return response;
     } catch (error) {
       throw new Error('Failed to delete billing plan');
@@ -125,7 +125,7 @@ export const billingService = {
 
   getPlanFeatures: async (planId: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/plans/${planId}/features/`, { method: 'GET' });
+      const response = await apiService.authenticatedRequest(`/billing/plans/${planId}/features`, { method: 'GET' });
       return response;
     } catch (error) {
       throw new Error('Failed to fetch plan features');
@@ -158,7 +158,7 @@ export const billingService = {
 
   addFeatureToPlan: async (planId: string, featureData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/plans/${planId}/features/`, {
+      const response = await apiService.authenticatedRequest(`/billing/plans/${planId}/features`, {
         method: 'POST',
         body: JSON.stringify(featureData),
       });
@@ -195,7 +195,7 @@ export const billingService = {
 
   updateSchoolSubscription: async (id: string, subscriptionData: any): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/subscriptions/${id}/`, {
+      const response = await apiService.authenticatedRequest(`/billing/subscriptions/${id}`, {
         method: 'PUT',
         body: JSON.stringify(subscriptionData),
       });
@@ -208,7 +208,7 @@ export const billingService = {
   // Invoices API calls
   getInvoices: async (): Promise<InvoicesResponse> => {
     try {
-      const response = await apiService.authenticatedRequest('/billing/invoices/', { method: 'GET' });
+      const response = await apiService.authenticatedRequest('/billing/invoices', { method: 'GET' });
       return response as InvoicesResponse;
     } catch (error) {
       throw new Error('Failed to fetch invoices');
@@ -217,7 +217,7 @@ export const billingService = {
 
   getInvoiceDetails: async (id: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}/`, { method: 'GET' });
+      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}`, { method: 'GET' });
       return response;
     } catch (error) {
       throw new Error('Failed to fetch invoice details');
@@ -226,7 +226,7 @@ export const billingService = {
 
   sendInvoice: async (id: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}/send/`, { method: 'POST' });
+      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}/send`, { method: 'POST' });
       return response;
     } catch (error) {
       throw new Error('Failed to send invoice');
@@ -235,7 +235,7 @@ export const billingService = {
 
   voidInvoice: async (id: string): Promise<any> => {
     try {
-      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}/void/`, { method: 'POST' });
+      const response = await apiService.authenticatedRequest(`/billing/invoices/${id}/void`, { method: 'POST' });
       return response;
     } catch (error) {
       throw new Error('Failed to void invoice');

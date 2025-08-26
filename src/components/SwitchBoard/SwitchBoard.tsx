@@ -949,67 +949,67 @@ const SwitchBoard: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                         <div className="flex items-center space-x-1">
                           <span>Name</span>
                           {getSortIcon('name')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('display_name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('display_name')}>
                         <div className="flex items-center space-x-1">
                           <span>Display Name</span>
                           {getSortIcon('display_name')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Description</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_type')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_type')}>
                         <div className="flex items-center space-x-1">
                           <span>Feature Type</span>
                           {getSortIcon('feature_type')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
                         <div className="flex items-center space-x-1">
                           <span>Is Active</span>
                           {getSortIcon('is_active')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
                         <div className="flex items-center space-x-1">
                           <span>Created At</span>
                           {getSortIcon('created_at')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
                         <div className="flex items-center space-x-1">
                           <span>Updated At</span>
                           {getSortIcon('updated_at')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {filteredAndSortedFeatures.map((feature, index) => (
-                      <tr key={feature.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      <tr key={feature.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                           {feature.name}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                           {feature.display_name}
                         </td>
-                        <td className="px-4 py-2 text-xs text-gray-900 max-w-xs truncate">
+                        <td className="px-3 py-1.5 text-xs text-gray-900 max-w-xs truncate">
                           {feature.description}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {feature.feature_type}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             feature.is_active 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
@@ -1017,13 +1017,13 @@ const SwitchBoard: React.FC = () => {
                             {feature.is_active ? 'true' : 'false'}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {feature.created_at}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {feature.updated_at}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
                             <button
                               onClick={() => {/* View details */}}
@@ -1092,91 +1092,91 @@ const SwitchBoard: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_flag_name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('feature_flag_name')}>
                         <div className="flex items-center space-x-1">
                           <span>Feature Flag Name</span>
                           {getSortIcon('feature_flag_name')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_type')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_type')}>
                         <div className="flex items-center space-x-1">
                           <span>Scope Type</span>
                           {getSortIcon('scope_type')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_id')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('scope_id')}>
                         <div className="flex items-center space-x-1">
                           <span>Scope Id</span>
                           {getSortIcon('scope_id')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('school_name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('school_name')}>
                         <div className="flex items-center space-x-1">
                           <span>School Name</span>
                           {getSortIcon('school_name')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
                         <div className="flex items-center space-x-1">
                           <span>Username</span>
                           {getSortIcon('username')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_enabled')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_enabled')}>
                         <div className="flex items-center space-x-1">
                           <span>Is Enabled</span>
                           {getSortIcon('is_enabled')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('percentage')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('percentage')}>
                         <div className="flex items-center space-x-1">
                           <span>Percentage</span>
                           {getSortIcon('percentage')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('start_date')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('start_date')}>
                         <div className="flex items-center space-x-1">
                           <span>Start Date</span>
                           {getSortIcon('start_date')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('end_date')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('end_date')}>
                         <div className="flex items-center space-x-1">
                           <span>End Date</span>
                           {getSortIcon('end_date')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('updated_at')}>
                         <div className="flex items-center space-x-1">
                           <span>Updated At</span>
                           {getSortIcon('updated_at')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {filteredAndSortedFeatureFlagStates.map((state, index) => (
-                      <tr key={state.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      <tr key={state.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                           {state.feature_flag_name}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.scope_type}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.scope_id || '-'}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.school_name || '-'}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.username || '-'}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                             state.is_enabled 
                               ? 'bg-green-100 text-green-800' 
                               : 'bg-red-100 text-red-800'
@@ -1184,19 +1184,19 @@ const SwitchBoard: React.FC = () => {
                             {state.is_enabled ? 'true' : 'false'}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.percentage}%
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.start_date || '-'}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.end_date || '-'}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {state.updated_at}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
                             <button
                               onClick={() => {/* View details */}}

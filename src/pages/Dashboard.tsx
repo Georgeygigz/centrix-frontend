@@ -86,7 +86,7 @@ const Dashboard: React.FC = () => {
         <TopNavigation pageTitle={getPageTitle(currentPage)} />
         
         {/* Content Area */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-y-auto">
           {renderContent()}
         </div>
       </div>

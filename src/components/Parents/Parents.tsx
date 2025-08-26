@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaUserFriends } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
@@ -45,54 +45,82 @@ const Parents: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
 
-  // Fetch parents from API with pagination
-  const fetchParents = useCallback(async (page: number = currentPage, search: string = debouncedSearchQuery) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setCurrentPage(page);
-      
-      const params: ParentQueryParams = {
-        page,
-        page_size: pageSize,
-        search: search || undefined,
-        ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
-      };
-      
-      const response = await apiService.parents.getAll(params);
-      setParents(response.results || []);
-      setTotalCount(response.count || 0);
-      setTotalPages(Math.ceil((response.count || 0) / pageSize));
-      setHasNext(!!response.next);
-      setHasPrevious(!!response.previous);
-    } catch (err) {
-      console.error('Error fetching parents:', err);
-      setError('Failed to fetch parents');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, debouncedSearchQuery, pageSize, sortBy, sortDirection]);
-
   // Load parents on component mount
   useEffect(() => {
-    fetchParents(1);
-  }, [fetchParents]);
+    const loadInitialData = async () => {
+      const params: ParentQueryParams = {
+        page: 1,
+        page_size: pageSize,
+        search: undefined,
+        ordering: undefined,
+      };
+      
+      try {
+        setLoading(true);
+        setError(null);
+        setCurrentPage(1);
+        
+        const response = await apiService.parents.getAll(params);
+        setParents(response.results || []);
+        setTotalCount(response.count || 0);
+        setTotalPages(Math.ceil((response.count || 0) / pageSize));
+        setHasNext(!!response.next);
+        setHasPrevious(!!response.previous);
+      } catch (err) {
+        console.error('Error fetching parents:', err);
+        setError('Failed to fetch parents');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadInitialData();
+  }, [pageSize]);
 
-  // Debounce search query and fetch parents
+  // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-      fetchParents(1, searchQuery);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, fetchParents]);
+  }, [searchQuery]);
+
+  // Handle search and sorting changes
+  useEffect(() => {
+    const handleSearchAndSort = async () => {
+      const params: ParentQueryParams = {
+        page: 1,
+        page_size: pageSize,
+        search: debouncedSearchQuery || undefined,
+        ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
+      };
+      
+      try {
+        setLoading(true);
+        setError(null);
+        setCurrentPage(1);
+        
+        const response = await apiService.parents.getAll(params);
+        setParents(response.results || []);
+        setTotalCount(response.count || 0);
+        setTotalPages(Math.ceil((response.count || 0) / pageSize));
+        setHasNext(!!response.next);
+        setHasPrevious(!!response.previous);
+      } catch (err) {
+        console.error('Error fetching parents:', err);
+        setError('Failed to fetch parents');
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleSearchAndSort();
+  }, [debouncedSearchQuery, sortBy, sortDirection, pageSize]);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
@@ -101,7 +129,6 @@ const Parents: React.FC = () => {
       setSortBy(column);
       setSortDirection('asc');
     }
-    fetchParents(1, debouncedSearchQuery);
   };
 
   const getSortIcon = (column: string) => {
@@ -143,7 +170,24 @@ const Parents: React.FC = () => {
       });
       
       closeAddDrawer();
-      fetchParents();
+      // Refresh the parents list
+      const params: ParentQueryParams = {
+        page: currentPage,
+        page_size: pageSize,
+        search: debouncedSearchQuery || undefined,
+        ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
+      };
+      
+      try {
+        const response = await apiService.parents.getAll(params);
+        setParents(response.results || []);
+        setTotalCount(response.count || 0);
+        setTotalPages(Math.ceil((response.count || 0) / pageSize));
+        setHasNext(!!response.next);
+        setHasPrevious(!!response.previous);
+      } catch (err) {
+        console.error('Error refreshing parents:', err);
+      }
       
       setTimeout(() => {
         setToast(null);
@@ -280,7 +324,24 @@ const Parents: React.FC = () => {
 
         await apiService.parents.update(editingParent.id, updateData);
         
-        fetchParents();
+        // Refresh the parents list
+        const params: ParentQueryParams = {
+          page: currentPage,
+          page_size: pageSize,
+          search: debouncedSearchQuery || undefined,
+          ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
+        };
+        
+        try {
+          const response = await apiService.parents.getAll(params);
+          setParents(response.results || []);
+          setTotalCount(response.count || 0);
+          setTotalPages(Math.ceil((response.count || 0) / pageSize));
+          setHasNext(!!response.next);
+          setHasPrevious(!!response.previous);
+        } catch (err) {
+          console.error('Error refreshing parents:', err);
+        }
         
         setToast({
           message: 'Parent updated successfully!',
@@ -473,7 +534,32 @@ const Parents: React.FC = () => {
               <div className="p-4 text-center">
                 <div className="text-red-600 text-sm mb-2">{error}</div>
                 <button
-                  onClick={() => fetchParents(1)}
+                  onClick={async () => {
+                    const params: ParentQueryParams = {
+                      page: 1,
+                      page_size: pageSize,
+                      search: undefined,
+                      ordering: undefined,
+                    };
+                    
+                    try {
+                      setLoading(true);
+                      setError(null);
+                      setCurrentPage(1);
+                      
+                      const response = await apiService.parents.getAll(params);
+                      setParents(response.results || []);
+                      setTotalCount(response.count || 0);
+                      setTotalPages(Math.ceil((response.count || 0) / pageSize));
+                      setHasNext(!!response.next);
+                      setHasPrevious(!!response.previous);
+                    } catch (err) {
+                      console.error('Error fetching parents:', err);
+                      setError('Failed to fetch parents');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200"
                 >
                   Retry
@@ -485,62 +571,62 @@ const Parents: React.FC = () => {
               <>
                 <div className="overflow-x-auto border-0">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('full_name')}>
-                          <div className="flex items-center space-x-1">
-                            <span>Full Name</span>
-                            {getSortIcon('full_name')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('relationship')}>
-                          <div className="flex items-center space-x-1">
-                            <span>Relationship</span>
-                            {getSortIcon('relationship')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('email')}>
-                          <div className="flex items-center space-x-1">
-                            <span>Email</span>
-                            {getSortIcon('email')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('phone')}>
-                          <div className="flex items-center space-x-1">
-                            <span>Phone</span>
-                            {getSortIcon('phone')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
-                          <div className="flex items-center space-x-1">
-                            <span>Created At</span>
-                            {getSortIcon('created_at')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                                      <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('full_name')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Full Name</span>
+                          {getSortIcon('full_name')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('relationship')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Relationship</span>
+                          {getSortIcon('relationship')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('email')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Email</span>
+                          {getSortIcon('email')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('phone')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Phone</span>
+                          {getSortIcon('phone')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Created At</span>
+                          {getSortIcon('created_at')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
                       {parents.map((parent: Parent, index: number) => (
-                        <tr key={parent.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                        <tr key={parent.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                             {parent.full_name}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {getRelationshipBadge(parent.relationship)}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {parent.email}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {parent.phone}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {new Date(parent.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                             <div className="flex items-center justify-center space-x-1">
                               <button
                                 onClick={() => handleViewParent(parent)}
@@ -589,27 +675,81 @@ const Parents: React.FC = () => {
             {!loading && !error && totalCount > 0 && (
               <>
                 {/* Gray row above pagination */}
-                <div className="h-4 mt-8 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
-                <div className="flex items-center justify-between p-4 rounded-b-lg border-0" style={{ backgroundColor: 'rgb(249,250,251)' }}>
-                  <div className="text-sm text-gray-700">
+                <div className="h-4 mt-4 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
+                <div className="flex items-center justify-between p-3 rounded-lg border-0 mb-4" style={{ backgroundColor: 'rgb(249,250,251)', position: 'relative', zIndex: 10 }}>
+                  <div className="text-xs text-gray-600">
                     Showing <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="font-medium">{totalCount}</span> results
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
-                      onClick={() => fetchParents(currentPage - 1)}
+                      onClick={async () => {
+                        if (hasPrevious) {
+                          const params: ParentQueryParams = {
+                            page: currentPage - 1,
+                            page_size: pageSize,
+                            search: debouncedSearchQuery || undefined,
+                            ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
+                          };
+                          
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            setCurrentPage(currentPage - 1);
+                            
+                            const response = await apiService.parents.getAll(params);
+                            setParents(response.results || []);
+                            setTotalCount(response.count || 0);
+                            setTotalPages(Math.ceil((response.count || 0) / pageSize));
+                            setHasNext(!!response.next);
+                            setHasPrevious(!!response.previous);
+                          } catch (err) {
+                            console.error('Error fetching parents:', err);
+                            setError('Failed to fetch parents');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }}
                       disabled={!hasPrevious}
-                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: 'rgb(249,250,251)' }}
                     >
                       Previous
                     </button>
-                    <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+                    <span className="px-2.5 py-1 text-xs font-medium text-gray-600">
                       Page {currentPage} of {totalPages} ({totalPages > 1 ? `${totalPages} pages` : '1 page'})
                     </span>
                     <button 
-                      onClick={() => fetchParents(currentPage + 1)}
+                      onClick={async () => {
+                        if (hasNext) {
+                          const params: ParentQueryParams = {
+                            page: currentPage + 1,
+                            page_size: pageSize,
+                            search: debouncedSearchQuery || undefined,
+                            ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
+                          };
+                          
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            setCurrentPage(currentPage + 1);
+                            
+                            const response = await apiService.parents.getAll(params);
+                            setParents(response.results || []);
+                            setTotalCount(response.count || 0);
+                            setTotalPages(Math.ceil((response.count || 0) / pageSize));
+                            setHasNext(!!response.next);
+                            setHasPrevious(!!response.previous);
+                          } catch (err) {
+                            console.error('Error fetching parents:', err);
+                            setError('Failed to fetch parents');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }}
                       disabled={!hasNext}
-                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ backgroundColor: 'rgb(249,250,251)' }}
                     >
                       Next

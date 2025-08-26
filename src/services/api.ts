@@ -324,7 +324,7 @@ export const apiService = {
 
     // Update a class
     updateClass: async (id: string, classData: Partial<Class>) => {
-      return apiService.authenticatedRequest(`/students/classes/${id}/`, { 
+      return apiService.authenticatedRequest(`/students/classes/${id}`, { 
         method: 'PUT',
         body: JSON.stringify(classData)
       });
@@ -332,7 +332,7 @@ export const apiService = {
 
     // Update a stream
     updateStream: async (id: string, streamData: Partial<Stream>) => {
-      return apiService.authenticatedRequest(`/students/streams/${id}/`, { 
+      return apiService.authenticatedRequest(`/students/streams/${id}`, { 
         method: 'PUT',
         body: JSON.stringify(streamData)
       });
@@ -403,7 +403,7 @@ export const apiService = {
 
     // Check single feature
     checkFeature: async (featureName: string, scopeType: string = 'global', scopeId: string | null = null) => {
-      return apiService.authenticatedRequest('/switch/check/', {
+      return apiService.authenticatedRequest('/switch/check', {
         method: 'POST',
         body: JSON.stringify({
           feature_name: featureName,
@@ -415,7 +415,7 @@ export const apiService = {
 
     // Check multiple features in bulk
     checkFeaturesBulk: async (featureNames: string[], scopeType: string = 'global', scopeId: string | null = null) => {
-      return apiService.authenticatedRequest('/switch/check/bulk/', {
+      return apiService.authenticatedRequest('/switch/check/bulk', {
         method: 'POST',
         body: JSON.stringify({
           features: featureNames,
@@ -449,7 +449,7 @@ export const apiService = {
 
     // Create new feature flag
     create: async (flagData: CreateFeatureFlagRequest) => {
-      return apiService.authenticatedRequest('/switch/flags/', {
+      return apiService.authenticatedRequest('/switch/flags', {
         method: 'POST',
         body: JSON.stringify(flagData),
       });
@@ -513,7 +513,7 @@ export const apiService = {
 
     // Create new feature flag state
     create: async (stateData: CreateFeatureFlagStateRequest) => {
-      return apiService.authenticatedRequest('/switch/states/', {
+      return apiService.authenticatedRequest('/switch/states', {
         method: 'POST',
         body: JSON.stringify(stateData),
       });
@@ -521,7 +521,7 @@ export const apiService = {
 
     // Update feature flag state by ID
     update: async (stateId: string, stateData: Partial<UpdateFeatureFlagStateRequest>) => {
-      return apiService.authenticatedRequest(`/switch/states/${stateId}/`, {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}`, {
         method: 'PUT',
         body: JSON.stringify(stateData),
       });
@@ -546,7 +546,7 @@ export const apiService = {
       if (params?.sort_direction) queryParams.append('sort_direction', params.sort_direction);
       
       const queryString = queryParams.toString();
-      const url = queryString ? `/users?${queryString}` : '/users';
+      const url = queryString ? `/users/?${queryString}` : '/users/';
       
       return apiService.authenticatedRequest(url, { method: 'GET' });
     },
@@ -558,7 +558,7 @@ export const apiService = {
 
     // Create new user
     create: async (userData: any) => {
-      return apiService.authenticatedRequest('/users', {
+      return apiService.authenticatedRequest('/users/', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
@@ -607,7 +607,7 @@ export const apiService = {
       if (params?.ordering) queryParams.append('ordering', params.ordering);
       
       const queryString = queryParams.toString();
-      const url = queryString ? `/parents?${queryString}` : '/parents';
+      const url = queryString ? `/parents/?${queryString}` : '/parents/';
       
       return apiService.authenticatedRequest(url, { method: 'GET' });
     },

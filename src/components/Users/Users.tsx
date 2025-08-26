@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaCopy, FaEyeSlash, FaKey } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
@@ -51,11 +51,15 @@ const Users: React.FC = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [hasNext, setHasNext] = useState(false);
   const [hasPrevious, setHasPrevious] = useState(false);
+  
+
+  
+
   
   // Password reset state
   const [isPasswordResetModalOpen, setIsPasswordResetModalOpen] = useState(false);
@@ -129,58 +133,104 @@ const Users: React.FC = () => {
   // Get current user role
   const getCurrentUserRole = async () => {
     try {
-      const response = await apiService.users.getAll();
+      const response = await apiService.authenticatedRequest('/users/me', { method: 'GET' });
       setCurrentUserRole(response.user_role || '');
     } catch (err) {
       console.error('Error getting current user role:', err);
     }
   };
 
-  // Fetch users from API with pagination
-  const fetchUsers = useCallback(async (page: number = currentPage, search: string = debouncedSearchQuery) => {
-    try {
-      setLoading(true);
-      setError(null);
-      setCurrentPage(page);
-      
+
+
+  // Load users, schools, and current user role on component mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      // Load initial users
       const params: PaginationParams = {
-        page,
+        page: 1,
         page_size: pageSize,
-        search: search || undefined,
+        search: undefined,
+        sort_by: undefined,
+        sort_direction: 'asc'
+      };
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await apiService.users.getAll(params);
+        
+        // Handle the new response format from backend
+        const responseData = response.data || response;
+        
+        setUsers(responseData.results || []);
+        setTotalCount(responseData.count || 0);
+        setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+        setHasNext(!!responseData.next);
+        setHasPrevious(!!responseData.previous);
+        setCurrentPage(1);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Failed to fetch users');
+      } finally {
+        setLoading(false);
+      }
+      
+      await fetchSchools();
+      await getCurrentUserRole();
+    };
+    loadInitialData();
+  }, [pageSize]); // Include pageSize dependency
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Handle search and sorting changes
+  useEffect(() => {
+    // Skip the initial load since it's handled by the mount useEffect
+    if (debouncedSearchQuery === '' && sortBy === '' && sortDirection === 'asc') {
+      return;
+    }
+    
+    const handleSearchAndSort = async () => {
+      const params: PaginationParams = {
+        page: 1,
+        page_size: pageSize,
+        search: debouncedSearchQuery || undefined,
         sort_by: sortBy || undefined,
         sort_direction: sortDirection
       };
       
-      const response = await apiService.users.getAll(params);
-      setUsers(response.users || []);
-      setTotalCount(response.total_count || 0);
-      setTotalPages(response.total_pages || Math.ceil((response.total_count || 0) / pageSize));
-      setHasNext(response.has_next || false);
-      setHasPrevious(response.has_previous || false);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      setError('Failed to fetch users');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, debouncedSearchQuery, pageSize, sortBy, sortDirection]);
-
-  // Load users, schools, and current user role on component mount
-  useEffect(() => {
-    fetchUsers(1);
-    fetchSchools();
-    getCurrentUserRole();
-  }, [fetchUsers]);
-
-  // Debounce search query and fetch users
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-      fetchUsers(1, searchQuery);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, fetchUsers]);
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await apiService.users.getAll(params);
+        
+        // Handle the new response format from backend
+        const responseData = response.data || response;
+        
+        setUsers(responseData.results || []);
+        setTotalCount(responseData.count || 0);
+        setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+        setHasNext(!!responseData.next);
+        setHasPrevious(!!responseData.previous);
+        setCurrentPage(1);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+        setError('Failed to fetch users');
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleSearchAndSort();
+  }, [debouncedSearchQuery, sortBy, sortDirection, pageSize]);
 
   // Use users directly since filtering and sorting is now handled server-side
   const displayUsers = users;
@@ -192,8 +242,6 @@ const Users: React.FC = () => {
       setSortBy(column);
       setSortDirection('asc');
     }
-    // Fetch users with new sorting
-    fetchUsers(1, debouncedSearchQuery);
   };
 
   const getSortIcon = (column: string) => {
@@ -412,7 +460,28 @@ const Users: React.FC = () => {
         await apiService.users.update(editingUser.id, updateData);
         
         // Refresh the users list
-        fetchUsers();
+        const params: PaginationParams = {
+          page: currentPage,
+          page_size: pageSize,
+          search: debouncedSearchQuery || undefined,
+          sort_by: sortBy || undefined,
+          sort_direction: sortDirection
+        };
+        
+        try {
+          const response = await apiService.users.getAll(params);
+          
+          // Handle the new response format from backend
+          const responseData = response.data || response;
+          
+          setUsers(responseData.results || []);
+          setTotalCount(responseData.count || 0);
+          setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+          setHasNext(!!responseData.next);
+          setHasPrevious(!!responseData.previous);
+        } catch (err) {
+          console.error('Error refreshing users:', err);
+        }
         
         setToast({
           message: 'User updated successfully!',
@@ -495,7 +564,7 @@ const Users: React.FC = () => {
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.inactive;
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
     );
@@ -512,7 +581,7 @@ const Users: React.FC = () => {
     const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.user;
     
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
+      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
         {config.label}
       </span>
     );
@@ -522,9 +591,9 @@ const Users: React.FC = () => {
     <div className="bg-gray-50 min-h-screen">
       <div className="p-4">
         {/* Header with tabs, search and filters */}
-        <div className="bg-white rounded-md shadow-sm p-4 mb-4">
+        <div className="bg-white rounded-md shadow-sm p-3 mb-4">
           {/* Tabs and Controls Row */}
-          <div className="mb-4">
+          <div className="mb-3">
             <div className="flex items-center justify-between">
               {/* Tabs */}
               <nav className="flex space-x-6">
@@ -561,7 +630,7 @@ const Users: React.FC = () => {
               </nav>
 
               {/* Search, Filter, and Sort Controls */}
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 {/* Search */}
                 <div className="relative">
                   <input
@@ -584,7 +653,12 @@ const Users: React.FC = () => {
                 {/* Sort */}
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    if (e.target.value) {
+                      setSortDirection('asc');
+                    }
+                  }}
                   className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
                 >
                   <option value="">Sort by</option>
@@ -625,7 +699,37 @@ const Users: React.FC = () => {
               <div className="p-4 text-center">
                 <div className="text-red-600 text-sm mb-2">{error}</div>
                 <button
-                  onClick={() => fetchUsers(1)}
+                  onClick={async () => {
+                    const params: PaginationParams = {
+                      page: 1,
+                      page_size: pageSize,
+                      search: undefined,
+                      sort_by: undefined,
+                      sort_direction: 'asc'
+                    };
+                    
+                    try {
+                      setLoading(true);
+                      setError(null);
+                      
+                      const response = await apiService.users.getAll(params);
+                      
+                      // Handle the new response format from backend
+                      const responseData = response.data || response;
+                      
+                      setUsers(responseData.results || []);
+                      setTotalCount(responseData.count || 0);
+                      setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+                      setHasNext(!!responseData.next);
+                      setHasPrevious(!!responseData.previous);
+                      setCurrentPage(1);
+                    } catch (err) {
+                      console.error('Error fetching users:', err);
+                      setError('Failed to fetch users');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors duration-200"
                 >
                   Retry
@@ -639,81 +743,81 @@ const Users: React.FC = () => {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('username')}>
                           <div className="flex items-center space-x-1">
                             <span>Username</span>
                             {getSortIcon('username')}
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           <span>First Name</span>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           <span>Last Name</span>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           <span>Email</span>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           <span>Phone</span>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('role')}>
                           <div className="flex items-center space-x-1">
                             <span>Role</span>
                             {getSortIcon('role')}
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
                           <div className="flex items-center space-x-1">
                             <span>Status</span>
                             {getSortIcon('is_active')}
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           <span>School</span>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
                           <div className="flex items-center space-x-1">
                             <span>Created At</span>
                             {getSortIcon('created_at')}
                           </div>
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                       {displayUsers.map((user: User, index: number) => (
-                        <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                        <tr key={user.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                             {user.username}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {user.first_name}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {user.last_name}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {user.email}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {user.phone_number || '-'}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {getRoleBadge(user.role)}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {getStatusBadge(user.is_active ? 'active' : 'inactive')}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {user.school?.name || '-'}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {new Date(user.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                             <div className="flex items-center justify-center">
                               <PermissionGate permissions={['access_admin_panel']}>
                                 <div className="relative">
@@ -751,31 +855,99 @@ const Users: React.FC = () => {
             )}
             
             {/* Pagination - Outside table container */}
-            {!loading && !error && totalCount > 0 && (
-              <>
-                {/* Gray row above pagination */}
-                <div className="h-4 mt-8 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
-                <div className="flex items-center justify-between p-4 rounded-b-lg border-0" style={{ backgroundColor: 'rgb(249,250,251)' }}>
-                  <div className="text-sm text-gray-700">
+                          {!loading && !error && totalCount > 0 && (
+                <>
+                  {/* Empty row for visual separation */}
+                  <div className="h-4 mt-4 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
+                  
+                  {/* Extra row for additional spacing */}
+                  <div className="h-2" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
+                  
+                  <div className="flex items-center justify-between p-3 rounded-lg mb-4" style={{ backgroundColor: 'rgb(249,250,251)', position: 'relative', zIndex: 10 }}>
+                  <div className="text-xs text-gray-600">
                     Showing <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalCount)}</span> of <span className="font-medium">{totalCount}</span> results
                   </div>
                   <div className="flex items-center space-x-2">
                     <button 
-                      onClick={() => fetchUsers(currentPage - 1)}
+                      onClick={async () => {
+                        if (hasPrevious) {
+                          const params: PaginationParams = {
+                            page: currentPage - 1,
+                            page_size: pageSize,
+                            search: debouncedSearchQuery || undefined,
+                            sort_by: sortBy || undefined,
+                            sort_direction: sortDirection
+                          };
+                          
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            
+                            const response = await apiService.users.getAll(params);
+                            
+                            // Handle the new response format from backend
+                            const responseData = response.data || response;
+                            
+                            setUsers(responseData.results || []);
+                            setTotalCount(responseData.count || 0);
+                            setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+                            setHasNext(!!responseData.next);
+                            setHasPrevious(!!responseData.previous);
+                            setCurrentPage(currentPage - 1);
+                          } catch (err) {
+                            console.error('Error fetching users:', err);
+                            setError('Failed to fetch users');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }}
                       disabled={!hasPrevious}
-                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: 'rgb(249,250,251)' }}
+                      className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-white border-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'rgb(59,130,246)' }}
                     >
                       Previous
                     </button>
-                    <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+                    <span className="px-2.5 py-1 text-xs font-medium text-gray-600">
                       Page {currentPage} of {totalPages} ({totalPages > 1 ? `${totalPages} pages` : '1 page'})
                     </span>
                     <button 
-                      onClick={() => fetchUsers(currentPage + 1)}
+                      onClick={async () => {
+                        if (hasNext) {
+                          const params: PaginationParams = {
+                            page: currentPage + 1,
+                            page_size: pageSize,
+                            search: debouncedSearchQuery || undefined,
+                            sort_by: sortBy || undefined,
+                            sort_direction: sortDirection
+                          };
+                          
+                          try {
+                            setLoading(true);
+                            setError(null);
+                            
+                            const response = await apiService.users.getAll(params);
+                            
+                            // Handle the new response format from backend
+                            const responseData = response.data || response;
+                            
+                            setUsers(responseData.results || []);
+                            setTotalCount(responseData.count || 0);
+                            setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+                            setHasNext(!!responseData.next);
+                            setHasPrevious(!!responseData.previous);
+                            setCurrentPage(currentPage + 1);
+                          } catch (err) {
+                            console.error('Error fetching users:', err);
+                            setError('Failed to fetch users');
+                          } finally {
+                            setLoading(false);
+                          }
+                        }
+                      }}
                       disabled={!hasNext}
-                      className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                      style={{ backgroundColor: 'rgb(249,250,251)' }}
+                      className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-white border-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ backgroundColor: 'rgb(59,130,246)' }}
                     >
                       Next
                     </button>
@@ -1286,9 +1458,31 @@ const Users: React.FC = () => {
               ) : (
                 <>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       closeAddDrawer();
-                      fetchUsers(); // Refresh the users list
+                      // Refresh the users list
+                      const params: PaginationParams = {
+                        page: currentPage,
+                        page_size: pageSize,
+                        search: debouncedSearchQuery || undefined,
+                        sort_by: sortBy || undefined,
+                        sort_direction: sortDirection
+                      };
+                      
+                      try {
+                        const response = await apiService.users.getAll(params);
+                        
+                        // Handle the new response format from backend
+                        const responseData = response.data || response;
+                        
+                        setUsers(responseData.results || []);
+                        setTotalCount(responseData.count || 0);
+                        setTotalPages(responseData.total_pages || Math.ceil((responseData.count || 0) / pageSize));
+                        setHasNext(!!responseData.next);
+                        setHasPrevious(!!responseData.previous);
+                      } catch (err) {
+                        console.error('Error refreshing users:', err);
+                      }
                     }}
                     className="px-4 py-2 text-xs bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
                   >

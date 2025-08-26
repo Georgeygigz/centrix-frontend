@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { FaSearch, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaEye, FaPlus } from 'react-icons/fa';
 import { BillingPlan } from '../../types/billing';
 import billingService from '../../services/billing';
+import { apiService } from '../../services/api';
 
 // Mock data for development (keeping as fallback)
 const mockBillingPlans: BillingPlan[] = [
@@ -459,33 +460,20 @@ const BillingPlans: React.FC = () => {
   // Fetch schools for subscription form
   const fetchSchools = useCallback(async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/schools', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
-        }
-      });
+      const response = await apiService.schools.getAll();
+      console.log('Schools API response:', response);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Schools API response:', data);
-        
-        if (data.data && data.data.results && Array.isArray(data.data.results)) {
-          console.log('Setting schools from data.data.results:', data.data.results);
-          setSchools(data.data.results);
-        } else if (data.results && Array.isArray(data.results)) {
-          console.log('Setting schools from data.results:', data.results);
-          setSchools(data.results);
-        } else if (Array.isArray(data)) {
-          console.log('Setting schools from direct array:', data);
-          setSchools(data);
-        } else {
-          console.error('Unexpected schools data format:', data);
-          setSchools([]);
-        }
+      if (response.data && response.data.results && Array.isArray(response.data.results)) {
+        console.log('Setting schools from data.data.results:', response.data.results);
+        setSchools(response.data.results);
+      } else if (response.results && Array.isArray(response.results)) {
+        console.log('Setting schools from data.results:', response.results);
+        setSchools(response.results);
+      } else if (Array.isArray(response)) {
+        console.log('Setting schools from direct array:', response);
+        setSchools(response);
       } else {
-        console.error('Failed to fetch schools:', response.status);
+        console.error('Unexpected schools data format:', response);
         setSchools([]);
       }
     } catch (error) {
@@ -923,72 +911,72 @@ const BillingPlans: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                         <div className="flex items-center space-x-1">
                           <span>Name</span>
                           {getSortIcon('name')}
                         </div>
                       </th>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('plan_type')}>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('plan_type')}>
                           <div className="flex items-center space-x-1">
                             <span>Plan Type</span>
                             {getSortIcon('plan_type')}
                           </div>
                         </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Description</span>
                       </th>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
                           <div className="flex items-center space-x-1">
                             <span>Status</span>
                             {getSortIcon('is_active')}
                           </div>
                         </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Features</span>
                       </th>
-                                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
                           <div className="flex items-center space-x-1">
                             <span>Created At</span>
                             {getSortIcon('created_at')}
                           </div>
                         </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Actions</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {displayPlans.map((plan, index) => (
-                      <tr key={plan.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                      <tr key={plan.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="text-sm font-medium text-gray-900">{plan.name}</div>
                             {plan.is_default && (
-                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 ml-2">
+                              <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 ml-2">
                                 Default
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           {getPlanTypeBadge(plan.plan_type)}
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <div className="text-sm text-gray-900 max-w-xs truncate" title={plan.description}>
                             {plan.description || '-'}
                           </div>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           {getStatusBadge(plan.is_active)}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                           {plan.features.length} features
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                           {new Date(plan.created_at).toLocaleDateString()}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 relative">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900 relative">
                           <div className="flex items-center justify-center space-x-2">
                             {/* View Button */}
                             <button
@@ -1100,46 +1088,46 @@ const BillingPlans: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Name</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Code</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Description</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Is Active</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Is Billable</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {features.map((feature, index) => (
-                      <tr key={feature.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                      <tr key={feature.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">{feature.name}</div>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-3 py-1.5 whitespace-nowrap">
                           <div className="text-sm text-gray-900 font-mono">{feature.code}</div>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-3 py-1.5">
                           <div className="text-sm text-gray-900 max-w-xs truncate" title={feature.description}>
                             {feature.description || '-'}
                           </div>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                             feature.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {feature.is_active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        <td className="px-3 py-1.5 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                             feature.is_billable ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
                           }`}>
                             {feature.is_billable ? 'Billable' : 'Non-Billable'}
@@ -1155,27 +1143,27 @@ const BillingPlans: React.FC = () => {
               {featuresTotalPages > 1 && (
                 <>
                   {/* Gray row above pagination */}
-                  <div className="h-4 mt-8 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
-                  <div className="flex items-center justify-between p-4 rounded-b-lg border-0" style={{ backgroundColor: 'rgb(249,250,251)' }}>
-                    <div className="text-sm text-gray-700">
+                  <div className="h-4 mt-4 rounded-t-lg" style={{ backgroundColor: 'rgb(249,250,251)' }}></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border-0 mb-4" style={{ backgroundColor: 'rgb(249,250,251)', position: 'relative', zIndex: 10 }}>
+                    <div className="text-xs text-gray-600">
                       Showing <span className="font-medium">{((featuresCurrentPage - 1) * pageSize) + 1}</span> to <span className="font-medium">{Math.min(featuresCurrentPage * pageSize, featuresTotalCount)}</span> of <span className="font-medium">{featuresTotalCount}</span> results
                     </div>
                     <div className="flex items-center space-x-2">
                       <button 
                         onClick={() => fetchFeatures(featuresCurrentPage - 1)}
                         disabled={!featuresHasPrevious}
-                        className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ backgroundColor: 'rgb(249,250,251)' }}
                       >
                         Previous
                       </button>
-                      <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+                      <span className="px-2.5 py-1 text-xs font-medium text-gray-600">
                         Page {featuresCurrentPage} of {featuresTotalPages} ({featuresTotalPages > 1 ? `${featuresTotalPages} pages` : '1 page'})
                       </span>
                       <button 
                         onClick={() => fetchFeatures(featuresCurrentPage + 1)}
                         disabled={!featuresHasNext}
-                        className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ backgroundColor: 'rgb(249,250,251)' }}
                       >
                         Next
@@ -1217,50 +1205,50 @@ const BillingPlans: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>School Name</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Plan Name</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Interval</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Status</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Start Date</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>End Date</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Auto Renew</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Students Count</span>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         <span>Actions</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {subscriptions.length > 0 ? (
                       subscriptions.map((subscription, index) => (
-                        <tr key={subscription.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                          <td className="px-4 py-2 whitespace-nowrap">
+                        <tr key={subscription.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="text-sm font-medium text-gray-900">{subscription.school_details?.name || 'N/A'}</div>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap">
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="text-sm text-gray-900">{subscription.plan_details?.name || subscription.custom_plan_name || 'N/A'}</div>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap">
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             <div className="text-sm text-gray-900 capitalize">{subscription.interval || 'N/A'}</div>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                               subscription.status === 'active' 
                                 ? 'bg-green-100 text-green-800' 
                                 : subscription.status === 'canceled'
@@ -1270,20 +1258,20 @@ const BillingPlans: React.FC = () => {
                               {subscription.status || 'N/A'}
                             </span>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {subscription.start_date 
                               ? new Date(subscription.start_date).toLocaleDateString()
                               : 'N/A'
                             }
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {subscription.end_date 
                               ? new Date(subscription.end_date).toLocaleDateString()
                               : 'N/A'
                             }
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          <td className="px-3 py-1.5 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
                               subscription.auto_renew 
                                 ? 'bg-green-100 text-green-800' 
                                 : 'bg-gray-100 text-gray-800'
@@ -1291,10 +1279,10 @@ const BillingPlans: React.FC = () => {
                               {subscription.auto_renew ? 'Yes' : 'No'}
                             </span>
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900">
                             {subscription.student_count || '0'}
                           </td>
-                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 relative">
+                          <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-900 relative">
                             <div className="flex items-center justify-center space-x-2">
                               {/* View Button */}
                               <button

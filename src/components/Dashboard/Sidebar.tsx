@@ -34,11 +34,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       icon: FaCog,
       requiredPermissions: ['access_admin_panel'],
       children: [
+        { id: 'admin-users', label: 'Users', icon: FaUsers },
+        { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
         ...(userRole !== 'super_admin' ? [
           { id: 'admin-schools', label: 'Schools', icon: FaSchool },
         ] : []),
-        { id: 'admin-users', label: 'Users', icon: FaUsers },
-        { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
         ...(userRole !== 'super_admin' ? [
           { id: 'admin-features', label: 'Switch Board', icon: FaCog },
         ] : []),
@@ -89,7 +89,18 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
             return (
               <li key={item.id}>
                 <button
-                  onClick={() => onPageChange(item.id)}
+                  onClick={() => {
+                    // For Admin Panel, navigate to Users by default
+                    if (item.id === 'admin-panel') {
+                      onPageChange('admin-users');
+                    } 
+                    // For Billing, navigate to Dashboard by default
+                    else if (item.id === 'admin-billing') {
+                      onPageChange('admin-billing-dashboard');
+                    } else {
+                      onPageChange(item.id);
+                    }
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-all duration-200 group ${
                     currentPage === item.id || (item.children && item.children.some(child => child.id === currentPage))
                       ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 shadow-sm'
@@ -120,7 +131,14 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
                       return (
                         <li key={subItem.id}>
                           <button
-                            onClick={() => onPageChange(subItem.id)}
+                            onClick={() => {
+                              // For Billing sub-item, navigate to Dashboard by default
+                              if (subItem.id === 'admin-billing') {
+                                onPageChange('admin-billing-dashboard');
+                              } else {
+                                onPageChange(subItem.id);
+                              }
+                            }}
                             className={`w-full flex items-center space-x-2 px-2 py-1 rounded text-left transition-all duration-200 ${
                               currentPage === subItem.id
                                 ? 'text-blue-600 bg-blue-50'

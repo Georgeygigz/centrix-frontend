@@ -74,8 +74,8 @@ const Schools: React.FC = () => {
         const rawSchools = data.results || data || [];
         const transformedSchools = rawSchools.map((school: any) => ({
           ...school,
-          // Add number_of_students if not present (you might need to calculate this from another API)
-          number_of_students: school.number_of_students || 0
+          // Use total_students from API response
+          number_of_students: school.total_students || 0
         }));
         
         setSchools(transformedSchools);
@@ -556,58 +556,64 @@ const Schools: React.FC = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>
                         <div className="flex items-center space-x-1">
                           <span>Name</span>
                           {getSortIcon('name')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('slug')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('slug')}>
                         <div className="flex items-center space-x-1">
                           <span>Slug</span>
                           {getSortIcon('slug')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('subdomain')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('subdomain')}>
                         <div className="flex items-center space-x-1">
                           <span>Subdomain</span>
                           {getSortIcon('subdomain')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Website
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Number of Students
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('is_active')}>
+                        <div className="flex items-center space-x-1">
+                          <span>Is Active</span>
+                          {getSortIcon('is_active')}
+                        </div>
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
                         <div className="flex items-center space-x-1">
                           <span>Created At</span>
                           {getSortIcon('created_at')}
                         </div>
                       </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {schools.map((school, index) => (
-                      <tr key={school.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs font-medium text-gray-900">
+                      <tr key={school.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                           {school.name}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                             {school.slug}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {school.subdomain}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {school.website ? (
                             <a 
                               href={school.website.startsWith('http') ? school.website : `https://${school.website}`}
@@ -621,15 +627,24 @@ const Schools: React.FC = () => {
                             <span className="text-gray-400">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             {school.number_of_students || 0}
                           </span>
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            school.is_active 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {school.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                           {formatDate(school.created_at)}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-xs text-gray-900 relative">
+                        <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
                             <button
                               onClick={() => {/* View details */}}
@@ -702,25 +717,25 @@ const Schools: React.FC = () => {
 
         {/* Pagination - Only show on schools tab */}
         {activeTab === 'schools' && (
-          <div className="flex items-center justify-between mt-8">
-            <div className="text-sm text-gray-700">
+          <div className="flex items-center justify-between p-3 rounded-lg mt-4 mb-4" style={{ backgroundColor: 'rgb(249,250,251)', position: 'relative', zIndex: 10 }}>
+            <div className="text-xs text-gray-600">
               Showing <span className="font-medium">{startIndex + 1}</span> to <span className="font-medium">{endIndex}</span> of <span className="font-medium">{totalCount}</span> results
             </div>
             <div className="flex items-center space-x-2">
               <button 
                 onClick={handlePreviousPage}
                 disabled={!hasPreviousPage}
-                className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
-              <span className="px-3 py-1.5 text-xs font-medium text-gray-700">
+              <span className="px-2.5 py-1 text-xs font-medium text-gray-600">
                 Page {currentPage} of {totalPages} ({totalPages > 1 ? `${totalPages} pages` : '1 page'})
               </span>
               <button 
                 onClick={handleNextPage}
                 disabled={!hasNextPage}
-                className="px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors duration-200 text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2.5 py-1 text-xs font-medium border rounded transition-colors duration-200 text-gray-500 bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
