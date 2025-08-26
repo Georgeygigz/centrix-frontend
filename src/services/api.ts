@@ -80,7 +80,8 @@ export const apiService = {
     
     // Ensure proper URL construction (avoid double slashes)
     const cleanUrl = url.startsWith('/') ? url.substring(1) : url;
-    const fullUrl = `${API_BASE_URL}/${cleanUrl}`;
+    const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+    const fullUrl = `${baseUrl}/${cleanUrl}`;
     
     const response = await fetch(fullUrl, {
       ...options,
@@ -317,22 +318,52 @@ export const apiService = {
       return apiService.authenticatedRequest('/students/streams/', { method: 'GET' });
     },
 
+    // Create a new stream
+    createStream: async (streamData: { name: string; code: string; description?: string }) => {
+      return apiService.authenticatedRequest('/students/streams/', {
+        method: 'POST',
+        body: JSON.stringify(streamData)
+      });
+    },
+
+    // Create a new class
+    createClass: async (classData: { name: string; code: string; stream: string; description?: string; level?: number; capacity?: number }) => {
+      // Transform stream to stream_id for API compatibility
+      const apiData: any = {
+        ...classData,
+        stream_id: classData.stream,
+        stream: undefined // Remove the stream field to avoid confusion
+      };
+      
+      return apiService.authenticatedRequest('/students/classes/', {
+        method: 'POST',
+        body: JSON.stringify(apiData)
+      });
+    },
+
     // Get all classes
     getClasses: async () => {
       return apiService.authenticatedRequest('/students/classes/', { method: 'GET' });
     },
 
     // Update a class
-    updateClass: async (id: string, classData: Partial<Class>) => {
-      return apiService.authenticatedRequest(`/students/classes/${id}`, { 
+    updateClass: async (id: string, classData: Partial<Class> & { stream?: string }) => {
+      // Transform stream to stream_id for API compatibility
+      const apiData: any = { ...classData };
+      if (classData.stream) {
+        apiData.stream_id = classData.stream;
+        delete apiData.stream;
+      }
+      
+      return apiService.authenticatedRequest(`/students/classes/${id}/`, { 
         method: 'PUT',
-        body: JSON.stringify(classData)
+        body: JSON.stringify(apiData)
       });
     },
 
     // Update a stream
     updateStream: async (id: string, streamData: Partial<Stream>) => {
-      return apiService.authenticatedRequest(`/students/streams/${id}`, { 
+      return apiService.authenticatedRequest(`/students/streams/${id}/`, { 
         method: 'PUT',
         body: JSON.stringify(streamData)
       });
@@ -508,7 +539,7 @@ export const apiService = {
 
     // Get feature flag state by ID
     getById: async (stateId: string) => {
-      return apiService.authenticatedRequest(`/switch/states/${stateId}`, { method: 'GET' });
+      return apiService.authenticatedRequest(`/switch/states/${stateId}/`, { method: 'GET' });
     },
 
     // Create new feature flag state
@@ -521,7 +552,7 @@ export const apiService = {
 
     // Update feature flag state by ID
     update: async (stateId: string, stateData: Partial<UpdateFeatureFlagStateRequest>) => {
-      return apiService.authenticatedRequest(`/switch/states/${stateId}`, {
+      return apiService.authenticatedRequest(`/switch/states/${stateId}/`, {
         method: 'PUT',
         body: JSON.stringify(stateData),
       });
@@ -529,7 +560,7 @@ export const apiService = {
 
     // Delete feature flag state by ID
     delete: async (stateId: string) => {
-      return apiService.authenticatedRequest(`/switch/states/${stateId}`, { method: 'DELETE' });
+      return apiService.authenticatedRequest(`/switch/states/${stateId}/`, { method: 'DELETE' });
     },
   },
 

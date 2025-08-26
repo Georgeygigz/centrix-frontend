@@ -185,6 +185,7 @@ export interface Class {
   name: string;
   code: string;
   stream: Stream;
+  description?: string;
   level: number;
   capacity: number;
   created_at: string;

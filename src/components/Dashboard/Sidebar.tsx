@@ -49,7 +49,9 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
           requiredPermissions: ['access_billing'],
           children: [
             { id: 'admin-billing-dashboard', label: 'Dashboard', icon: FaChartLine },
-            { id: 'admin-billing-plans', label: 'Billing Plans', icon: FaCogs },
+            ...(userRole === 'root' ? [
+              { id: 'admin-billing-plans', label: 'Billing Plans', icon: FaCogs },
+            ] : []),
           ]
         },
       ],
