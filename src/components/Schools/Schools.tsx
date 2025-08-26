@@ -5,65 +5,7 @@ import { School } from '../../types/dashboard';
 import { apiService } from '../../services/api';
 import { PermissionGate } from '../RBAC';
 
-// Collapsible Section Component
-interface CollapsibleSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  isActive?: boolean;
-  onSectionClick?: () => void;
-}
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
-  title, 
-  children, 
-  defaultExpanded = true,
-  isActive = false,
-  onSectionClick
-}) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  const handleClick = () => {
-    setIsExpanded(!isExpanded);
-    if (onSectionClick) {
-      onSectionClick();
-    }
-  };
-
-  return (
-    <div className={`border rounded-lg transition-all duration-200 ${
-      isActive 
-        ? 'border-blue-300 bg-blue-50/30' 
-        : 'border-gray-200 hover:border-gray-300'
-    }`}>
-      <button
-        onClick={handleClick}
-        className={`w-full px-4 py-3 flex items-center justify-between text-sm font-semibold transition-all duration-200 rounded-t-lg ${
-          isActive
-            ? 'text-blue-900 bg-blue-100/50 hover:bg-blue-100'
-            : 'text-gray-900 bg-gray-50 hover:bg-gray-100'
-        }`}
-      >
-        <span>{title}</span>
-        {isExpanded ? 
-          FaChevronUp({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` }) : 
-          FaChevronDown({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` })
-        }
-      </button>
-      {isExpanded && (
-        <div className={`p-4 space-y-4 transition-all duration-200 ${
-          isActive ? 'bg-blue-50/20' : ''
-        }`}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const Schools: React.FC = () => {
   // State management
@@ -79,8 +21,7 @@ const Schools: React.FC = () => {
   const [originalSchool, setOriginalSchool] = useState<School | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [activeSection, setActiveSection] = useState<string>('basic-info');
-  const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
+
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
   const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
   const [newSchool, setNewSchool] = useState<Partial<School>>({
@@ -271,7 +212,6 @@ const Schools: React.FC = () => {
   // Drawer functions
   const openAddDrawer = () => {
     setIsAddDrawerOpen(true);
-    setActiveSection('basic-info'); // Reset to first section when opening
     setFormErrors({}); // Clear any previous errors
   };
 
@@ -304,7 +244,6 @@ const Schools: React.FC = () => {
     setOriginalSchool(school); // Store original data for comparison
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
-    setEditActiveSection('basic-info'); // Reset to first section when opening
     setEditFormErrors({}); // Clear any previous errors
   };
 
@@ -512,15 +451,7 @@ const Schools: React.FC = () => {
     }
   };
 
-  // Get field error by frontend field name
-  const getFieldErrorByFrontendName = (frontendFieldName: string): string | null => {
-    return formErrors[frontendFieldName]?.[0] || null;
-  };
 
-  // Get field error for edit form
-  const getEditFieldErrorByFrontendName = (frontendFieldName: string): string | null => {
-    return editFormErrors[frontendFieldName]?.[0] || null;
-  };
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -798,627 +729,242 @@ const Schools: React.FC = () => {
         )}
       </div>
 
-      {/* Edit Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          {editingSchool && (
-            <>
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit School</h2>
-                  <p className="text-xs text-gray-500 mt-1 font-modern">Update school information</p>
-                </div>
-                <button
-                  onClick={closeEditDrawer}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-                >
-                  {FaTimes({ className: "w-4 h-4" })}
-                </button>
-              </div>
-
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Error Summary */}
-                {Object.keys(editFormErrors).length > 0 && (
-                  <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">!</span>
-                      </div>
-                      <h3 className="text-sm font-semibold text-red-800">Please fix the following errors:</h3>
-                    </div>
-                    <ul className="text-xs text-red-700 space-y-1">
-                      {Object.entries(editFormErrors).map(([field, errors]) => {
-                        const displayName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                        return (
-                          <li key={field} className="flex items-start space-x-2">
-                            <span className="text-red-500 mt-0.5">•</span>
-                            <span>
-                              <span className="font-medium">{displayName}:</span> {errors[0]}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-                
-                <div className="p-6 space-y-4">
-                  {/* Basic Info Section */}
-                  <CollapsibleSection 
-                    title="Basic Information *" 
-                    defaultExpanded={true}
-                    isActive={editActiveSection === 'basic-info'}
-                    onSectionClick={() => setEditActiveSection('basic-info')}
-                  >
-                    {/* School Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        School Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingSchool.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter school name"
-                      />
-                      {getEditFieldErrorByFrontendName('name') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('name')}</p>
-                      )}
-                    </div>
-
-                    {/* Slug */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Slug *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingSchool.slug}
-                        onChange={(e) => handleInputChange('slug', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('slug') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter slug"
-                      />
-                      {getEditFieldErrorByFrontendName('slug') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('slug')}</p>
-                      )}
-                    </div>
-
-                    {/* Subdomain */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Subdomain *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingSchool.subdomain}
-                        onChange={(e) => handleInputChange('subdomain', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('subdomain') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter subdomain"
-                      />
-                      {getEditFieldErrorByFrontendName('subdomain') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('subdomain')}</p>
-                      )}
-                    </div>
-
-                    {/* Domain */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Domain
-                      </label>
-                      <input
-                        type="text"
-                        value={editingSchool.domain}
-                        onChange={(e) => handleInputChange('domain', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('domain') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter domain"
-                      />
-                      {getEditFieldErrorByFrontendName('domain') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('domain')}</p>
-                      )}
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        value={editingSchool.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('email') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter email address"
-                      />
-                      {getEditFieldErrorByFrontendName('email') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('email')}</p>
-                      )}
-                    </div>
-
-                    {/* Website */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Website
-                      </label>
-                      <input
-                        type="url"
-                        value={editingSchool.website}
-                        onChange={(e) => handleInputChange('website', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('website') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter website URL"
-                      />
-                      {getEditFieldErrorByFrontendName('website') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('website')}</p>
-                      )}
-                    </div>
-
-                    {/* Max Students */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Max Students
-                      </label>
-                      <input
-                        type="number"
-                        value={editingSchool.max_students}
-                        onChange={(e) => handleInputChange('max_students', parseInt(e.target.value) || 0)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('max_students') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter max students"
-                      />
-                      {getEditFieldErrorByFrontendName('max_students') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('max_students')}</p>
-                      )}
-                    </div>
-
-                    {/* Is Active */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Active Status
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={editingSchool.is_active}
-                          onChange={(e) => handleInputChange('is_active', e.target.checked)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <span className="text-xs text-gray-600">School is active</span>
-                      </div>
-                    </div>
-                  </CollapsibleSection>
-
-                  {/* Contact Info Section */}
-                  <CollapsibleSection 
-                    title="Contact Information" 
-                    defaultExpanded={false}
-                    isActive={editActiveSection === 'contact-info'}
-                    onSectionClick={() => setEditActiveSection('contact-info')}
-                  >
-                    {/* Phone */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Phone
-                      </label>
-                      <input
-                        type="tel"
-                        value={editingSchool.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('phone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter phone number"
-                      />
-                      {getEditFieldErrorByFrontendName('phone') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('phone')}</p>
-                      )}
-                    </div>
-
-                    {/* Address */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Address
-                      </label>
-                      <textarea
-                        value={editingSchool.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
-                        rows={3}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
-                          getEditFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                        placeholder="Enter address"
-                      />
-                      {getEditFieldErrorByFrontendName('address') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('address')}</p>
-                      )}
-                    </div>
-                  </CollapsibleSection>
-
-                  {/* Settings Section */}
-                  <CollapsibleSection 
-                    title="Settings" 
-                    defaultExpanded={false}
-                    isActive={editActiveSection === 'settings'}
-                    onSectionClick={() => setEditActiveSection('settings')}
-                  >
-                    {/* Timezone */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Timezone
-                      </label>
-                      <select
-                        value={editingSchool.timezone}
-                        onChange={(e) => handleInputChange('timezone', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('timezone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                      >
-                        <option value="UTC">UTC</option>
-                        <option value="America/New_York">Eastern Time</option>
-                        <option value="America/Chicago">Central Time</option>
-                        <option value="America/Denver">Mountain Time</option>
-                        <option value="America/Los_Angeles">Pacific Time</option>
-                      </select>
-                      {getEditFieldErrorByFrontendName('timezone') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('timezone')}</p>
-                      )}
-                    </div>
-
-                    {/* Language */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Language
-                      </label>
-                      <select
-                        value={editingSchool.language}
-                        onChange={(e) => handleInputChange('language', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('language') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                      >
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                      </select>
-                      {getEditFieldErrorByFrontendName('language') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('language')}</p>
-                      )}
-                    </div>
-
-                    {/* Currency */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Currency
-                      </label>
-                      <select
-                        value={editingSchool.currency}
-                        onChange={(e) => handleInputChange('currency', e.target.value)}
-                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                          getEditFieldErrorByFrontendName('currency') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                        }`}
-                      >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="CAD">CAD</option>
-                      </select>
-                      {getEditFieldErrorByFrontendName('currency') && (
-                        <p className="text-xs text-red-600 mt-1">{getEditFieldErrorByFrontendName('currency')}</p>
-                      )}
-                    </div>
-                  </CollapsibleSection>
-                </div>
-              </div>
-
-              {/* Drawer Footer */}
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
-                <button
-                  onClick={closeEditDrawer}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveSchool}
-                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Add School Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isAddDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          <>
+      {/* Edit School Drawer */}
+      {isEditDrawerOpen && editingSchool && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New School</h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">Enter school information</p>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Edit School</h2>
               </div>
               <button
-                onClick={closeAddDrawer}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                onClick={closeEditDrawer}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
                 {FaTimes({ className: "w-4 h-4" })}
               </button>
             </div>
 
             {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto">
-              {/* Error Summary */}
-              {Object.keys(formErrors).length > 0 && (
-                <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">!</span>
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(editFormErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
                     </div>
-                    <h3 className="text-sm font-semibold text-red-800">Please fix the following errors:</h3>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                    </div>
                   </div>
-                  <ul className="text-xs text-red-700 space-y-1">
-                    {Object.entries(formErrors).map(([field, errors]) => {
-                      const displayName = field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                      return (
-                        <li key={field} className="flex items-start space-x-2">
-                          <span className="text-red-500 mt-0.5">•</span>
-                          <span>
-                            <span className="font-medium">{displayName}:</span> {errors[0]}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
                 </div>
               )}
-              
-              <div className="p-6 space-y-4">
-                {/* Basic Info Section */}
-                <CollapsibleSection 
-                  title="Basic Information *" 
-                  defaultExpanded={true}
-                  isActive={activeSection === 'basic-info'}
-                  onSectionClick={() => setActiveSection('basic-info')}
-                >
-                  {/* School Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      School Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={newSchool.name}
-                      onChange={(e) => handleNewSchoolInputChange('name', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('name') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter school name"
-                    />
-                    {getFieldErrorByFrontendName('name') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('name')}</p>
-                    )}
-                  </div>
 
-                  {/* Slug */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                    School Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSchool.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    placeholder="Enter school name"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                      editFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.name[0]}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
                       Slug *
                     </label>
                     <input
                       type="text"
-                      value={newSchool.slug}
-                      onChange={(e) => handleNewSchoolInputChange('slug', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('slug') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                      value={editingSchool.slug}
+                      onChange={(e) => handleInputChange('slug', e.target.value)}
                       placeholder="Enter slug"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        editFormErrors.slug ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     />
-                    {getFieldErrorByFrontendName('slug') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('slug')}</p>
+                    {editFormErrors.slug && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.slug[0]}</p>
                     )}
                   </div>
 
-                  {/* Subdomain */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
                       Subdomain *
                     </label>
                     <input
                       type="text"
-                      value={newSchool.subdomain}
-                      onChange={(e) => handleNewSchoolInputChange('subdomain', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('subdomain') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                      value={editingSchool.subdomain}
+                      onChange={(e) => handleInputChange('subdomain', e.target.value)}
                       placeholder="Enter subdomain"
-                    />
-                    {getFieldErrorByFrontendName('subdomain') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('subdomain')}</p>
-                    )}
-                  </div>
-
-                  {/* Domain */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Domain
-                    </label>
-                    <input
-                      type="text"
-                      value={newSchool.domain}
-                      onChange={(e) => handleNewSchoolInputChange('domain', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('domain') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                        editFormErrors.subdomain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
-                      placeholder="Enter domain"
                     />
-                    {getFieldErrorByFrontendName('domain') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('domain')}</p>
+                    {editFormErrors.subdomain && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.subdomain[0]}</p>
                     )}
                   </div>
+                </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                    Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSchool.domain}
+                    onChange={(e) => handleInputChange('domain', e.target.value)}
+                    placeholder="Enter domain"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                      editFormErrors.domain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.domain && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.domain[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
                       Email *
                     </label>
                     <input
                       type="email"
-                      value={newSchool.email}
-                      onChange={(e) => handleNewSchoolInputChange('email', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('email') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                      value={editingSchool.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="Enter email address"
-                    />
-                    {getFieldErrorByFrontendName('email') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('email')}</p>
-                    )}
-                  </div>
-
-                  {/* Website */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      value={newSchool.website}
-                      onChange={(e) => handleNewSchoolInputChange('website', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('website') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                        editFormErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
-                      placeholder="Enter website URL"
                     />
-                    {getFieldErrorByFrontendName('website') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('website')}</p>
+                    {editFormErrors.email && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.email[0]}</p>
                     )}
                   </div>
 
-                  {/* Max Students */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Max Students
-                    </label>
-                    <input
-                      type="number"
-                      value={newSchool.max_students}
-                      onChange={(e) => handleNewSchoolInputChange('max_students', parseInt(e.target.value) || 0)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('max_students') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="Enter max students"
-                    />
-                    {getFieldErrorByFrontendName('max_students') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('max_students')}</p>
-                    )}
-                  </div>
-
-                  {/* Is Active */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Active Status
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={newSchool.is_active}
-                        onChange={(e) => handleNewSchoolInputChange('is_active', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-xs text-gray-600">School is active</span>
-                    </div>
-                  </div>
-                </CollapsibleSection>
-
-                {/* Contact Info Section */}
-                <CollapsibleSection 
-                  title="Contact Information" 
-                  defaultExpanded={false}
-                  isActive={activeSection === 'contact-info'}
-                  onSectionClick={() => setActiveSection('contact-info')}
-                >
-                  {/* Phone */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
                       Phone
                     </label>
                     <input
                       type="tel"
-                      value={newSchool.phone}
-                      onChange={(e) => handleNewSchoolInputChange('phone', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('phone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
-                      }`}
+                      value={editingSchool.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="Enter phone number"
-                    />
-                    {getFieldErrorByFrontendName('phone') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('phone')}</p>
-                    )}
-                  </div>
-
-                  {/* Address */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Address
-                    </label>
-                    <textarea
-                      value={newSchool.address}
-                      onChange={(e) => handleNewSchoolInputChange('address', e.target.value)}
-                      rows={3}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs ${
-                        getFieldErrorByFrontendName('address') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                        editFormErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
-                      placeholder="Enter address"
                     />
-                    {getFieldErrorByFrontendName('address') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('address')}</p>
+                    {editFormErrors.phone && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.phone[0]}</p>
                     )}
                   </div>
-                </CollapsibleSection>
+                </div>
 
-                {/* Settings Section */}
-                <CollapsibleSection 
-                  title="Settings" 
-                  defaultExpanded={false}
-                  isActive={activeSection === 'settings'}
-                  onSectionClick={() => setActiveSection('settings')}
-                >
-                  {/* Timezone */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={editingSchool.website}
+                    onChange={(e) => handleInputChange('website', e.target.value)}
+                    placeholder="Enter website URL"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                      editFormErrors.website ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.website && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.website[0]}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                    Address
+                  </label>
+                  <textarea
+                    value={editingSchool.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Enter address"
+                    rows={2}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white resize-none ${
+                      editFormErrors.address ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.address && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.address[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Settings */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                      Max Students
+                    </label>
+                    <input
+                      type="number"
+                      value={editingSchool.max_students}
+                      onChange={(e) => handleInputChange('max_students', parseInt(e.target.value) || 0)}
+                      placeholder="Enter max students"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                        editFormErrors.max_students ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.max_students && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.max_students[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
                       Timezone
                     </label>
                     <select
-                      value={newSchool.timezone}
-                      onChange={(e) => handleNewSchoolInputChange('timezone', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('timezone') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      value={editingSchool.timezone}
+                      onChange={(e) => handleInputChange('timezone', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                        editFormErrors.timezone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
                       <option value="UTC">UTC</option>
@@ -1427,21 +973,23 @@ const Schools: React.FC = () => {
                       <option value="America/Denver">Mountain Time</option>
                       <option value="America/Los_Angeles">Pacific Time</option>
                     </select>
-                    {getFieldErrorByFrontendName('timezone') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('timezone')}</p>
+                    {editFormErrors.timezone && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.timezone[0]}</p>
                     )}
                   </div>
+                </div>
 
-                  {/* Language */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
                       Language
                     </label>
                     <select
-                      value={newSchool.language}
-                      onChange={(e) => handleNewSchoolInputChange('language', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('language') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      value={editingSchool.language}
+                      onChange={(e) => handleInputChange('language', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-500 transition-all duration-200 bg-white ${
+                        editFormErrors.language ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
                       <option value="en">English</option>
@@ -1449,21 +997,21 @@ const Schools: React.FC = () => {
                       <option value="fr">French</option>
                       <option value="de">German</option>
                     </select>
-                    {getFieldErrorByFrontendName('language') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('language')}</p>
+                    {editFormErrors.language && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.language[0]}</p>
                     )}
                   </div>
 
-                  {/* Currency */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-lime-500 rounded-full mr-1.5"></span>
                       Currency
                     </label>
                     <select
-                      value={newSchool.currency}
-                      onChange={(e) => handleNewSchoolInputChange('currency', e.target.value)}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs ${
-                        getFieldErrorByFrontendName('currency') ? 'border-red-300 focus:ring-red-500' : 'border-gray-200'
+                      value={editingSchool.currency}
+                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-100 focus:border-lime-500 transition-all duration-200 bg-white ${
+                        editFormErrors.currency ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
                     >
                       <option value="USD">USD</option>
@@ -1471,33 +1019,715 @@ const Schools: React.FC = () => {
                       <option value="GBP">GBP</option>
                       <option value="CAD">CAD</option>
                     </select>
-                    {getFieldErrorByFrontendName('currency') && (
-                      <p className="text-xs text-red-600 mt-1">{getFieldErrorByFrontendName('currency')}</p>
+                    {editFormErrors.currency && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.currency[0]}</p>
                     )}
                   </div>
-                </CollapsibleSection>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full mr-1.5"></span>
+                    Active Status
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={editingSchool.is_active}
+                      onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-600">School is active</span>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Drawer Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+              <button
+                onClick={closeEditDrawer}
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSchool}
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+              >
+                Update School
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add School Drawer */}
+      {isAddDrawerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Add New School</h2>
+              </div>
               <button
                 onClick={closeAddDrawer}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(formErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                    School Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newSchool.name}
+                    onChange={(e) => handleNewSchoolInputChange('name', e.target.value)}
+                    placeholder="Enter school name"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                      formErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.name[0]}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                      Slug *
+                    </label>
+                    <input
+                      type="text"
+                      value={newSchool.slug}
+                      onChange={(e) => handleNewSchoolInputChange('slug', e.target.value)}
+                      placeholder="Enter slug"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        formErrors.slug ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.slug && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.slug[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                      Subdomain *
+                    </label>
+                    <input
+                      type="text"
+                      value={newSchool.subdomain}
+                      onChange={(e) => handleNewSchoolInputChange('subdomain', e.target.value)}
+                      placeholder="Enter subdomain"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                        formErrors.subdomain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.subdomain && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.subdomain[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                    Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={newSchool.domain}
+                    onChange={(e) => handleNewSchoolInputChange('domain', e.target.value)}
+                    placeholder="Enter domain"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                      formErrors.domain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.domain && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.domain[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={newSchool.email}
+                      onChange={(e) => handleNewSchoolInputChange('email', e.target.value)}
+                      placeholder="Enter email address"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                        formErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.email && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.email[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={newSchool.phone}
+                      onChange={(e) => handleNewSchoolInputChange('phone', e.target.value)}
+                      placeholder="Enter phone number"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                        formErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.phone && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.phone[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={newSchool.website}
+                    onChange={(e) => handleNewSchoolInputChange('website', e.target.value)}
+                    placeholder="Enter website URL"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                      formErrors.website ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.website && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.website[0]}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                    Address
+                  </label>
+                  <textarea
+                    value={newSchool.address}
+                    onChange={(e) => handleNewSchoolInputChange('address', e.target.value)}
+                    placeholder="Enter address"
+                    rows={2}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white resize-none ${
+                      formErrors.address ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.address && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.address[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Settings */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                      Max Students
+                    </label>
+                    <input
+                      type="number"
+                      value={newSchool.max_students}
+                      onChange={(e) => handleNewSchoolInputChange('max_students', parseInt(e.target.value) || 0)}
+                      placeholder="Enter max students"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                        formErrors.max_students ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.max_students && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.max_students[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
+                      Timezone
+                    </label>
+                    <select
+                      value={newSchool.timezone}
+                      onChange={(e) => handleNewSchoolInputChange('timezone', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                        formErrors.timezone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">Eastern Time</option>
+                      <option value="America/Chicago">Central Time</option>
+                      <option value="America/Denver">Mountain Time</option>
+                      <option value="America/Los_Angeles">Pacific Time</option>
+                    </select>
+                    {formErrors.timezone && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.timezone[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
+                      Language
+                    </label>
+                    <select
+                      value={newSchool.language}
+                      onChange={(e) => handleNewSchoolInputChange('language', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-500 transition-all duration-200 bg-white ${
+                        formErrors.language ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="en">English</option>
+                      <option value="es">Spanish</option>
+                      <option value="fr">French</option>
+                      <option value="de">German</option>
+                    </select>
+                    {formErrors.language && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.language[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-lime-500 rounded-full mr-1.5"></span>
+                      Currency
+                    </label>
+                    <select
+                      value={newSchool.currency}
+                      onChange={(e) => handleNewSchoolInputChange('currency', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-100 focus:border-lime-500 transition-all duration-200 bg-white ${
+                        formErrors.currency ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="CAD">CAD</option>
+                    </select>
+                    {formErrors.currency && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.currency[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full mr-1.5"></span>
+                    Active Status
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={newSchool.is_active}
+                      onChange={(e) => handleNewSchoolInputChange('is_active', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-600">School is active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+              <button
+                onClick={closeAddDrawer}
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddSchool}
                 disabled={!newSchool.name || !newSchool.slug || !newSchool.subdomain || !newSchool.email}
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
               >
-                Add School
+                Create School
               </button>
             </div>
-          </>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Edit School Drawer */}
+      {isEditDrawerOpen && editingSchool && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Edit School</h2>
+              </div>
+              <button
+                onClick={closeEditDrawer}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
+
+            {/* Drawer Content */}
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(editFormErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                    School Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSchool.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
+                    placeholder="Enter school name"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                      editFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.name[0]}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                      Slug *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSchool.slug}
+                      onChange={(e) => handleInputChange('slug', e.target.value)}
+                      placeholder="Enter slug"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        editFormErrors.slug ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.slug && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.slug[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                      Subdomain *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingSchool.subdomain}
+                      onChange={(e) => handleInputChange('subdomain', e.target.value)}
+                      placeholder="Enter subdomain"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                        editFormErrors.subdomain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.subdomain && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.subdomain[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                    Domain
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSchool.domain}
+                    onChange={(e) => handleInputChange('domain', e.target.value)}
+                    placeholder="Enter domain"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                      editFormErrors.domain ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.domain && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.domain[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      value={editingSchool.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      placeholder="Enter email address"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                        editFormErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.email && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.email[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={editingSchool.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      placeholder="Enter phone number"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                        editFormErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.phone && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.phone[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    value={editingSchool.website}
+                    onChange={(e) => handleInputChange('website', e.target.value)}
+                    placeholder="Enter website URL"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                      editFormErrors.website ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.website && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.website[0]}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                    Address
+                  </label>
+                  <textarea
+                    value={editingSchool.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    placeholder="Enter address"
+                    rows={2}
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white resize-none ${
+                      editFormErrors.address ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.address && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.address[0]}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Settings */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                      Max Students
+                    </label>
+                    <input
+                      type="number"
+                      value={editingSchool.max_students}
+                      onChange={(e) => handleInputChange('max_students', parseInt(e.target.value) || 0)}
+                      placeholder="Enter max students"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                        editFormErrors.max_students ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.max_students && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.max_students[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
+                      Timezone
+                    </label>
+                    <select
+                      value={editingSchool.timezone}
+                      onChange={(e) => handleInputChange('timezone', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                        editFormErrors.timezone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">Eastern Time</option>
+                      <option value="America/Chicago">Central Time</option>
+                      <option value="America/Denver">Mountain Time</option>
+                      <option value="America/Los_Angeles">Pacific Time</option>
+                    </select>
+                    {editFormErrors.timezone && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.timezone[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
+                      Language
+                    </label>
+                    <select
+                      value={editingSchool.language}
+                      onChange={(e) => handleInputChange('language', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-500 transition-all duration-200 bg-white ${
+                        editFormErrors.language ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="en">English</option>
+                      <option value="es">Spanish</option>
+                      <option value="fr">French</option>
+                      <option value="de">German</option>
+                    </select>
+                    {editFormErrors.language && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.language[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-lime-500 rounded-full mr-1.5"></span>
+                      Currency
+                    </label>
+                    <select
+                      value={editingSchool.currency}
+                      onChange={(e) => handleInputChange('currency', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-100 focus:border-lime-500 transition-all duration-200 bg-white ${
+                        editFormErrors.currency ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="CAD">CAD</option>
+                    </select>
+                    {editFormErrors.currency && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.currency[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-rose-500 rounded-full mr-1.5"></span>
+                    Active Status
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={editingSchool.is_active}
+                      onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-xs text-gray-600">School is active</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+              <button
+                onClick={closeEditDrawer}
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSchool}
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+              >
+                Update School
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Portal-based Dropdown */}
       {openDropdownId && createPortal(

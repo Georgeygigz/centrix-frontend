@@ -5,65 +5,7 @@ import { PermissionGate } from '../RBAC';
 import { apiService } from '../../services/api';
 import { User, UpdateUserRequest, PaginationParams } from '../../types/users';
 
-// Collapsible Section Component (same as SwitchBoard)
-interface CollapsibleSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  isActive?: boolean;
-  onSectionClick?: () => void;
-}
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
-  title, 
-  children, 
-  defaultExpanded = true,
-  isActive = false,
-  onSectionClick
-}) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  const handleClick = () => {
-    setIsExpanded(!isExpanded);
-    if (onSectionClick) {
-      onSectionClick();
-    }
-  };
-
-  return (
-    <div className={`border rounded-lg transition-all duration-200 ${
-      isActive 
-        ? 'border-blue-300 bg-blue-50/30' 
-        : 'border-gray-200 hover:border-gray-300'
-    }`}>
-      <button
-        onClick={handleClick}
-        className={`w-full px-4 py-3 flex items-center justify-between text-sm font-semibold transition-all duration-200 rounded-t-lg ${
-          isActive
-            ? 'text-blue-900 bg-blue-100/50 hover:bg-blue-100'
-            : 'text-gray-900 bg-gray-50 hover:bg-gray-100'
-        }`}
-      >
-        <span>{title}</span>
-        {isExpanded ? 
-          FaChevronUp({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` }) : 
-          FaChevronDown({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` })
-        }
-      </button>
-      {isExpanded && (
-        <div className={`p-4 space-y-4 transition-all duration-200 ${
-          isActive ? 'bg-blue-50/20' : ''
-        }`}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
 
 
 
@@ -79,8 +21,7 @@ const Users: React.FC = () => {
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [activeSection, setActiveSection] = useState<string>('basic-info');
-  const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
+
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
   const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
 
@@ -270,7 +211,6 @@ const Users: React.FC = () => {
     setShowCredentials(false);
     setShowPassword(false);
     setIsAddDrawerOpen(true);
-    setActiveSection('basic-info');
     setFormErrors({});
     // Reset school_id for root users
     if (currentUserRole === 'root') {
@@ -327,12 +267,23 @@ const Users: React.FC = () => {
         setToast(null);
       }, 5000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding user:', error);
-      setToast({
-        message: 'Failed to add user. Please try again.',
-        type: 'error'
-      });
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        setToast({
+          message: 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        // Handle other errors
+        setToast({
+          message: error.response?.data?.message || 'Failed to add user. Please try again.',
+          type: 'error'
+        });
+      }
       
       setTimeout(() => {
         setToast(null);
@@ -359,7 +310,6 @@ const Users: React.FC = () => {
     setEditingUser(user);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
-    setEditActiveSection('basic-info');
     setEditFormErrors({});
   };
 
@@ -476,12 +426,23 @@ const Users: React.FC = () => {
           setToast(null);
         }, 3000);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating user:', error);
-        setToast({
-          message: 'Failed to update user. Please try again.',
-          type: 'error'
-        });
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          setEditFormErrors(error.response.data.errors);
+          setToast({
+            message: 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else {
+          // Handle other errors
+          setToast({
+            message: error.response?.data?.message || 'Failed to update user. Please try again.',
+            type: 'error'
+          });
+        }
         
         setTimeout(() => {
           setToast(null);
@@ -943,116 +904,158 @@ const Users: React.FC = () => {
       )}
 
       {/* Add User Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isAddDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          <>
+      {isAddDrawerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">Add New User</h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">Enter user information</p>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
               </div>
               <button
                 onClick={closeAddDrawer}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
                 {FaTimes({ className: "w-4 h-4" })}
               </button>
             </div>
 
             {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-4">
-                {/* Basic Info Section */}
-                <CollapsibleSection 
-                  title="Basic Information *" 
-                  defaultExpanded={true}
-                  isActive={activeSection === 'basic-info'}
-                  onSectionClick={() => setActiveSection('basic-info')}
-                >
-                  {/* Username */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Username *
-                    </label>
-                    <input
-                      type="text"
-                      value={newUser.username}
-                      onChange={(e) => handleNewUserInputChange('username', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter username"
-                    />
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(formErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                    </div>
                   </div>
+                </div>
+              )}
 
-                  {/* First Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                    Username *
+                  </label>
+                  <input
+                    type="text"
+                    value={newUser.username}
+                    onChange={(e) => handleNewUserInputChange('username', e.target.value)}
+                    placeholder="Enter username"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                      formErrors.username ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.username && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.username[0]}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
                       First Name *
                     </label>
                     <input
                       type="text"
                       value={newUser.first_name}
                       onChange={(e) => handleNewUserInputChange('first_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       placeholder="Enter first name"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        formErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     />
+                    {formErrors.first_name && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.first_name[0]}</p>
+                    )}
                   </div>
 
-                  {/* Last Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
                       Last Name *
                     </label>
                     <input
                       type="text"
                       value={newUser.last_name}
                       onChange={(e) => handleNewUserInputChange('last_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                       placeholder="Enter last name"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                        formErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     />
+                    {formErrors.last_name && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.last_name[0]}</p>
+                    )}
                   </div>
+                </div>
 
-                  {/* Surname */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Surname
-                    </label>
-                    <input
-                      type="text"
-                      value={newUser.surname}
-                      onChange={(e) => handleNewUserInputChange('surname', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter surname"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                    Surname
+                  </label>
+                  <input
+                    type="text"
+                    value={newUser.surname}
+                    onChange={(e) => handleNewUserInputChange('surname', e.target.value)}
+                    placeholder="Enter surname"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                      formErrors.surname ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.surname && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.surname[0]}</p>
+                  )}
+                </div>
 
-                  {/* Email */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={newUser.email}
-                      onChange={(e) => handleNewUserInputChange('email', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      placeholder="Enter email address"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={newUser.email}
+                    onChange={(e) => handleNewUserInputChange('email', e.target.value)}
+                    placeholder="Enter email address"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                      formErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {formErrors.email && (
+                    <p className="mt-1 text-xs text-red-600">{formErrors.email[0]}</p>
+                  )}
+                </div>
 
-                  {/* Role */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
                       Role *
                     </label>
                     <select
                       value={newUser.role}
                       onChange={(e) => handleNewUserInputChange('role', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                        formErrors.role ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     >
                       <option value="user">User</option>
                       <option value="admin">Admin</option>
@@ -1060,11 +1063,14 @@ const Users: React.FC = () => {
                       {currentUserRole === 'root' && <option value="root">Root</option>}
                       {currentUserRole === 'super_admin' && <option value="super_admin">Super Admin</option>}
                     </select>
+                    {formErrors.role && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.role[0]}</p>
+                    )}
                   </div>
 
-                  {/* Phone Number */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
                       Phone Number
                     </label>
                     <div className="relative">
@@ -1079,160 +1085,187 @@ const Users: React.FC = () => {
                           const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
                           handleNewUserInputChange('phone_number', phoneWithPrefix);
                         }}
-                        className="w-full pl-12 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                         placeholder="700000000"
+                        className={`w-full pl-12 pr-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                          formErrors.phone_number ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       />
                     </div>
+                    {formErrors.phone_number && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.phone_number[0]}</p>
+                    )}
                   </div>
+                </div>
 
-                  {/* Active Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
                       Active Status *
                     </label>
                     <select
                       value={newUser.is_active ? 'true' : 'false'}
                       onChange={(e) => handleNewUserInputChange('is_active', e.target.value === 'true')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white ${
+                        formErrors.is_active ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     >
                       <option value="true">Active</option>
                       <option value="false">Inactive</option>
                     </select>
+                    {formErrors.is_active && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.is_active[0]}</p>
+                    )}
                   </div>
 
-                  {/* Staff Status */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
                       Staff Status
                     </label>
                     <select
                       value={newUser.is_staff ? 'true' : 'false'}
                       onChange={(e) => handleNewUserInputChange('is_staff', e.target.value === 'true')}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                        formErrors.is_staff ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
                     >
                       <option value="false">Regular User</option>
                       <option value="true">Staff Member</option>
                     </select>
+                    {formErrors.is_staff && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.is_staff[0]}</p>
+                    )}
                   </div>
+                </div>
 
-                  {/* School Selection - Only for root users */}
-                  {currentUserRole === 'root' && (
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        School *
-                      </label>
-                      {loadingSchools ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                          <span className="text-xs text-gray-500">Loading schools...</span>
-                        </div>
-                      ) : (
-                        <select
-                          value={newUser.school_id}
-                          onChange={(e) => handleNewUserInputChange('school_id', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          required
-                        >
-                          <option value="">Select a school</option>
-                          {schools.map((school) => (
-                            <option key={school.id} value={school.id}>
-                              {school.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                  )}
-                </CollapsibleSection>
-
-                {/* Credentials Section - Show after successful user creation */}
-                {showCredentials && (
-                  <CollapsibleSection 
-                    title="User Credentials" 
-                    defaultExpanded={true}
-                    isActive={activeSection === 'credentials'}
-                    onSectionClick={() => setActiveSection('credentials')}
-                  >
-                    <div className="space-y-4">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="text-xs text-yellow-800 mb-3">
-                          <strong>Important:</strong> Please copy these credentials and share them securely with the user. The password will not be shown again.
-                        </div>
-                        
-                        {/* Email */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-semibold text-gray-700 mb-2">
-                            Email
-                          </label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={newUser.email}
-                              readOnly
-                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-mono"
-                            />
-                            <button
-                              onClick={() => copyToClipboard(newUser.email || '')}
-                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                              title="Copy email"
-                            >
-                              {FaCopy({ className: "w-3 h-3" })}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Password */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-semibold text-gray-700 mb-2">
-                            Password
-                          </label>
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type={showPassword ? "text" : "password"}
-                              value={generatedPassword}
-                              readOnly
-                              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-xs font-mono"
-                            />
-                            <button
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
-                              title={showPassword ? "Hide password" : "Show password"}
-                            >
-                              {showPassword ? FaEyeSlash({ className: "w-3 h-3" }) : FaEye({ className: "w-3 h-3" })}
-                            </button>
-                            <button
-                              onClick={() => copyToClipboard(generatedPassword)}
-                              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-                              title="Copy password"
-                            >
-                              {FaCopy({ className: "w-3 h-3" })}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Copy All Button */}
-                        <div className="flex justify-center">
-                          <button
-                            onClick={() => copyToClipboard(`Email: ${newUser.email}\nPassword: ${generatedPassword}`)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
-                          >
-                            Copy Email & Password
-                          </button>
-                        </div>
+                {/* School Selection - Only for root users */}
+                {currentUserRole === 'root' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
+                      School *
+                    </label>
+                    {loadingSchools ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <span className="text-xs text-gray-500">Loading schools...</span>
                       </div>
-                    </div>
-                  </CollapsibleSection>
+                    ) : (
+                      <select
+                        value={newUser.school_id}
+                        onChange={(e) => handleNewUserInputChange('school_id', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                          formErrors.school_id ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                        required
+                      >
+                        <option value="">Select a school</option>
+                        {schools.map((school) => (
+                          <option key={school.id} value={school.id}>
+                            {school.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {formErrors.school_id && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.school_id[0]}</p>
+                    )}
+                  </div>
                 )}
               </div>
+
+              {/* Credentials Section - Show after successful user creation */}
+              {showCredentials && (
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <div className="p-1 bg-yellow-100 rounded-full">
+                      <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-semibold text-yellow-900">User Credentials</h3>
+                  </div>
+                  
+                  <div className="text-xs text-yellow-800 mb-4">
+                    <strong>Important:</strong> Please copy these credentials and share them securely with the user. The password will not be shown again.
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {/* Email */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                        Email
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={newUser.email}
+                          readOnly
+                          className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 font-mono"
+                        />
+                        <button
+                          onClick={() => copyToClipboard(newUser.email || '')}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                          title="Copy email"
+                        >
+                          {FaCopy({ className: "w-3 h-3" })}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Password */}
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Password
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={generatedPassword}
+                          readOnly
+                          className="flex-1 px-3 py-2 text-xs border border-gray-200 rounded-lg bg-gray-50 font-mono"
+                        />
+                        <button
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors duration-200"
+                          title={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? FaEyeSlash({ className: "w-3 h-3" }) : FaEye({ className: "w-3 h-3" })}
+                        </button>
+                        <button
+                          onClick={() => copyToClipboard(generatedPassword)}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                          title="Copy password"
+                        >
+                          {FaCopy({ className: "w-3 h-3" })}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Copy All Button */}
+                    <div className="flex justify-center pt-2">
+                      <button
+                        onClick={() => copyToClipboard(`Email: ${newUser.email}\nPassword: ${generatedPassword}`)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-medium"
+                      >
+                        Copy Email & Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Drawer Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
               {!showCredentials ? (
                 <>
                   <button
                     onClick={closeAddDrawer}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                    className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
                   >
                     Cancel
                   </button>
@@ -1245,9 +1278,9 @@ const Users: React.FC = () => {
                       !newUser.last_name ||
                       (currentUserRole === 'root' && !newUser.school_id)
                     }
-                    className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                    className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
                   >
-                    Add User
+                    Create User
                   </button>
                 </>
               ) : (
@@ -1257,241 +1290,315 @@ const Users: React.FC = () => {
                       closeAddDrawer();
                       fetchUsers(); // Refresh the users list
                     }}
-                    className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium"
+                    className="px-4 py-2 text-xs bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
                   >
                     Done
                   </button>
                 </>
               )}
             </div>
-          </>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Edit User Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          {editingUser && (
-            <>
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 font-elegant">Edit User</h2>
-                  <p className="text-xs text-gray-500 mt-1 font-modern">Update user information</p>
+      {isEditDrawerOpen && editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                 </div>
-                <button
-                  onClick={closeEditDrawer}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-                >
-                  {FaTimes({ className: "w-4 h-4" })}
-                </button>
+                <h2 className="text-lg font-bold text-gray-900">Edit User</h2>
               </div>
+              <button
+                onClick={closeEditDrawer}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
 
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-4">
-                  {/* Basic Info Section */}
-                  <CollapsibleSection 
-                    title="Basic Information *" 
-                    defaultExpanded={true}
-                    isActive={editActiveSection === 'basic-info'}
-                    onSectionClick={() => setEditActiveSection('basic-info')}
-                  >
-                    {/* Username */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Username *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.username}
-                        onChange={(e) => handleInputChange('username', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter username"
-                      />
-                    </div>
-
-                    {/* First Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        First Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.first_name}
-                        onChange={(e) => handleInputChange('first_name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter first name"
-                      />
-                    </div>
-
-                    {/* Last Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Last Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.last_name}
-                        onChange={(e) => handleInputChange('last_name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter last name"
-                      />
-                    </div>
-
-                    {/* Surname */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Surname
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.surname}
-                        onChange={(e) => handleInputChange('surname', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter surname"
-                      />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Email *
-                      </label>
-                      <input
-                        type="email"
-                        value={editingUser.email}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter email address"
-                      />
-                    </div>
-
-                    {/* Role */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Role *
-                      </label>
-                      <select
-                        value={editingUser.role}
-                        onChange={(e) => handleInputChange('role', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      >
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        {currentUserRole === 'root' && <option value="super_admin">Super Admin</option>}
-                        {currentUserRole === 'root' && <option value="root">Root</option>}
-                        {currentUserRole === 'super_admin' && <option value="super_admin">Super Admin</option>}
-                      </select>
-                    </div>
-
-                    {/* Phone Number */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Phone Number
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 text-xs">+254</span>
-                        </div>
-                        <input
-                          type="tel"
-                          value={editingUser.phone_number?.replace('+254', '') || ''}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
-                            handleInputChange('phone_number', phoneWithPrefix);
-                          }}
-                          className="w-full pl-12 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          placeholder="700000000"
-                        />
+            {/* Drawer Content */}
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(editFormErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </div>
                     </div>
-
-                    {/* Active Status */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Active Status *
-                      </label>
-                      <select
-                        value={editingUser.is_active ? 'true' : 'false'}
-                        onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      >
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                      </select>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
                     </div>
+                  </div>
+                </div>
+              )}
 
-                    {/* Staff Status */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Staff Status
-                      </label>
-                      <select
-                        value={editingUser.is_staff ? 'true' : 'false'}
-                        onChange={(e) => handleInputChange('is_staff', e.target.value === 'true')}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      >
-                        <option value="false">Regular User</option>
-                        <option value="true">Staff Member</option>
-                      </select>
-                    </div>
+              {/* Basic Information */}
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                    Username *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.username}
+                    onChange={(e) => handleInputChange('username', e.target.value)}
+                    placeholder="Enter username"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                      editFormErrors.username ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.username && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.username[0]}</p>
+                  )}
+                </div>
 
-                    {/* School Selection - Only for root users */}
-                    {currentUserRole === 'root' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          School
-                        </label>
-                        {loadingSchools ? (
-                          <div className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                            <span className="text-xs text-gray-500">Loading schools...</span>
-                          </div>
-                        ) : (
-                          <select
-                            value={editingUser.school_id || editingUser.school?.id || ''}
-                            onChange={(e) => handleInputChange('school_id', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          >
-                            <option value="">Select a school</option>
-                            {schools.map((school) => (
-                              <option key={school.id} value={school.id}>
-                                {school.name}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingUser.first_name}
+                      onChange={(e) => handleInputChange('first_name', e.target.value)}
+                      placeholder="Enter first name"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        editFormErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.first_name && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.first_name[0]}</p>
                     )}
-                  </CollapsibleSection>
-                </div>
-              </div>
+                  </div>
 
-              {/* Drawer Footer */}
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
-                <button
-                  onClick={closeEditDrawer}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveUser}
-                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
-                >
-                  Save Changes
-                </button>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingUser.last_name}
+                      onChange={(e) => handleInputChange('last_name', e.target.value)}
+                      placeholder="Enter last name"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                        editFormErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.last_name && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.last_name[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                    Surname
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.surname}
+                    onChange={(e) => handleInputChange('surname', e.target.value)}
+                    placeholder="Enter surname"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                      editFormErrors.surname ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.surname && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.surname[0]}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={editingUser.email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    placeholder="Enter email address"
+                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                      editFormErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  />
+                  {editFormErrors.email && (
+                    <p className="mt-1 text-xs text-red-600">{editFormErrors.email[0]}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
+                      Role *
+                    </label>
+                    <select
+                      value={editingUser.role}
+                      onChange={(e) => handleInputChange('role', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                        editFormErrors.role ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      {currentUserRole === 'root' && <option value="super_admin">Super Admin</option>}
+                      {currentUserRole === 'root' && <option value="root">Root</option>}
+                      {currentUserRole === 'super_admin' && <option value="super_admin">Super Admin</option>}
+                    </select>
+                    {editFormErrors.role && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.role[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 text-xs">+254</span>
+                      </div>
+                      <input
+                        type="tel"
+                        value={editingUser.phone_number?.replace('+254', '') || ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
+                          handleInputChange('phone_number', phoneWithPrefix);
+                        }}
+                        placeholder="700000000"
+                        className={`w-full pl-12 pr-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                          editFormErrors.phone_number ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                    </div>
+                    {editFormErrors.phone_number && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.phone_number[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
+                      Active Status *
+                    </label>
+                    <select
+                      value={editingUser.is_active ? 'true' : 'false'}
+                      onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white ${
+                        editFormErrors.is_active ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                    {editFormErrors.is_active && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.is_active[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
+                      Staff Status
+                    </label>
+                    <select
+                      value={editingUser.is_staff ? 'true' : 'false'}
+                      onChange={(e) => handleInputChange('is_staff', e.target.value === 'true')}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
+                        editFormErrors.is_staff ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="false">Regular User</option>
+                      <option value="true">Staff Member</option>
+                    </select>
+                    {editFormErrors.is_staff && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.is_staff[0]}</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* School Selection - Only for root users */}
+                {currentUserRole === 'root' && (
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
+                      School *
+                    </label>
+                    {loadingSchools ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                        <span className="text-xs text-gray-500">Loading schools...</span>
+                      </div>
+                    ) : (
+                      <select
+                        value={editingUser.school_id}
+                        onChange={(e) => handleInputChange('school_id', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                          editFormErrors.school_id ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                        required
+                      >
+                        <option value="">Select a school</option>
+                        {schools.map((school) => (
+                          <option key={school.id} value={school.id}>
+                            {school.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {editFormErrors.school_id && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.school_id[0]}</p>
+                    )}
+                  </div>
+                )}
               </div>
-            </>
-          )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+              <button
+                onClick={closeEditDrawer}
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveUser}
+                disabled={
+                  !editingUser.username || 
+                  !editingUser.email || 
+                  !editingUser.first_name || 
+                  !editingUser.last_name ||
+                  (currentUserRole === 'root' && !editingUser.school_id)
+                }
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+              >
+                Update User
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Password Reset Drawer */}
       <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
