@@ -6,65 +6,7 @@ import { FeatureFlag, FeatureFlagState } from '../../types/featureFlags';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
-// Collapsible Section Component (same as Students)
-interface CollapsibleSectionProps {
-  title: string;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  isActive?: boolean;
-  onSectionClick?: () => void;
-}
 
-const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ 
-  title, 
-  children, 
-  defaultExpanded = true,
-  isActive = false,
-  onSectionClick
-}) => {
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-
-  const handleClick = () => {
-    setIsExpanded(!isExpanded);
-    if (onSectionClick) {
-      onSectionClick();
-    }
-  };
-
-  return (
-    <div className={`border rounded-lg transition-all duration-200 ${
-      isActive 
-        ? 'border-blue-300 bg-blue-50/30' 
-        : 'border-gray-200 hover:border-gray-300'
-    }`}>
-      <button
-        onClick={handleClick}
-        className={`w-full px-4 py-3 flex items-center justify-between text-sm font-semibold transition-all duration-200 rounded-t-lg ${
-          isActive
-            ? 'text-blue-900 bg-blue-100/50 hover:bg-blue-100'
-            : 'text-gray-900 bg-gray-50 hover:bg-gray-100'
-        }`}
-      >
-        <span>{title}</span>
-        {isExpanded ? 
-          FaChevronUp({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` }) : 
-          FaChevronDown({ className: `w-4 h-4 transition-colors duration-200 ${
-            isActive ? 'text-blue-600' : 'text-gray-500'
-          }` })
-        }
-      </button>
-      {isExpanded && (
-        <div className={`p-4 space-y-4 transition-all duration-200 ${
-          isActive ? 'bg-blue-50/20' : ''
-        }`}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Feature interface removed - using FeatureFlag from types instead
 
@@ -86,8 +28,7 @@ const SwitchBoard: React.FC = () => {
   const [editingFeature, setEditingFeature] = useState<FeatureFlag | null>(null);
   const [editingState, setEditingState] = useState<FeatureFlagState | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [activeSection, setActiveSection] = useState<string>('basic-info');
-  const [editActiveSection, setEditActiveSection] = useState<string>('basic-info');
+
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
   const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
 
@@ -311,7 +252,6 @@ const SwitchBoard: React.FC = () => {
 
   const openAddDrawer = () => {
     setIsAddDrawerOpen(true);
-    setActiveSection('basic-info');
     setFormErrors({});
   };
 
@@ -328,7 +268,6 @@ const SwitchBoard: React.FC = () => {
 
   const openAddStateDrawer = () => {
     setIsAddDrawerOpen(true);
-    setActiveSection('basic-info');
     setFormErrors({});
   };
 
@@ -381,12 +320,23 @@ const SwitchBoard: React.FC = () => {
         setToast(null);
       }, 3000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding feature flag:', error);
-      setToast({
-        message: 'Failed to add feature flag. Please try again.',
-        type: 'error'
-      });
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        setFormErrors({});
+        setToast({
+          message: 'Failed to add feature flag. Please try again.',
+          type: 'error'
+        });
+      }
       
       setTimeout(() => {
         setToast(null);
@@ -472,12 +422,23 @@ const SwitchBoard: React.FC = () => {
         setToast(null);
       }, 3000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding feature flag state:', error);
-      setToast({
-        message: 'Failed to add feature flag state. Please try again.',
-        type: 'error'
-      });
+      
+      // Handle validation errors
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+        setToast({
+          message: error.response.data.message || 'Please fix the validation errors below.',
+          type: 'error'
+        });
+      } else {
+        setFormErrors({});
+        setToast({
+          message: 'Failed to add feature flag state. Please try again.',
+          type: 'error'
+        });
+      }
       
       setTimeout(() => {
         setToast(null);
@@ -519,7 +480,6 @@ const SwitchBoard: React.FC = () => {
     setEditingFeature(feature);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
-    setEditActiveSection('basic-info');
     setEditFormErrors({});
   };
 
@@ -527,7 +487,6 @@ const SwitchBoard: React.FC = () => {
     setEditingState(state);
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
-    setEditActiveSection('basic-info');
     setEditFormErrors({});
   };
 
@@ -617,12 +576,23 @@ const SwitchBoard: React.FC = () => {
           setToast(null);
         }, 3000);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating feature flag:', error);
-        setToast({
-          message: 'Failed to update feature flag. Please try again.',
-          type: 'error'
-        });
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          setEditFormErrors(error.response.data.errors);
+          setToast({
+            message: error.response.data.message || 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else {
+          setEditFormErrors({});
+          setToast({
+            message: 'Failed to update feature flag. Please try again.',
+            type: 'error'
+          });
+        }
         
         setTimeout(() => {
           setToast(null);
@@ -672,12 +642,23 @@ const SwitchBoard: React.FC = () => {
           setToast(null);
         }, 3000);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating feature flag state:', error);
-        setToast({
-          message: 'Failed to update feature flag state. Please try again.',
-          type: 'error'
-        });
+        
+        // Handle validation errors
+        if (error.response?.data?.errors) {
+          setEditFormErrors(error.response.data.errors);
+          setToast({
+            message: error.response.data.message || 'Please fix the validation errors below.',
+            type: 'error'
+          });
+        } else {
+          setEditFormErrors({});
+          setToast({
+            message: 'Failed to update feature flag state. Please try again.',
+            type: 'error'
+          });
+        }
         
         setTimeout(() => {
           setToast(null);
@@ -1289,93 +1270,121 @@ const SwitchBoard: React.FC = () => {
       </div>
 
       {/* Add Feature Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isAddDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isAddDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          <>
+      {isAddDrawerOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 font-elegant">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">
                   {activeTab === 'features' ? 'Add New Feature' : 'Add New Feature Flag State'}
                 </h2>
-                <p className="text-xs text-gray-500 mt-1 font-modern">
-                  {activeTab === 'features' ? 'Enter feature information' : 'Enter feature flag state information'}
-                </p>
               </div>
               <button
                 onClick={activeTab === 'features' ? closeAddDrawer : closeAddStateDrawer}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
                 {FaTimes({ className: "w-4 h-4" })}
               </button>
             </div>
 
             {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-4">
-                {activeTab === 'features' ? (
-                  /* Feature Form */
-                  <CollapsibleSection 
-                    title="Basic Information *" 
-                    defaultExpanded={true}
-                    isActive={activeSection === 'basic-info'}
-                    onSectionClick={() => setActiveSection('basic-info')}
-                  >
-                    {/* Feature Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Feature Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={newFeature.name}
-                        onChange={(e) => handleNewFeatureInputChange('name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter feature name (e.g., student_admission_billing)"
-                      />
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(formErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
                     </div>
-
-                    {/* Display Name */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Display Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={newFeature.display_name}
-                        onChange={(e) => handleNewFeatureInputChange('display_name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter display name (e.g., Student Admission Billing Control)"
-                      />
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
                     </div>
+                  </div>
+                </div>
+              )}
 
-                    {/* Description */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Description *
-                      </label>
-                      <textarea
-                        value={newFeature.description}
-                        onChange={(e) => handleNewFeatureInputChange('description', e.target.value)}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
-                        placeholder="Enter feature description"
-                      />
-                    </div>
+              {activeTab === 'features' ? (
+                /* Feature Form */
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                      Feature Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newFeature.name}
+                      onChange={(e) => handleNewFeatureInputChange('name', e.target.value)}
+                      placeholder="Enter feature name (e.g., student_admission_billing)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                        formErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.name && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.name[0]}</p>
+                    )}
+                  </div>
 
-                    {/* Feature Type */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                      Display Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newFeature.display_name}
+                      onChange={(e) => handleNewFeatureInputChange('display_name', e.target.value)}
+                      placeholder="Enter display name (e.g., Student Admission Billing Control)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        formErrors.display_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.display_name && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.display_name[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                      Description *
+                    </label>
+                    <textarea
+                      value={newFeature.description}
+                      onChange={(e) => handleNewFeatureInputChange('description', e.target.value)}
+                      placeholder="Enter feature description"
+                      rows={3}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white resize-none ${
+                        formErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.description && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.description[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
                         Feature Type *
                       </label>
                       <select
                         value={newFeature.feature_type}
                         onChange={(e) => handleNewFeatureInputChange('feature_type', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                          formErrors.feature_type ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       >
                         <option value="">Select feature type</option>
                         <option value="billing">Billing</option>
@@ -1385,99 +1394,126 @@ const SwitchBoard: React.FC = () => {
                         <option value="academic">Academic</option>
                         <option value="financial">Financial</option>
                       </select>
+                      {formErrors.feature_type && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.feature_type[0]}</p>
+                      )}
                     </div>
 
-                    {/* Status */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
                         Status *
                       </label>
                       <select
                         value={newFeature.is_active ? 'true' : 'false'}
                         onChange={(e) => handleNewFeatureInputChange('is_active', e.target.value === 'true')}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                          formErrors.is_active ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       >
                         <option value="true">Active</option>
                         <option value="false">Inactive</option>
                       </select>
+                      {formErrors.is_active && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.is_active[0]}</p>
+                      )}
                     </div>
-                  </CollapsibleSection>
-                ) : (
-                  /* Feature Flag State Form */
-                  <CollapsibleSection 
-                    title="Basic Information *" 
-                    defaultExpanded={true}
-                    isActive={activeSection === 'basic-info'}
-                    onSectionClick={() => setActiveSection('basic-info')}
-                  >
-                    {/* Feature Flag */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Feature Flag *
-                      </label>
-                      <select
-                        value={newState.feature_flag}
-                        onChange={(e) => handleNewStateInputChange('feature_flag', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      >
-                        <option value="">Select feature flag</option>
-                        {features.map(feature => (
-                          <option key={feature.id} value={feature.id}>
-                            {feature.display_name} ({feature.name})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Feature Flag State Form */
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                      Feature Flag *
+                    </label>
+                    <select
+                      value={newState.feature_flag}
+                      onChange={(e) => handleNewStateInputChange('feature_flag', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                        formErrors.feature_flag ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="">Select feature flag</option>
+                      {features.map(feature => (
+                        <option key={feature.id} value={feature.id}>
+                          {feature.display_name} ({feature.name})
+                        </option>
+                      ))}
+                    </select>
+                    {formErrors.feature_flag && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.feature_flag[0]}</p>
+                    )}
+                  </div>
 
-                    {/* Scope Type */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
                         Scope Type *
                       </label>
                       <select
                         value={newState.scope_type}
                         onChange={(e) => handleNewStateInputChange('scope_type', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          formErrors.scope_type ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       >
                         <option value="">Select scope type</option>
                         <option value="global">Global</option>
                         <option value="school">School</option>
                         <option value="user">User</option>
                       </select>
+                      {formErrors.scope_type && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.scope_type[0]}</p>
+                      )}
                     </div>
 
-                    {/* Scope ID */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        Scope ID
-                      </label>
-                      <input
-                        type="text"
-                        value={newState.scope_id || ''}
-                        onChange={(e) => handleNewStateInputChange('scope_id', e.target.value || null)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        placeholder="Enter scope ID (optional)"
-                      />
-                    </div>
-
-                    {/* Is Enabled */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
                         Is Enabled *
                       </label>
                       <select
                         value={newState.is_enabled ? 'true' : 'false'}
                         onChange={(e) => handleNewStateInputChange('is_enabled', e.target.value === 'true')}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                          formErrors.is_enabled ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       >
                         <option value="true">Enabled</option>
                         <option value="false">Disabled</option>
                       </select>
+                      {formErrors.is_enabled && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.is_enabled[0]}</p>
+                      )}
                     </div>
+                  </div>
 
-                    {/* Percentage */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                      Scope ID
+                    </label>
+                    <input
+                      type="text"
+                      value={newState.scope_id || ''}
+                      onChange={(e) => handleNewStateInputChange('scope_id', e.target.value || null)}
+                      placeholder="Enter scope ID (optional)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                        formErrors.scope_id ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.scope_id && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.scope_id[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
                         Percentage *
                       </label>
                       <input
@@ -1486,46 +1522,61 @@ const SwitchBoard: React.FC = () => {
                         max="100"
                         value={newState.percentage}
                         onChange={(e) => handleNewStateInputChange('percentage', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
                         placeholder="Enter percentage (0-100)"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                          formErrors.percentage ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       />
+                      {formErrors.percentage && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.percentage[0]}</p>
+                      )}
                     </div>
 
-                    {/* Start Date */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
                         Start Date
                       </label>
                       <input
                         type="datetime-local"
                         value={newState.start_date || ''}
                         onChange={(e) => handleNewStateInputChange('start_date', e.target.value || null)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                          formErrors.start_date ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
                       />
+                      {formErrors.start_date && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.start_date[0]}</p>
+                      )}
                     </div>
+                  </div>
 
-                    {/* End Date */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                        End Date
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={newState.end_date || ''}
-                        onChange={(e) => handleNewStateInputChange('end_date', e.target.value || null)}
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                      />
-                    </div>
-                  </CollapsibleSection>
-                )}
-              </div>
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                      End Date
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={newState.end_date || ''}
+                      onChange={(e) => handleNewStateInputChange('end_date', e.target.value || null)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                        formErrors.end_date ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {formErrors.end_date && (
+                      <p className="mt-1 text-xs text-red-600">{formErrors.end_date[0]}</p>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Drawer Footer */}
-            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
               <button
                 onClick={activeTab === 'features' ? closeAddDrawer : closeAddStateDrawer}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
               >
                 Cancel
               </button>
@@ -1536,268 +1587,336 @@ const SwitchBoard: React.FC = () => {
                     ? (!newFeature.name || !newFeature.display_name || !newFeature.description || !newFeature.feature_type)
                     : (!newState.feature_flag || !newState.scope_type)
                 }
-                className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
               >
-                {activeTab === 'features' ? 'Add Feature' : 'Add State'}
+                {activeTab === 'features' ? 'Create Feature' : 'Create State'}
               </button>
             </div>
-          </>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Edit Feature Drawer */}
-      <div className={`fixed inset-0 bg-black transition-opacity duration-500 ease-out z-50 ${
-        isEditDrawerOpen ? 'bg-opacity-50' : 'bg-opacity-0 pointer-events-none'
-      }`}>
-        <div className={`fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform transition-transform duration-500 ease-out flex flex-col ${
-          isEditDrawerOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}>
-          {(editingFeature || editingState) && (
-            <>
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 font-elegant">
-                    {editingFeature ? 'Edit Feature' : 'Edit Feature Flag State'}
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-1 font-modern">
-                    {editingFeature ? 'Update feature information' : 'Update feature flag state information'}
-                  </p>
+      {isEditDrawerOpen && (editingFeature || editingState) && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-end z-[10002] transition-all duration-300 ease-in-out">
+          <div className="bg-gradient-to-br from-white to-gray-50 h-full w-96 shadow-2xl overflow-y-auto border-l border-gray-100 transform transition-transform duration-300 ease-out">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 bg-blue-100 rounded-lg">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
                 </div>
-                <button
-                  onClick={closeEditDrawer}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-all duration-200"
-                >
-                  {FaTimes({ className: "w-4 h-4" })}
-                </button>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {editingFeature ? 'Edit Feature' : 'Edit Feature Flag State'}
+                </h2>
               </div>
+              <button
+                onClick={closeEditDrawer}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
 
-              {/* Drawer Content */}
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-6 space-y-4">
-                  {editingFeature ? (
-                    /* Edit Feature Form */
-                    <CollapsibleSection 
-                      title="Basic Information *" 
-                      defaultExpanded={true}
-                      isActive={editActiveSection === 'basic-info'}
-                      onSectionClick={() => setEditActiveSection('basic-info')}
-                    >
-                      {/* Feature Name */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Feature Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={editingFeature.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          placeholder="Enter feature name (e.g., student_admission_billing)"
-                        />
+            {/* Drawer Content */}
+            <div className="p-4 space-y-4">
+              {/* General Error Banner */}
+              {Object.keys(editFormErrors).length > 0 && (
+                <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <div className="p-1 bg-red-100 rounded-full">
+                        <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       </div>
-
-                      {/* Display Name */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Display Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={editingFeature.display_name}
-                          onChange={(e) => handleInputChange('display_name', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          placeholder="Enter display name (e.g., Student Admission Billing Control)"
-                        />
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Description *
-                        </label>
-                        <textarea
-                          value={editingFeature.description}
-                          onChange={(e) => handleInputChange('description', e.target.value)}
-                          rows={3}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white resize-none text-xs"
-                          placeholder="Enter feature description"
-                        />
-                      </div>
-
-                      {/* Feature Type */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Feature Type *
-                        </label>
-                        <select
-                          value={editingFeature.feature_type}
-                          onChange={(e) => handleInputChange('feature_type', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        >
-                          <option value="">Select feature type</option>
-                          <option value="billing">Billing</option>
-                          <option value="maintenance">Maintenance</option>
-                          <option value="test">Test</option>
-                          <option value="core">Core</option>
-                          <option value="academic">Academic</option>
-                          <option value="financial">Financial</option>
-                        </select>
-                      </div>
-
-                      {/* Status */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Status *
-                        </label>
-                        <select
-                          value={editingFeature.is_active ? 'true' : 'false'}
-                          onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        >
-                          <option value="true">Active</option>
-                          <option value="false">Inactive</option>
-                        </select>
-                      </div>
-                    </CollapsibleSection>
-                  ) : editingState ? (
-                    /* Edit Feature Flag State Form */
-                    <CollapsibleSection 
-                      title="Basic Information *" 
-                      defaultExpanded={true}
-                      isActive={editActiveSection === 'basic-info'}
-                      onSectionClick={() => setEditActiveSection('basic-info')}
-                    >
-                      {/* Feature Flag */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Feature Flag *
-                        </label>
-                        <select
-                          value={editingState.feature_flag}
-                          onChange={(e) => handleStateInputChange('feature_flag', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        >
-                          <option value="">Select feature flag</option>
-                          {features.map(feature => (
-                            <option key={feature.id} value={feature.id}>
-                              {feature.display_name} ({feature.name})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Scope Type */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Scope Type *
-                        </label>
-                        <select
-                          value={editingState.scope_type}
-                          onChange={(e) => handleStateInputChange('scope_type', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        >
-                          <option value="">Select scope type</option>
-                          <option value="global">Global</option>
-                          <option value="school">School</option>
-                          <option value="user">User</option>
-                        </select>
-                      </div>
-
-                      {/* Scope ID */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Scope ID
-                        </label>
-                        <input
-                          type="text"
-                          value={editingState.scope_id || ''}
-                          onChange={(e) => handleStateInputChange('scope_id', e.target.value || null)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          placeholder="Enter scope ID (optional)"
-                        />
-                      </div>
-
-                      {/* Is Enabled */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Is Enabled *
-                        </label>
-                        <select
-                          value={editingState.is_enabled ? 'true' : 'false'}
-                          onChange={(e) => handleStateInputChange('is_enabled', e.target.value === 'true')}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        >
-                          <option value="true">Enabled</option>
-                          <option value="false">Disabled</option>
-                        </select>
-                      </div>
-
-                      {/* Percentage */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Percentage *
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={editingState.percentage}
-                          onChange={(e) => handleStateInputChange('percentage', parseInt(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                          placeholder="Enter percentage (0-100)"
-                        />
-                      </div>
-
-                      {/* Start Date */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          Start Date
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={editingState.start_date ? editingState.start_date.slice(0, 16) : ''}
-                          onChange={(e) => handleStateInputChange('start_date', e.target.value || null)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        />
-                      </div>
-
-                      {/* End Date */}
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2 tracking-wide">
-                          End Date
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={editingState.end_date ? editingState.end_date.slice(0, 16) : ''}
-                          onChange={(e) => handleStateInputChange('end_date', e.target.value || null)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white text-xs"
-                        />
-                      </div>
-                    </CollapsibleSection>
-                  ) : null}
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Drawer Footer */}
-              <div className="flex justify-end space-x-3 p-6 border-t border-gray-100 flex-shrink-0">
-                <button
-                  onClick={closeEditDrawer}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={editingFeature ? handleSaveFeature : handleSaveState}
-                  className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </>
-          )}
+              {editingFeature ? (
+                /* Edit Feature Form */
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                      Feature Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingFeature.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      placeholder="Enter feature name (e.g., student_admission_billing)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                        editFormErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.name && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.name[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                      Display Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editingFeature.display_name}
+                      onChange={(e) => handleInputChange('display_name', e.target.value)}
+                      placeholder="Enter display name (e.g., Student Admission Billing Control)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                        editFormErrors.display_name ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.display_name && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.display_name[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                      Description *
+                    </label>
+                    <textarea
+                      value={editingFeature.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      placeholder="Enter feature description"
+                      rows={3}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white resize-none ${
+                        editFormErrors.description ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.description && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.description[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                        Feature Type *
+                      </label>
+                      <select
+                        value={editingFeature.feature_type}
+                        onChange={(e) => handleInputChange('feature_type', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                          editFormErrors.feature_type ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="">Select feature type</option>
+                        <option value="billing">Billing</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="test">Test</option>
+                        <option value="core">Core</option>
+                        <option value="academic">Academic</option>
+                        <option value="financial">Financial</option>
+                      </select>
+                      {editFormErrors.feature_type && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.feature_type[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                        Status *
+                      </label>
+                      <select
+                        value={editingFeature.is_active ? 'true' : 'false'}
+                        onChange={(e) => handleInputChange('is_active', e.target.value === 'true')}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                          editFormErrors.is_active ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                      {editFormErrors.is_active && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.is_active[0]}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : editingState ? (
+                /* Edit Feature Flag State Form */
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                      Feature Flag *
+                    </label>
+                    <select
+                      value={editingState.feature_flag}
+                      onChange={(e) => handleStateInputChange('feature_flag', e.target.value)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
+                        editFormErrors.feature_flag ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <option value="">Select feature flag</option>
+                      {features.map(feature => (
+                        <option key={feature.id} value={feature.id}>
+                          {feature.display_name} ({feature.name})
+                        </option>
+                      ))}
+                    </select>
+                    {editFormErrors.feature_flag && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.feature_flag[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Scope Type *
+                      </label>
+                      <select
+                        value={editingState.scope_type}
+                        onChange={(e) => handleStateInputChange('scope_type', e.target.value)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
+                          editFormErrors.scope_type ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="">Select scope type</option>
+                        <option value="global">Global</option>
+                        <option value="school">School</option>
+                        <option value="user">User</option>
+                      </select>
+                      {editFormErrors.scope_type && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.scope_type[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
+                        Is Enabled *
+                      </label>
+                      <select
+                        value={editingState.is_enabled ? 'true' : 'false'}
+                        onChange={(e) => handleStateInputChange('is_enabled', e.target.value === 'true')}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
+                          editFormErrors.is_enabled ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      >
+                        <option value="true">Enabled</option>
+                        <option value="false">Disabled</option>
+                      </select>
+                      {editFormErrors.is_enabled && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.is_enabled[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                      Scope ID
+                    </label>
+                    <input
+                      type="text"
+                      value={editingState.scope_id || ''}
+                      onChange={(e) => handleStateInputChange('scope_id', e.target.value || null)}
+                      placeholder="Enter scope ID (optional)"
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                        editFormErrors.scope_id ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.scope_id && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.scope_id[0]}</p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-1.5"></span>
+                        Percentage *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editingState.percentage}
+                        onChange={(e) => handleStateInputChange('percentage', parseInt(e.target.value) || 0)}
+                        placeholder="Enter percentage (0-100)"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 transition-all duration-200 bg-white ${
+                          editFormErrors.percentage ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.percentage && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.percentage[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
+                        Start Date
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={editingState.start_date ? editingState.start_date.slice(0, 16) : ''}
+                        onChange={(e) => handleStateInputChange('start_date', e.target.value || null)}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
+                          editFormErrors.start_date ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.start_date && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.start_date[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                      End Date
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editingState.end_date ? editingState.end_date.slice(0, 16) : ''}
+                      onChange={(e) => handleStateInputChange('end_date', e.target.value || null)}
+                      className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
+                        editFormErrors.end_date ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    />
+                    {editFormErrors.end_date && (
+                      <p className="mt-1 text-xs text-red-600">{editFormErrors.end_date[0]}</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="flex items-center justify-end space-x-3 p-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+              <button
+                onClick={closeEditDrawer}
+                className="px-4 py-2 text-xs text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingFeature ? handleSaveFeature : handleSaveState}
+                className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
+              >
+                Update {editingFeature ? 'Feature' : 'State'}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       
       {/* Portal-based Dropdown */}
       {openDropdownId && createPortal(
