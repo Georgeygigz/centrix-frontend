@@ -17,7 +17,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
   const [parents, setParents] = useState<any[]>([]);
   const [loadingParentsList, setLoadingParentsList] = useState(false);
   const [newParentRelationship, setNewParentRelationship] = useState({
-    parent: '',
+    parent_id: '',
     relationship_type: '',
     is_primary_contact: false,
     is_emergency_contact: false,
@@ -86,7 +86,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
   const closeAddParentDrawer = () => {
     setIsAddParentDrawerOpen(false);
     setNewParentRelationship({
-      parent: '',
+      parent_id: '',
       relationship_type: '',
       is_primary_contact: false,
       is_emergency_contact: false,
@@ -117,7 +117,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
   };
 
   const handleAddParentSubmit = async () => {
-    if (!student?.id || !newParentRelationship.parent || !newParentRelationship.relationship_type) {
+    if (!student?.id || !newParentRelationship.parent_id || !newParentRelationship.relationship_type) {
       return;
     }
 
@@ -474,14 +474,14 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                     <div className="relative parent-dropdown-container">
                       <div
                         className={`w-full px-3 py-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200 bg-gray-50 focus-within:bg-white text-xs cursor-pointer ${
-                          getParentFieldError('parent') ? 'border-red-300 focus-within:ring-red-500' : 'border-gray-200'
+                          getParentFieldError('parent_id') ? 'border-red-300 focus-within:ring-red-500' : 'border-gray-200'
                         }`}
                         onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={newParentRelationship.parent ? 'text-gray-900' : 'text-gray-500'}>
-                            {newParentRelationship.parent 
-                              ? parents.find(p => p.id === newParentRelationship.parent)?.full_name + ' (' + parents.find(p => p.id === newParentRelationship.parent)?.relationship + ')'
+                          <span className={newParentRelationship.parent_id ? 'text-gray-900' : 'text-gray-500'}>
+              {newParentRelationship.parent_id
+                ? parents.find(p => p.id === newParentRelationship.parent_id)?.full_name + ' (' + parents.find(p => p.id === newParentRelationship.parent_id)?.relationship + ')'
                               : 'Select a parent'
                             }
                           </span>
@@ -518,15 +518,15 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                                   key={parent.id}
                                   className="px-3 py-2 text-xs hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                                   onClick={() => {
-                                    setNewParentRelationship(prev => ({
-                                      ...prev,
-                                      parent: parent.id
-                                    }));
+                                                    setNewParentRelationship(prev => ({
+                  ...prev,
+                  parent_id: parent.id
+                }));
                                     setIsParentDropdownOpen(false);
                                     setParentSearchQuery('');
                                     // Clear error when user makes a selection
-                                    if (parentFormErrors.parent) {
-                                      setParentFormErrors((prev: Record<string, string[]>) => ({ ...prev, parent: [] }));
+                                    if (parentFormErrors.parent_id) {
+                                      setParentFormErrors((prev: Record<string, string[]>) => ({ ...prev, parent_id: [] }));
                                     }
                                   }}
                                 >
@@ -551,8 +551,8 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                       )}
                     </div>
                   )}
-                  {getParentFieldError('parent') && (
-                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('parent')}</p>
+                  {getParentFieldError('parent_id') && (
+                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('parent_id')}</p>
                   )}
                 </div>
 
@@ -718,7 +718,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
               </button>
               <button
                 onClick={handleAddParentSubmit}
-                disabled={!newParentRelationship.parent || !newParentRelationship.relationship_type}
+                disabled={!newParentRelationship.parent_id || !newParentRelationship.relationship_type}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors duration-200"
               >
                 Add Parent

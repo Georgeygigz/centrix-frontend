@@ -128,3 +128,12 @@ export interface StudentParentsApiResponse {
   data: StudentParentsResponse;
   status: string;
 }
+
+export interface AssociateParentRequest {
+  parent_id: string;
+  relationship_type: string;
+  is_primary_contact: boolean;
+  is_emergency_contact: boolean;
+  can_pick_up: boolean;
+  notes: string;
+}

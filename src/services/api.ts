@@ -1,7 +1,7 @@
 import { Student, CreateStudentRequest, CreateSchoolRequest, Class, Stream, StudentQueryParams } from '../types/dashboard';
 import { CreateFeatureFlagRequest, UpdateFeatureFlagRequest, CreateFeatureFlagStateRequest, UpdateFeatureFlagStateRequest } from '../types/featureFlags';
 import { UpdateUserRequest, PaginationParams } from '../types/users';
-import { CreateParentRequest, UpdateParentRequest, ParentQueryParams } from '../types/parents';
+import { CreateParentRequest, UpdateParentRequest, ParentQueryParams, AssociateParentRequest } from '../types/parents';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -370,14 +370,7 @@ export const apiService = {
     },
 
     // Associate a parent with a student
-        associateParent: async (studentId: string, parentData: { 
-      parent: string;
-      relationship_type: string;
-      is_primary_contact: boolean;
-      is_emergency_contact: boolean;
-      can_pick_up: boolean;
-      notes: string;
-    }) => {
+    associateParent: async (studentId: string, parentData: AssociateParentRequest) => {
       return apiService.authenticatedRequest(`/students/admissions/${studentId}/parents`, {
         method: 'POST',
         body: JSON.stringify(parentData),
@@ -544,7 +537,7 @@ export const apiService = {
 
     // Create new feature flag state
     create: async (stateData: CreateFeatureFlagStateRequest) => {
-      return apiService.authenticatedRequest('/switch/states', {
+      return apiService.authenticatedRequest('/switch/states/', {
         method: 'POST',
         body: JSON.stringify(stateData),
       });
