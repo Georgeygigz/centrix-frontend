@@ -52,7 +52,7 @@ const Students: React.FC = () => {
   const [parents, setParents] = useState<Parent[]>([]);
   const [loadingParents, setLoadingParents] = useState(false);
   const [newParentRelationship, setNewParentRelationship] = useState({
-    parent: '',
+    parent_id: '',
     relationship_type: '',
     is_primary_contact: false,
     is_emergency_contact: false,
@@ -855,7 +855,7 @@ const Students: React.FC = () => {
     
     // Reset form
     setNewParentRelationship({
-      parent: '',
+      parent_id: '',
       relationship_type: '',
       is_primary_contact: false,
       is_emergency_contact: false,
@@ -871,7 +871,7 @@ const Students: React.FC = () => {
     setIsAddParentDrawerOpen(false);
     setSelectedStudentForParent(null);
     setNewParentRelationship({
-      parent: '',
+      parent_id: '',
       relationship_type: '',
       is_primary_contact: false,
       is_emergency_contact: false,
@@ -903,7 +903,7 @@ const Students: React.FC = () => {
   };
 
   const handleAddParentSubmit = async () => {
-    if (!selectedStudentForParent || !selectedStudentForParent.id || !newParentRelationship.parent || !newParentRelationship.relationship_type) {
+    if (!selectedStudentForParent || !selectedStudentForParent.id || !newParentRelationship.parent_id || !newParentRelationship.relationship_type) {
       setToast({
         message: 'Please fill in all required fields.',
         type: 'error'
@@ -3441,14 +3441,14 @@ const Students: React.FC = () => {
                     <div className="relative parent-dropdown-container">
                       <div
                         className={`w-full px-3 py-2 border rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200 bg-gray-50 focus-within:bg-white text-xs cursor-pointer ${
-                          getParentFieldError('parent') ? 'border-red-300 focus-within:ring-red-500' : 'border-gray-200'
+                          getParentFieldError('parent_id') ? 'border-red-300 focus-within:ring-red-500' : 'border-gray-200'
                         }`}
                         onClick={() => setIsParentDropdownOpen(!isParentDropdownOpen)}
                       >
                         <div className="flex items-center justify-between">
-                          <span className={newParentRelationship.parent ? 'text-gray-900' : 'text-gray-500'}>
-                            {newParentRelationship.parent 
-                              ? parents.find(p => p.id === newParentRelationship.parent)?.full_name + ' (' + parents.find(p => p.id === newParentRelationship.parent)?.relationship + ')'
+                          <span className={newParentRelationship.parent_id ? 'text-gray-900' : 'text-gray-500'}>
+              {newParentRelationship.parent_id
+                ? parents.find(p => p.id === newParentRelationship.parent_id)?.full_name + ' (' + parents.find(p => p.id === newParentRelationship.parent_id)?.relationship + ')'
                               : 'Select a parent'
                             }
                           </span>
@@ -3487,13 +3487,13 @@ const Students: React.FC = () => {
                                   onClick={() => {
                                     setNewParentRelationship(prev => ({
                                       ...prev,
-                                      parent: parent.id
+                                      parent_id: parent.id
                                     }));
                                     setIsParentDropdownOpen(false);
                                     setParentSearchQuery('');
                                     // Clear error when user makes a selection
-                                    if (parentFormErrors.parent) {
-                                      setParentFormErrors(prev => ({ ...prev, parent: [] }));
+                                    if (parentFormErrors.parent_id) {
+                                      setParentFormErrors(prev => ({ ...prev, parent_id: [] }));
                                     }
                                   }}
                                 >
@@ -3518,8 +3518,8 @@ const Students: React.FC = () => {
                       )}
                     </div>
                   )}
-                  {getParentFieldError('parent') && (
-                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('parent')}</p>
+                  {getParentFieldError('parent_id') && (
+                    <p className="mt-1 text-xs text-red-600">{getParentFieldError('parent_id')}</p>
                   )}
                 </div>
 
@@ -3685,7 +3685,7 @@ const Students: React.FC = () => {
               </button>
               <button
                 onClick={handleAddParentSubmit}
-                disabled={!newParentRelationship.parent || !newParentRelationship.relationship_type}
+                disabled={!newParentRelationship.parent_id || !newParentRelationship.relationship_type}
                 className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
               >
                 Add Parent
