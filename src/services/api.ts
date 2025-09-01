@@ -110,6 +110,11 @@ export const apiService = {
     }
     
     if (responseData.status === 'success') {
+      // For most endpoints, return the data directly
+      // For feature flag endpoints, return the full response
+      if (url.includes('/switch/')) {
+        return responseData;
+      }
       return responseData.data;
     }
     
@@ -422,7 +427,7 @@ export const apiService = {
 
     // Get feature flag by ID
     getById: async (flagId: string) => {
-      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, { method: 'GET' });
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}/`, { method: 'GET' });
     },
 
     // Check single feature
@@ -473,7 +478,7 @@ export const apiService = {
 
     // Create new feature flag
     create: async (flagData: CreateFeatureFlagRequest) => {
-      return apiService.authenticatedRequest('/switch/flags', {
+      return apiService.authenticatedRequest('/switch/flags/', {
         method: 'POST',
         body: JSON.stringify(flagData),
       });
@@ -481,7 +486,7 @@ export const apiService = {
 
     // Update feature flag by ID
     update: async (flagId: string, flagData: Partial<UpdateFeatureFlagRequest>) => {
-      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, {
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}/`, {
         method: 'PUT',
         body: JSON.stringify(flagData),
       });
@@ -489,7 +494,7 @@ export const apiService = {
 
     // Delete feature flag by ID
     delete: async (flagId: string) => {
-      return apiService.authenticatedRequest(`/switch/flags/${flagId}`, { method: 'DELETE' });
+      return apiService.authenticatedRequest(`/switch/flags/${flagId}/`, { method: 'DELETE' });
     },
 
     // Toggle feature flag status
@@ -682,6 +687,11 @@ export const convertStudentToCreateRequest = (student: Partial<Student>): Create
     guardian_name: student.guardianName || student.guardian_name || student.parentName || '',
     guardian_phone: student.guardianPhone || student.guardian_phone || '',
     guardian_relationship: student.guardianRelationship || student.guardian_relationship || '',
+    nemis_number: student.nemisNumber || student.nemis_number || '',
+    assessment_number: student.assessmentNumber || student.assessment_number || '',
+    has_special_need: student.hasSpecialNeed || student.has_special_need || false,
+    preferred_hospital: student.preferredHospital || student.preferred_hospital || '',
+    health_info: student.healthInfo || student.health_info || '',
     address: student.address || '',
     last_school_attended: student.lastSchoolAttended || student.last_school_attended || '',
     boarding_status: student.boardingStatus || student.boarding_status || 'Day',
@@ -739,6 +749,26 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
   
   if (normalizeValue(originalStudent.guardianRelationship || originalStudent.guardian_relationship) !== normalizeValue(editedStudent.guardianRelationship)) {
     changes.guardian_relationship = editedStudent.guardianRelationship || '';
+  }
+  
+  if (normalizeValue(originalStudent.nemisNumber || originalStudent.nemis_number) !== normalizeValue(editedStudent.nemisNumber)) {
+    changes.nemis_number = editedStudent.nemisNumber || '';
+  }
+  
+  if (normalizeValue(originalStudent.assessmentNumber || originalStudent.assessment_number) !== normalizeValue(editedStudent.assessmentNumber)) {
+    changes.assessment_number = editedStudent.assessmentNumber || '';
+  }
+  
+  if (originalStudent.hasSpecialNeed !== editedStudent.hasSpecialNeed) {
+    changes.has_special_need = editedStudent.hasSpecialNeed || false;
+  }
+  
+  if (normalizeValue(originalStudent.preferredHospital || originalStudent.preferred_hospital) !== normalizeValue(editedStudent.preferredHospital)) {
+    changes.preferred_hospital = editedStudent.preferredHospital || '';
+  }
+  
+  if (normalizeValue(originalStudent.healthInfo || originalStudent.health_info) !== normalizeValue(editedStudent.healthInfo)) {
+    changes.health_info = editedStudent.healthInfo || '';
   }
   
   if (normalizeValue(originalStudent.address) !== normalizeValue(editedStudent.address)) {

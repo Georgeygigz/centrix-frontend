@@ -282,6 +282,14 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                       }
                     </span>
                   </div>
+                  <div className="flex justify-between items-center py-1 border-b border-green-200">
+                    <span className="text-xs font-semibold text-green-700">NEMIS Number:</span>
+                    <span className="text-xs font-medium text-green-900 bg-green-50 px-2 py-0.5 rounded">{student.nemisNumber || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-green-200">
+                    <span className="text-xs font-semibold text-green-700">Assessment Number:</span>
+                    <span className="text-xs font-medium text-green-900 bg-green-50 px-2 py-0.5 rounded">{student.assessmentNumber || 'N/A'}</span>
+                  </div>
                   <div className="flex justify-between items-center py-1">
                     <span className="text-xs font-semibold text-green-700">Attendance:</span>
                     <span className="text-xs font-medium text-green-900 bg-green-50 px-2 py-0.5 rounded">95%</span>
@@ -312,6 +320,33 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                     <span className="text-xs text-orange-900">No issues</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Health and Special Needs Section */}
+              <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg p-3 border border-red-200 shadow-sm">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h3 className="text-sm font-bold text-red-900">Health & Special Needs</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex justify-between items-center py-1 border-b border-red-200">
+                    <span className="text-xs font-semibold text-red-700">Special Need:</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${student.hasSpecialNeed ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                      {student.hasSpecialNeed ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-xs font-semibold text-red-700">Preferred Hospital:</span>
+                    <span className="text-xs text-red-900">{student.preferredHospital || 'N/A'}</span>
+                  </div>
+                </div>
+                {student.healthInfo && (
+                  <div className="mt-2 pt-2 border-t border-red-200">
+                    <div className="flex justify-between items-start py-1">
+                      <span className="text-xs font-semibold text-red-700">Health Information:</span>
+                      <span className="text-xs text-red-900 max-w-xs text-right">{student.healthInfo}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Parents Section */}

@@ -149,12 +149,25 @@ const SwitchBoard: React.FC = () => {
       return [];
     }
 
-    let filtered = features.filter(feature =>
-      feature.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      feature.display_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      feature.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      feature.feature_type.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-    );
+    console.log('Filtering features:', features.length, 'features');
+    console.log('Search query:', debouncedSearchQuery);
+    
+    let filtered = features.filter(feature => {
+      const searchQuery = debouncedSearchQuery.toLowerCase();
+      
+      const matches = (
+        (feature.name && feature.name.toLowerCase().includes(searchQuery)) ||
+        (feature.display_name && feature.display_name.toLowerCase().includes(searchQuery)) ||
+        (feature.description && feature.description.toLowerCase().includes(searchQuery)) ||
+        (feature.feature_type && feature.feature_type.toLowerCase().includes(searchQuery))
+      );
+      
+      if (!matches) {
+        console.log('Feature filtered out:', feature.name, 'search query:', searchQuery);
+      }
+      
+      return matches;
+    });
 
     if (featuresSortBy) {
       filtered.sort((a, b) => {
@@ -183,12 +196,16 @@ const SwitchBoard: React.FC = () => {
       return [];
     }
 
-    let filtered = featureFlagStates.filter(state =>
-      state.scope_type.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      (state.scope_id && state.scope_id.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
-      state.feature_flag_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-      state.feature_flag_display_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
-    );
+    let filtered = featureFlagStates.filter(state => {
+      const searchQuery = debouncedSearchQuery.toLowerCase();
+      
+      return (
+        (state.scope_type && state.scope_type.toLowerCase().includes(searchQuery)) ||
+        (state.scope_id && state.scope_id.toString().toLowerCase().includes(searchQuery)) ||
+        (state.feature_flag_name && state.feature_flag_name.toLowerCase().includes(searchQuery)) ||
+        (state.feature_flag_display_name && state.feature_flag_display_name.toLowerCase().includes(searchQuery))
+      );
+    });
 
     if (statesSortBy) {
       filtered.sort((a, b) => {
@@ -294,8 +311,40 @@ const SwitchBoard: React.FC = () => {
         is_active: newFeature.is_active ?? true
       };
 
-      const newFeatureFlag = await apiService.featureFlags.create(featureData);
-      setFeatures(prev => [...prev, newFeatureFlag]);
+      const response: any = await apiService.featureFlags.create(featureData);
+      
+      // Debug logging to understand the response structure
+      console.log('Create response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', response ? Object.keys(response) : 'No response');
+      
+      // Extract the created feature data from the response
+      let newFeatureFlagData: FeatureFlag;
+      if (response && typeof response === 'object' && 'status' in response) {
+        if (response.status === 'success' && response.data) {
+          newFeatureFlagData = response.data as FeatureFlag;
+        } else if (response.status === 'error') {
+          throw new Error(response.message || 'API returned error status');
+        } else if (response.data) {
+          newFeatureFlagData = response.data as FeatureFlag;
+        } else {
+          throw new Error('API response missing data');
+        }
+      } else if (response && typeof response === 'object') {
+        newFeatureFlagData = response as FeatureFlag;
+      } else {
+        throw new Error('Invalid response format received from API');
+      }
+      
+      console.log('Extracted new feature data:', newFeatureFlagData);
+      
+      // Validate that the new feature has required fields
+      if (!newFeatureFlagData.id || !newFeatureFlagData.name || !newFeatureFlagData.display_name) {
+        console.error('New feature missing required fields:', newFeatureFlagData);
+        throw new Error('New feature is missing required fields');
+      }
+      
+      setFeatures(prev => [...prev, newFeatureFlagData]);
       
       setToast({
         message: 'Feature flag added successfully!',
@@ -311,6 +360,9 @@ const SwitchBoard: React.FC = () => {
         feature_type: '',
         is_active: true
       });
+      
+      // Clear search query to ensure the new feature is visible
+      setSearchQuery('');
       
       setTimeout(() => {
         closeAddDrawer();
@@ -366,33 +418,80 @@ const SwitchBoard: React.FC = () => {
 
       const response = await apiService.featureFlagStates.create(stateData);
       
+      // Log the response for debugging
+      console.log('Feature flag state creation response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Response keys:', response ? Object.keys(response) : 'No response');
+      console.log('Response status:', response?.status);
+      console.log('Response data:', response?.data);
+      console.log('Response has id:', response?.id);
+      
       // Handle different response structures
       let newFeatureFlagState: FeatureFlagState;
+      
       if (response && response.status === 'success' && response.data) {
         // Response wrapped in success object
         newFeatureFlagState = response.data;
+        console.log('Using response.data:', newFeatureFlagState);
+        
+        // If the response.data doesn't have an ID, we need to fetch the created feature flag state
+        if (!newFeatureFlagState.id) {
+          console.log('Response data missing ID, attempting to fetch created feature flag state...');
+          
+          try {
+            // Try to fetch the feature flag states to get the newly created one
+            const allStates = await apiService.featureFlagStates.getAll();
+            console.log('All feature flag states:', allStates);
+            
+                         // Find the most recently created state that matches our data
+             if (allStates && allStates.data && Array.isArray(allStates.data)) {
+               const matchingState = allStates.data.find((state: any) => 
+                 state.feature_flag === stateData.feature_flag &&
+                 state.scope_type === stateData.scope_type &&
+                 state.scope_id === stateData.scope_id &&
+                 state.is_enabled === stateData.is_enabled &&
+                 state.percentage === stateData.percentage
+               );
+              
+              if (matchingState && matchingState.id) {
+                newFeatureFlagState = matchingState;
+                console.log('Found matching feature flag state with ID:', newFeatureFlagState);
+              } else {
+                console.error('Could not find matching feature flag state in the list');
+                throw new Error('Feature flag state created but could not retrieve ID. Please refresh the page.');
+              }
+            } else {
+              console.error('Could not fetch feature flag states list');
+              throw new Error('Feature flag state created but could not retrieve ID. Please refresh the page.');
+            }
+          } catch (fetchError) {
+            console.error('Error fetching feature flag states:', fetchError);
+            throw new Error('Feature flag state created but could not retrieve ID. Please refresh the page.');
+          }
+        }
       } else if (response && response.id) {
         // Direct feature flag state object
         newFeatureFlagState = response;
+        console.log('Using direct response:', newFeatureFlagState);
       } else {
-        // Fallback - create a temporary object with the form data
-        const relatedFeature = features.find(f => f.id === stateData.feature_flag);
-        newFeatureFlagState = {
-          id: 'temp-' + Date.now(), // Temporary ID
-          feature_flag: stateData.feature_flag,
-          feature_flag_name: relatedFeature?.name || '',
-          feature_flag_display_name: relatedFeature?.display_name || '',
-          scope_type: stateData.scope_type,
-          scope_id: stateData.scope_id,
-          school_name: null,
-          username: null,
-          is_enabled: stateData.is_enabled,
-          percentage: stateData.percentage,
-          start_date: stateData.start_date,
-          end_date: stateData.end_date,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        // Log error details
+        console.error('Unexpected API response structure:', response);
+        console.error('Response structure details:', {
+          hasResponse: !!response,
+          responseType: typeof response,
+          isArray: Array.isArray(response),
+          keys: response ? Object.keys(response) : [],
+          hasId: response && response.id,
+          hasStatus: response && response.status,
+          hasData: response && response.data
+        });
+        throw new Error('Invalid response from server. Please try again.');
+      }
+      
+      // Final validation that we have a proper ID
+      if (!newFeatureFlagState.id || newFeatureFlagState.id.toString().startsWith('temp-')) {
+        console.error('Invalid feature flag state ID:', newFeatureFlagState.id);
+        throw new Error('Server returned invalid ID. Please try again.');
       }
       
       setFeatureFlagStates(prev => [...prev, newFeatureFlagState]);
@@ -552,7 +651,7 @@ const SwitchBoard: React.FC = () => {
   const handleSaveFeature = async () => {
     if (editingFeature) {
       try {
-        const updatedFeature = await apiService.featureFlags.update(editingFeature.id, {
+        const response: any = await apiService.featureFlags.update(editingFeature.id, {
           name: editingFeature.name,
           display_name: editingFeature.display_name,
           description: editingFeature.description,
@@ -560,9 +659,65 @@ const SwitchBoard: React.FC = () => {
           is_active: editingFeature.is_active
         });
         
-        setFeatures(prev => prev.map(f => 
-          f.id === editingFeature.id ? updatedFeature : f
-        ));
+        // Debug logging to understand the response structure
+        console.log('Update response:', response);
+        console.log('Response type:', typeof response);
+        console.log('Response keys:', response ? Object.keys(response) : 'No response');
+        
+        // Extract the updated feature data from the response
+        let updatedFeatureData: Partial<FeatureFlag>;
+        if (response && typeof response === 'object' && 'status' in response) {
+          if (response.status === 'success' && response.data) {
+            updatedFeatureData = response.data as Partial<FeatureFlag>;
+          } else if (response.status === 'error') {
+            throw new Error(response.message || 'API returned error status');
+          } else if (response.data) {
+            updatedFeatureData = response.data as Partial<FeatureFlag>;
+          } else {
+            throw new Error('API response missing data');
+          }
+        } else if (response && typeof response === 'object') {
+          updatedFeatureData = response as Partial<FeatureFlag>;
+        } else {
+          throw new Error('Invalid response format received from API');
+        }
+        
+        console.log('Extracted updated feature data:', updatedFeatureData);
+        
+        // Create a complete updated feature by merging existing data with updates
+        const completeUpdatedFeature: FeatureFlag = {
+          ...editingFeature,
+          ...updatedFeatureData,
+          // Ensure these fields are explicitly updated
+          name: editingFeature.name,
+          display_name: editingFeature.display_name,
+          description: editingFeature.description,
+          feature_type: editingFeature.feature_type,
+          is_active: editingFeature.is_active,
+          // Update timestamp to show it was just modified
+          updated_at: new Date().toISOString()
+        };
+        
+        // Validate that all required fields are present
+        if (!completeUpdatedFeature.id || !completeUpdatedFeature.name || !completeUpdatedFeature.display_name) {
+          console.error('Updated feature missing required fields:', completeUpdatedFeature);
+          throw new Error('Updated feature is missing required fields');
+        }
+        
+        console.log('Complete updated feature:', completeUpdatedFeature);
+        
+        console.log('Previous features state:', features);
+        console.log('Editing feature ID:', editingFeature.id);
+        console.log('Editing feature ID type:', typeof editingFeature.id);
+        
+        setFeatures(prev => {
+          const updated = prev.map(f => {
+            console.log('Comparing feature ID:', f.id, 'with editing ID:', editingFeature.id, 'match:', f.id === editingFeature.id);
+            return f.id === editingFeature.id ? completeUpdatedFeature : f;
+          });
+          console.log('Updated features state:', updated);
+          return updated;
+        });
         
         setToast({
           message: 'Feature flag updated successfully!',
@@ -571,6 +726,9 @@ const SwitchBoard: React.FC = () => {
         
         setEditFormErrors({});
         closeEditDrawer();
+        
+        // Clear search query to ensure the updated feature is visible
+        setSearchQuery('');
         
         setTimeout(() => {
           setToast(null);
@@ -626,8 +784,24 @@ const SwitchBoard: React.FC = () => {
 
         const updatedState = await apiService.featureFlagStates.update(editingState.id, updateData);
         
+        // Create a complete updated state by merging existing data with updates
+        const completeUpdatedState = {
+          ...editingState,
+          ...updatedState,
+          // Ensure these fields are explicitly updated
+          scope_type: updateData.scope_type,
+          scope_id: updateData.scope_id,
+          is_enabled: updateData.is_enabled,
+          percentage: updateData.percentage,
+          start_date: updateData.start_date,
+          end_date: updateData.end_date,
+          // Update timestamp to show it was just modified
+          updated_at: new Date().toISOString()
+        };
+        
+        // Update the state with the complete object
         setFeatureFlagStates(prev => prev.map(s => 
-          s.id === editingState.id ? updatedState : s
+          s.id === editingState.id ? completeUpdatedState : s
         ));
         
         setToast({
