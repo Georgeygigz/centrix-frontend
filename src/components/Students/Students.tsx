@@ -102,6 +102,13 @@ const Students: React.FC = () => {
     guardianPhone: '',
     guardianRelationship: '',
     
+    // Health and Special Needs Info
+    nemisNumber: '',
+    assessmentNumber: '',
+    hasSpecialNeed: false,
+    preferredHospital: '',
+    healthInfo: '',
+    
     // Others
     address: '',
     boardingStatus: 'Day',
@@ -167,6 +174,12 @@ const Students: React.FC = () => {
       guardianName: apiStudent.guardian_name || apiStudent.guardianName,
       guardianPhone: apiStudent.guardian_phone || apiStudent.guardianPhone,
       guardianRelationship: apiStudent.guardian_relationship || apiStudent.guardianRelationship,
+      // Health and Special Needs Info
+      nemisNumber: apiStudent.nemis_number || apiStudent.nemisNumber,
+      assessmentNumber: apiStudent.assessment_number || apiStudent.assessmentNumber,
+      hasSpecialNeed: apiStudent.has_special_need || apiStudent.hasSpecialNeed || false,
+      preferredHospital: apiStudent.preferred_hospital || apiStudent.preferredHospital,
+      healthInfo: apiStudent.health_info || apiStudent.healthInfo,
       address: apiStudent.address,
       boardingStatus: apiStudent.boarding_status || apiStudent.boardingStatus,
       exemptedFromReligiousInstruction: apiStudent.exempted_from_religious_instruction || apiStudent.exemptedFromReligiousInstruction,
@@ -190,6 +203,11 @@ const Students: React.FC = () => {
       guardian_name: apiStudent.guardian_name,
       guardian_phone: apiStudent.guardian_phone,
       guardian_relationship: apiStudent.guardian_relationship,
+      nemis_number: apiStudent.nemis_number,
+      assessment_number: apiStudent.assessment_number,
+      has_special_need: apiStudent.has_special_need,
+      preferred_hospital: apiStudent.preferred_hospital,
+      health_info: apiStudent.health_info,
       boarding_status: apiStudent.boarding_status,
       exempted_from_religious_instruction: apiStudent.exempted_from_religious_instruction,
       birth_certificate_no: apiStudent.birth_certificate_no,
@@ -333,13 +351,28 @@ const Students: React.FC = () => {
     setNewStudent({
       admissionNumber: '',
       fullName: '',
-      class: '',
-      gender: 'Male',
       dateOfBirth: '',
-      parentName: '',
-      contactInfo: '',
+      gender: 'M',
+      dateOfAdmission: '',
+      classOnAdmission: '',
+      currentClass: '',
+      lastSchoolAttended: '',
+      guardianName: '',
+      guardianPhone: '',
+      guardianRelationship: '',
+      nemisNumber: '',
+      assessmentNumber: '',
+      hasSpecialNeed: false,
+      preferredHospital: '',
+      healthInfo: '',
       address: '',
-      dateOfAdmission: ''
+      boardingStatus: 'Day',
+      exemptedFromReligiousInstruction: false,
+      birthCertificateNo: '',
+      image: '',
+      dateOfLeaving: '',
+      schoolLeavingCertificateNumber: '',
+      remarks: ''
     });
     setNewStream({
       name: '',
@@ -513,6 +546,11 @@ const Students: React.FC = () => {
          guardianName: '',
          guardianPhone: '',
          guardianRelationship: '',
+         nemisNumber: '',
+         assessmentNumber: '',
+         hasSpecialNeed: false,
+         preferredHospital: '',
+         healthInfo: '',
          address: '',
          boardingStatus: 'Day',
          exemptedFromReligiousInstruction: false,
@@ -810,6 +848,11 @@ const Students: React.FC = () => {
       editingStudent.guardianName !== originalStudent.guardianName ||
       editingStudent.guardianPhone !== originalStudent.guardianPhone ||
       editingStudent.guardianRelationship !== originalStudent.guardianRelationship ||
+      editingStudent.nemisNumber !== originalStudent.nemisNumber ||
+      editingStudent.assessmentNumber !== originalStudent.assessmentNumber ||
+      editingStudent.hasSpecialNeed !== originalStudent.hasSpecialNeed ||
+      editingStudent.preferredHospital !== originalStudent.preferredHospital ||
+      editingStudent.healthInfo !== originalStudent.healthInfo ||
       editingStudent.address !== originalStudent.address ||
       editingStudent.boardingStatus !== originalStudent.boardingStatus ||
       editingStudent.exemptedFromReligiousInstruction !== originalStudent.exemptedFromReligiousInstruction ||
@@ -2421,6 +2464,99 @@ const Students: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Health and Special Needs Information */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></span>
+                          NEMIS Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.nemisNumber}
+                          onChange={(e) => handleInputChange('nemisNumber', e.target.value)}
+                          placeholder="Enter NEMIS number"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-100 focus:border-yellow-500 transition-all duration-200 bg-white ${
+                            editFormErrors.nemisNumber ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {editFormErrors.nemisNumber && (
+                          <p className="mt-1 text-xs text-red-600">{editFormErrors.nemisNumber[0]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
+                          Assessment Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editingStudent.assessmentNumber}
+                          onChange={(e) => handleInputChange('assessmentNumber', e.target.value)}
+                          placeholder="Enter assessment number"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-500 transition-all duration-200 bg-white ${
+                            editFormErrors.assessmentNumber ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {editFormErrors.assessmentNumber && (
+                          <p className="mt-1 text-xs text-red-600">{editFormErrors.assessmentNumber[0]}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={editingStudent.hasSpecialNeed}
+                          onChange={(e) => handleInputChange('hasSpecialNeed', e.target.checked)}
+                          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-xs text-gray-700">Has Special Need</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                        Preferred Hospital
+                      </label>
+                      <input
+                        type="text"
+                        value={editingStudent.preferredHospital}
+                        onChange={(e) => handleInputChange('preferredHospital', e.target.value)}
+                        placeholder="Enter preferred hospital"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                          editFormErrors.preferredHospital ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.preferredHospital && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.preferredHospital[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                        Health Information
+                      </label>
+                      <textarea
+                        value={editingStudent.healthInfo}
+                        onChange={(e) => handleInputChange('healthInfo', e.target.value)}
+                        placeholder="Enter health information"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all duration-200 bg-white resize-none ${
+                          editFormErrors.healthInfo ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {editFormErrors.healthInfo && (
+                        <p className="mt-1 text-xs text-red-600">{editFormErrors.healthInfo[0]}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -3033,6 +3169,99 @@ const Students: React.FC = () => {
                       />
                       {formErrors.remarks && (
                         <p className="mt-1 text-xs text-red-600">{formErrors.remarks[0]}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Health and Special Needs Information */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></span>
+                          NEMIS Number
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.nemisNumber}
+                          onChange={(e) => handleNewStudentInputChange('nemisNumber', e.target.value)}
+                          placeholder="Enter NEMIS number"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-100 focus:border-yellow-500 transition-all duration-200 bg-white ${
+                            formErrors.nemisNumber ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {formErrors.nemisNumber && (
+                          <p className="mt-1 text-xs text-red-600">{formErrors.nemisNumber[0]}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1.5"></span>
+                          Assessment Number
+                        </label>
+                        <input
+                          type="text"
+                          value={newStudent.assessmentNumber}
+                          onChange={(e) => handleNewStudentInputChange('assessmentNumber', e.target.value)}
+                          placeholder="Enter assessment number"
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-100 focus:border-amber-500 transition-all duration-200 bg-white ${
+                            formErrors.assessmentNumber ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {formErrors.assessmentNumber && (
+                          <p className="mt-1 text-xs text-red-600">{formErrors.assessmentNumber[0]}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newStudent.hasSpecialNeed}
+                          onChange={(e) => handleNewStudentInputChange('hasSpecialNeed', e.target.checked)}
+                          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className="ml-2 text-xs text-gray-700">Has Special Need</span>
+                      </label>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
+                        Preferred Hospital
+                      </label>
+                      <input
+                        type="text"
+                        value={newStudent.preferredHospital}
+                        onChange={(e) => handleNewStudentInputChange('preferredHospital', e.target.value)}
+                        placeholder="Enter preferred hospital"
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
+                          formErrors.preferredHospital ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.preferredHospital && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.preferredHospital[0]}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                        Health Information
+                      </label>
+                      <textarea
+                        value={newStudent.healthInfo}
+                        onChange={(e) => handleNewStudentInputChange('healthInfo', e.target.value)}
+                        placeholder="Enter health information"
+                        rows={3}
+                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all duration-200 bg-white resize-none ${
+                          formErrors.healthInfo ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                      />
+                      {formErrors.healthInfo && (
+                        <p className="mt-1 text-xs text-red-600">{formErrors.healthInfo[0]}</p>
                       )}
                     </div>
                   </div>

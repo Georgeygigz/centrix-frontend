@@ -27,6 +27,13 @@ export interface Student {
   guardianPhone?: string;
   guardianRelationship?: string;
   
+  // Health and Special Needs Info
+  nemisNumber?: string;
+  assessmentNumber?: string;
+  hasSpecialNeed?: boolean;
+  preferredHospital?: string;
+  healthInfo?: string;
+  
   // Others
   address?: string;
   boardingStatus?: string;
@@ -55,6 +62,11 @@ export interface Student {
   guardian_name?: string;
   guardian_phone?: string;
   guardian_relationship?: string;
+  nemis_number?: string;
+  assessment_number?: string;
+  has_special_need?: boolean;
+  preferred_hospital?: string;
+  health_info?: string;
   boarding_status?: string;
   exempted_from_religious_instruction?: boolean;
   birth_certificate_no?: string;
@@ -82,6 +94,11 @@ export interface CreateStudentRequest {
   guardian_name?: string;
   guardian_phone?: string;
   guardian_relationship?: string;
+  nemis_number?: string;
+  assessment_number?: string;
+  has_special_need?: boolean;
+  preferred_hospital?: string;
+  health_info?: string;
   address?: string;
   last_school_attended?: string;
   boarding_status?: string;
