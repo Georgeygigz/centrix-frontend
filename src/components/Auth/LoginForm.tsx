@@ -118,8 +118,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
             </button>
           </form>
 
-          {/* Sign Up Link */}
-          <div className="mt-8 text-center">
+          {/* Sign Up Link - Temporarily commented out for manual user creation */}
+          {/* <div className="mt-8 text-center">
             <p className="text-gray-600">
               Don't have account?{' '}
               <button
@@ -131,7 +131,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
                 Let's Get Started For Free
               </button>
             </p>
-          </div>
+          </div> */}
             </div>
           </div>
         </div>
