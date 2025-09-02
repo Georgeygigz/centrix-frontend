@@ -339,6 +339,14 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
                     <span className="text-xs text-red-900">{student.preferredHospital || 'N/A'}</span>
                   </div>
                 </div>
+                {student.hasSpecialNeed && student.specialNeed && (
+                  <div className="mt-2 pt-2 border-t border-red-200">
+                    <div className="flex justify-between items-start py-1">
+                      <span className="text-xs font-semibold text-red-700">Special Need Description:</span>
+                      <span className="text-xs text-red-900 max-w-xs text-right">{student.specialNeed}</span>
+                    </div>
+                  </div>
+                )}
                 {student.healthInfo && (
                   <div className="mt-2 pt-2 border-t border-red-200">
                     <div className="flex justify-between items-start py-1">

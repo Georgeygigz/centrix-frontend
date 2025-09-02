@@ -374,6 +374,20 @@ export const apiService = {
       });
     },
 
+    // Delete a stream
+    deleteStream: async (id: string) => {
+      return apiService.authenticatedRequest(`/students/streams/${id}/`, { 
+        method: 'DELETE'
+      });
+    },
+
+    // Delete a class
+    deleteClass: async (id: string) => {
+      return apiService.authenticatedRequest(`/students/classes/${id}/`, { 
+        method: 'DELETE'
+      });
+    },
+
     // Associate a parent with a student
     associateParent: async (studentId: string, parentData: AssociateParentRequest) => {
       return apiService.authenticatedRequest(`/students/admissions/${studentId}/parents`, {
@@ -690,6 +704,7 @@ export const convertStudentToCreateRequest = (student: Partial<Student>): Create
     nemis_number: student.nemisNumber || student.nemis_number || '',
     assessment_number: student.assessmentNumber || student.assessment_number || '',
     has_special_need: student.hasSpecialNeed || student.has_special_need || false,
+    special_need: student.specialNeed || '',
     preferred_hospital: student.preferredHospital || student.preferred_hospital || '',
     health_info: student.healthInfo || student.health_info || '',
     address: student.address || '',
@@ -761,6 +776,10 @@ export const getChangedFields = (originalStudent: Student, editedStudent: Studen
   
   if (originalStudent.hasSpecialNeed !== editedStudent.hasSpecialNeed) {
     changes.has_special_need = editedStudent.hasSpecialNeed || false;
+  }
+  
+  if (normalizeValue(originalStudent.specialNeed) !== normalizeValue(editedStudent.specialNeed)) {
+    changes.special_need = editedStudent.specialNeed || '';
   }
   
   if (normalizeValue(originalStudent.preferredHospital || originalStudent.preferred_hospital) !== normalizeValue(editedStudent.preferredHospital)) {

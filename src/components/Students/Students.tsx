@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaUserFriends } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaUserFriends, FaInfoCircle, FaExclamationTriangle, FaArrowRight } from 'react-icons/fa';
 import { Student, Stream, Class } from '../../types/dashboard';
 import { Parent } from '../../types/parents';
 import StudentModal from './StudentModal';
@@ -9,6 +9,7 @@ import { PermissionGate } from '../RBAC';
 import { useFeatureSwitch } from '../../hooks/useFeatureSwitch';
 import DisabledButtonWithTooltip from './DisabledButtonWithTooltip';
 import { useAuth } from '../../context/AuthContext';
+import EnhancedDropdown from './EnhancedDropdown';
 
 
 
@@ -45,6 +46,17 @@ const Students: React.FC = () => {
   const [originalClass, setOriginalClass] = useState<Class | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  
+  // Delete confirmation state
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{
+    isOpen: boolean;
+    type: 'stream' | 'class' | 'student' | null;
+    item: Stream | Class | Student | null;
+  }>({
+    isOpen: false,
+    type: null,
+    item: null
+  });
   
   // Add Parent state
   const [isAddParentDrawerOpen, setIsAddParentDrawerOpen] = useState(false);
@@ -106,6 +118,7 @@ const Students: React.FC = () => {
     nemisNumber: '',
     assessmentNumber: '',
     hasSpecialNeed: false,
+    specialNeed: '',
     preferredHospital: '',
     healthInfo: '',
     
@@ -119,6 +132,46 @@ const Students: React.FC = () => {
     schoolLeavingCertificateNumber: '',
     remarks: ''
   });
+
+  // Country code state for phone numbers
+  const [guardianCountryCode, setGuardianCountryCode] = useState('+254');
+  const [editingGuardianCountryCode, setEditingGuardianCountryCode] = useState('+254');
+  const [customCountryCode, setCustomCountryCode] = useState('');
+  const [editingCustomCountryCode, setEditingCustomCountryCode] = useState('');
+
+  // Function to extract country code from phone number
+  const extractCountryCode = (phoneNumber: string): string => {
+    if (!phoneNumber) return '+254';
+    // Common country codes pattern
+    const countryCodeMatch = phoneNumber.match(/^\+(\d{1,4})/);
+    if (countryCodeMatch) {
+      return `+${countryCodeMatch[1]}`;
+    }
+    return '+254'; // Default to Kenya
+  };
+
+  // Function to extract phone number without country code
+  const extractPhoneNumber = (phoneNumber: string): string => {
+    if (!phoneNumber) return '';
+    
+    // Remove leading + if present
+    const cleanNumber = phoneNumber.replace(/^\+/, '');
+    
+    // If the number starts with 254 (Kenya), remove it
+    if (cleanNumber.startsWith('254')) {
+      return cleanNumber.substring(3);
+    }
+    
+    // For other country codes, try to find a pattern
+    // Most country codes are 1-4 digits
+    const countryCodeMatch = cleanNumber.match(/^(\d{1,4})/);
+    if (countryCodeMatch) {
+      const countryCodeLength = countryCodeMatch[0].length;
+      return cleanNumber.substring(countryCodeLength);
+    }
+    
+    return cleanNumber; // If no country code pattern found, return as is
+  };
 
   const [newStream, setNewStream] = useState<Partial<Stream>>({
     name: '',
@@ -174,12 +227,13 @@ const Students: React.FC = () => {
       guardianName: apiStudent.guardian_name || apiStudent.guardianName,
       guardianPhone: apiStudent.guardian_phone || apiStudent.guardianPhone,
       guardianRelationship: apiStudent.guardian_relationship || apiStudent.guardianRelationship,
-      // Health and Special Needs Info
-      nemisNumber: apiStudent.nemis_number || apiStudent.nemisNumber,
-      assessmentNumber: apiStudent.assessment_number || apiStudent.assessmentNumber,
-      hasSpecialNeed: apiStudent.has_special_need || apiStudent.hasSpecialNeed || false,
-      preferredHospital: apiStudent.preferred_hospital || apiStudent.preferredHospital,
-      healthInfo: apiStudent.health_info || apiStudent.healthInfo,
+          // Health and Special Needs Info
+    nemisNumber: apiStudent.nemis_number || apiStudent.nemisNumber,
+    assessmentNumber: apiStudent.assessment_number || apiStudent.assessmentNumber,
+    hasSpecialNeed: apiStudent.has_special_need || apiStudent.hasSpecialNeed || false,
+    specialNeed: apiStudent.special_need || apiStudent.specialNeed || '',
+    preferredHospital: apiStudent.preferred_hospital || apiStudent.preferredHospital,
+    healthInfo: apiStudent.health_info || apiStudent.healthInfo,
       address: apiStudent.address,
       boardingStatus: apiStudent.boarding_status || apiStudent.boardingStatus,
       exemptedFromReligiousInstruction: apiStudent.exempted_from_religious_instruction || apiStudent.exemptedFromReligiousInstruction,
@@ -205,7 +259,6 @@ const Students: React.FC = () => {
       guardian_relationship: apiStudent.guardian_relationship,
       nemis_number: apiStudent.nemis_number,
       assessment_number: apiStudent.assessment_number,
-      has_special_need: apiStudent.has_special_need,
       preferred_hospital: apiStudent.preferred_hospital,
       health_info: apiStudent.health_info,
       boarding_status: apiStudent.boarding_status,
@@ -780,6 +833,16 @@ const Students: React.FC = () => {
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
 
+    // Initialize country code for phone number
+    const countryCode = extractCountryCode(student.guardianPhone || '');
+    setEditingGuardianCountryCode(countryCode);
+    
+    // If it's a custom country code, extract it
+    if (countryCode === '+999') {
+      const customCode = student.guardianPhone?.match(/^\+(\d+)/)?.[0] || '';
+      setEditingCustomCountryCode(customCode);
+    }
+
     setEditFormErrors({}); // Clear any previous errors
   };
 
@@ -851,6 +914,7 @@ const Students: React.FC = () => {
       editingStudent.nemisNumber !== originalStudent.nemisNumber ||
       editingStudent.assessmentNumber !== originalStudent.assessmentNumber ||
       editingStudent.hasSpecialNeed !== originalStudent.hasSpecialNeed ||
+      editingStudent.specialNeed !== originalStudent.specialNeed ||
       editingStudent.preferredHospital !== originalStudent.preferredHospital ||
       editingStudent.healthInfo !== originalStudent.healthInfo ||
       editingStudent.address !== originalStudent.address ||
@@ -864,19 +928,120 @@ const Students: React.FC = () => {
     );
   };
 
-  const handleDeleteStudent = async (student: Student) => {
+  const handleDeleteStudent = (student: Student) => {
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'student',
+      item: student
+    });
+    setOpenDropdownId(null);
+  };
+
+  const handleDeleteStream = (stream: Stream) => {
+    // Check if stream has classes
+    const streamHasClasses = classes.some(classItem => 
+      (typeof classItem.stream === 'string' ? classItem.stream : classItem.stream?.id) === stream.id
+    );
+    
+    if (streamHasClasses) {
+      setToast({
+        message: `Cannot delete stream "${stream.name}" because it has associated classes. Please delete or reassign the classes first.`,
+        type: 'error'
+      });
+      setOpenDropdownId(null);
+      return;
+    }
+    
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'stream',
+      item: stream
+    });
+    setOpenDropdownId(null);
+  };
+
+  const handleDeleteClass = (classItem: Class) => {
+    // Check if class has students
+    const classHasStudents = students.some(student => 
+      student.currentClass === classItem.id || student.classOnAdmission === classItem.id
+    );
+    
+    if (classHasStudents) {
+      setToast({
+        message: `Cannot delete class "${classItem.name}" because it has associated students. Please reassign or delete the students first.`,
+        type: 'error'
+      });
+      setOpenDropdownId(null);
+      return;
+    }
+    
+    setDeleteConfirmation({
+      isOpen: true,
+      type: 'class',
+      item: classItem
+    });
+    setOpenDropdownId(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation.item || !deleteConfirmation.type) return;
+
     try {
-      if (student.id) {
-        await apiService.students.delete(student.id);
+      if (deleteConfirmation.type === 'stream') {
+        const stream = deleteConfirmation.item as Stream;
+        await apiService.students.deleteStream(stream.id);
+        setStreams(prev => prev.filter(s => s.id !== stream.id));
+        
+        setToast({
+          message: `Stream "${stream.name}" deleted successfully`,
+          type: 'success'
+        });
+      } else if (deleteConfirmation.type === 'class') {
+        const classItem = deleteConfirmation.item as Class;
+        await apiService.students.deleteClass(classItem.id);
+        setClasses(prev => prev.filter(c => c.id !== classItem.id));
+        
+        setToast({
+          message: `Class "${classItem.name}" deleted successfully`,
+          type: 'success'
+        });
+      } else if (deleteConfirmation.type === 'student') {
+        const student = deleteConfirmation.item as Student;
+        if (student.id) {
+          await apiService.students.delete(student.id);
+          setStudents(prev => prev.filter(s => s.id !== student.id));
+          
+          setToast({
+            message: `Student "${student.fullName || student.pupil_name}" deleted successfully`,
+            type: 'success'
+          });
+        }
       }
       
-      // Remove the student from the list
-      setStudents(prev => prev.filter(s => s.id !== student.id));
-      setOpenDropdownId(null);
-    } catch (error) {
-      console.error('Error deleting student:', error);
-      // You might want to show an error message to the user here
+      // Close confirmation dialog
+      setDeleteConfirmation({
+        isOpen: false,
+        type: null,
+        item: null
+      });
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      
+      // Show error message
+      const errorMessage = error.response?.data?.message || 'Failed to delete item';
+      setToast({
+        message: errorMessage,
+        type: 'error'
+      });
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation({
+      isOpen: false,
+      type: null,
+      item: null
+    });
   };
 
   const closeEditDrawer = () => {
@@ -2228,51 +2393,35 @@ const Students: React.FC = () => {
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
-                          Class On Admission *
-                        </label>
-                        <select
-                          value={editingStudent.classOnAdmission}
-                          onChange={(e) => handleInputChange('classOnAdmission', e.target.value)}
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
-                            editFormErrors.classOnAdmission ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          <option value="">Select a class</option>
-                          {classes.map((cls) => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name} - {cls.stream?.name || 'No Stream'}
-                            </option>
-                          ))}
-                        </select>
-                        {editFormErrors.classOnAdmission && (
-                          <p className="mt-1 text-xs text-red-600">{editFormErrors.classOnAdmission[0]}</p>
-                        )}
+                        <EnhancedDropdown
+                          label="Class On Admission"
+                          value={editingStudent.classOnAdmission || ''}
+                          onChange={(value) => handleInputChange('classOnAdmission', value)}
+                          options={classes}
+                          placeholder="Select a class"
+                          error={editFormErrors.classOnAdmission?.[0]}
+                          required={true}
+                          emptyMessage="No classes available"
+                          onCreateNew={() => setActiveTab('classes')}
+                          type="class"
+                          hasStreams={streams.length > 0}
+                        />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
-                          Current Class
-                        </label>
-                        <select
-                          value={editingStudent.currentClass}
-                          onChange={(e) => handleInputChange('currentClass', e.target.value)}
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
-                            editFormErrors.currentClass ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          <option value="">Select a class</option>
-                          {classes.map((cls) => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name} - {cls.stream?.name || 'No Stream'}
-                            </option>
-                          ))}
-                        </select>
-                        {editFormErrors.currentClass && (
-                          <p className="mt-1 text-xs text-red-600">{editFormErrors.currentClass[0]}</p>
-                        )}
+                        <EnhancedDropdown
+                          label="Current Class"
+                          value={editingStudent.currentClass || ''}
+                          onChange={(value) => handleInputChange('currentClass', value)}
+                          options={classes}
+                          placeholder="Select a class"
+                          error={editFormErrors.currentClass?.[0]}
+                          required={false}
+                          emptyMessage="No classes available"
+                          onCreateNew={() => setActiveTab('classes')}
+                          type="class"
+                          hasStreams={streams.length > 0}
+                        />
                       </div>
                     </div>
 
@@ -2323,23 +2472,188 @@ const Students: React.FC = () => {
                           <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
                           Guardian Phone
                         </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span className="text-gray-500 text-xs">+254</span>
+                        <div className="flex space-x-2">
+                          <div className="w-24">
+                            <select
+                              value={editingGuardianCountryCode}
+                              onChange={(e) => {
+                                setEditingGuardianCountryCode(e.target.value);
+                                const phoneNumber = extractPhoneNumber(editingStudent.guardianPhone || '');
+                                const newPhoneNumber = `${e.target.value}${phoneNumber}`;
+                                handleInputChange('guardianPhone', newPhoneNumber);
+                              }}
+                              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white"
+                            >
+                              <option value="+254">+254 (KE)</option>
+                              <option value="+255">+255 (TZ)</option>
+                              <option value="+256">+256 (UG)</option>
+                              <option value="+250">+250 (RW)</option>
+                              <option value="+257">+257 (BI)</option>
+                              <option value="+1">+1 (US/CA)</option>
+                              <option value="+44">+44 (UK)</option>
+                              <option value="+91">+91 (IN)</option>
+                              <option value="+86">+86 (CN)</option>
+                              <option value="+81">+81 (JP)</option>
+                              <option value="+49">+49 (DE)</option>
+                              <option value="+33">+33 (FR)</option>
+                              <option value="+39">+39 (IT)</option>
+                              <option value="+34">+34 (ES)</option>
+                              <option value="+31">+31 (NL)</option>
+                              <option value="+46">+46 (SE)</option>
+                              <option value="+47">+47 (NO)</option>
+                              <option value="+45">+45 (DK)</option>
+                              <option value="+358">+358 (FI)</option>
+                              <option value="+48">+48 (PL)</option>
+                              <option value="+420">+420 (CZ)</option>
+                              <option value="+36">+36 (HU)</option>
+                              <option value="+40">+40 (RO)</option>
+                              <option value="+380">+380 (UA)</option>
+                              <option value="+7">+7 (RU)</option>
+                              <option value="+90">+90 (TR)</option>
+                              <option value="+966">+966 (SA)</option>
+                              <option value="+971">+971 (AE)</option>
+                              <option value="+972">+972 (IL)</option>
+                              <option value="+20">+20 (EG)</option>
+                              <option value="+27">+27 (ZA)</option>
+                              <option value="+234">+234 (NG)</option>
+                              <option value="+233">+233 (GH)</option>
+                              <option value="+237">+237 (CM)</option>
+                              <option value="+212">+212 (MA)</option>
+                              <option value="+216">+216 (TN)</option>
+                              <option value="+213">+213 (DZ)</option>
+                              <option value="+218">+218 (LY)</option>
+                              <option value="+249">+249 (SD)</option>
+                              <option value="+251">+251 (ET)</option>
+                              <option value="+252">+252 (SO)</option>
+                              <option value="+253">+253 (DJ)</option>
+                              <option value="+254">+254 (KE)</option>
+                              <option value="+255">+255 (TZ)</option>
+                              <option value="+256">+256 (UG)</option>
+                              <option value="+257">+257 (BI)</option>
+                              <option value="+258">+258 (MZ)</option>
+                              <option value="+260">+260 (ZM)</option>
+                              <option value="+261">+261 (MG)</option>
+                              <option value="+262">+262 (RE)</option>
+                              <option value="+263">+263 (ZW)</option>
+                              <option value="+264">+264 (NA)</option>
+                              <option value="+265">+265 (MW)</option>
+                              <option value="+266">+266 (LS)</option>
+                              <option value="+267">+267 (BW)</option>
+                              <option value="+268">+268 (SZ)</option>
+                              <option value="+269">+269 (KM)</option>
+                              <option value="+290">+290 (SH)</option>
+                              <option value="+291">+291 (ER)</option>
+                              <option value="+297">+297 (AW)</option>
+                              <option value="+298">+298 (FO)</option>
+                              <option value="+299">+299 (GL)</option>
+                              <option value="+500">+500 (FK)</option>
+                              <option value="+501">+501 (BZ)</option>
+                              <option value="+502">+502 (GT)</option>
+                              <option value="+503">+503 (SV)</option>
+                              <option value="+504">+504 (HN)</option>
+                              <option value="+505">+505 (NI)</option>
+                              <option value="+506">+506 (CR)</option>
+                              <option value="+507">+507 (PA)</option>
+                              <option value="+508">+508 (PM)</option>
+                              <option value="+509">+509 (HT)</option>
+                              <option value="+590">+590 (GP)</option>
+                              <option value="+591">+591 (BO)</option>
+                              <option value="+592">+592 (GY)</option>
+                              <option value="+593">+593 (EC)</option>
+                              <option value="+594">+594 (GF)</option>
+                              <option value="+595">+595 (PY)</option>
+                              <option value="+596">+596 (MQ)</option>
+                              <option value="+597">+597 (SR)</option>
+                              <option value="+598">+598 (UY)</option>
+                              <option value="+599">+599 (CW)</option>
+                              <option value="+670">+670 (TL)</option>
+                              <option value="+672">+672 (AU)</option>
+                              <option value="+673">+673 (BN)</option>
+                              <option value="+674">+674 (NR)</option>
+                              <option value="+675">+675 (PG)</option>
+                              <option value="+676">+676 (TO)</option>
+                              <option value="+677">+677 (SB)</option>
+                              <option value="+678">+678 (VU)</option>
+                              <option value="+679">+679 (FJ)</option>
+                              <option value="+680">+680 (PW)</option>
+                              <option value="+681">+681 (WF)</option>
+                              <option value="+682">+682 (CK)</option>
+                              <option value="+683">+683 (NU)</option>
+                              <option value="+685">+685 (WS)</option>
+                              <option value="+686">+686 (KI)</option>
+                              <option value="+687">+687 (NC)</option>
+                              <option value="+688">+688 (TV)</option>
+                              <option value="+689">+689 (PF)</option>
+                              <option value="+690">+690 (TK)</option>
+                              <option value="+691">+691 (FM)</option>
+                              <option value="+692">+692 (MH)</option>
+                              <option value="+850">+850 (KP)</option>
+                              <option value="+852">+852 (HK)</option>
+                              <option value="+853">+853 (MO)</option>
+                              <option value="+855">+855 (KH)</option>
+                              <option value="+856">+856 (LA)</option>
+                              <option value="+880">+880 (BD)</option>
+                              <option value="+886">+886 (TW)</option>
+                              <option value="+960">+960 (MV)</option>
+                              <option value="+961">+961 (LB)</option>
+                              <option value="+962">+962 (JO)</option>
+                              <option value="+963">+963 (SY)</option>
+                              <option value="+964">+964 (IQ)</option>
+                              <option value="+965">+965 (KW)</option>
+                              <option value="+966">+966 (SA)</option>
+                              <option value="+967">+967 (YE)</option>
+                              <option value="+968">+968 (OM)</option>
+                              <option value="+970">+970 (PS)</option>
+                              <option value="+971">+971 (AE)</option>
+                              <option value="+972">+972 (IL)</option>
+                              <option value="+973">+973 (BH)</option>
+                              <option value="+974">+974 (QA)</option>
+                              <option value="+975">+975 (BT)</option>
+                              <option value="+976">+976 (MN)</option>
+                              <option value="+977">+977 (NP)</option>
+                              <option value="+992">+992 (TJ)</option>
+                              <option value="+993">+993 (TM)</option>
+                              <option value="+994">+994 (AZ)</option>
+                              <option value="+995">+995 (GE)</option>
+                              <option value="+996">+996 (KG)</option>
+                              <option value="+998">+998 (UZ)</option>
+                              <option value="+999">+999 (Custom)</option>
+                            </select>
                           </div>
-                          <input
-                            type="tel"
-                            value={editingStudent.guardianPhone?.replace('+254', '') || ''}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
-                              handleInputChange('guardianPhone', phoneWithPrefix);
-                            }}
-                            placeholder="700000000"
-                            className={`w-full pl-12 pr-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
-                              editFormErrors.guardianPhone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                          />
+                          {editingGuardianCountryCode === '+999' && (
+                            <div className="w-20">
+                              <input
+                                type="text"
+                                value={editingCustomCountryCode}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setEditingCustomCountryCode(value);
+                                  const phoneNumber = extractPhoneNumber(editingStudent.guardianPhone || '');
+                                  const newPhoneNumber = `${value}${phoneNumber}`;
+                                  handleInputChange('guardianPhone', newPhoneNumber);
+                                }}
+                                placeholder="+XX"
+                                className="w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <input
+                              type="tel"
+                              value={extractPhoneNumber(editingStudent.guardianPhone || '')}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Only allow digits
+                                const digitsOnly = value.replace(/\D/g, '');
+                                const phoneWithPrefix = `${editingGuardianCountryCode}${digitsOnly}`;
+                                handleInputChange('guardianPhone', phoneWithPrefix);
+                              }}
+                              placeholder="700000000"
+                              className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                                editFormErrors.guardianPhone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                            />
+                          </div>
                         </div>
                         {editFormErrors.guardianPhone && (
                           <p className="mt-1 text-xs text-red-600">{editFormErrors.guardianPhone[0]}</p>
@@ -2518,6 +2832,28 @@ const Students: React.FC = () => {
                         <span className="ml-2 text-xs text-gray-700">Has Special Need</span>
                       </label>
                     </div>
+
+                    {/* Conditional Special Need Text Input */}
+                    {editingStudent.hasSpecialNeed && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                          Special Need Description
+                        </label>
+                        <textarea
+                          value={editingStudent.specialNeed || ''}
+                          onChange={(e) => handleInputChange('specialNeed', e.target.value)}
+                          placeholder="Please specify the special need"
+                          rows={3}
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white resize-none ${
+                            editFormErrors.specialNeed ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {editFormErrors.specialNeed && (
+                          <p className="mt-1 text-xs text-red-600">{editFormErrors.specialNeed[0]}</p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -2936,51 +3272,35 @@ const Students: React.FC = () => {
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span>
-                          Class On Admission *
-                        </label>
-                        <select
-                          value={newStudent.classOnAdmission}
-                          onChange={(e) => handleNewStudentInputChange('classOnAdmission', e.target.value)}
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-500 transition-all duration-200 bg-white ${
-                            formErrors.classOnAdmission ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          <option value="">Select a class</option>
-                          {classes.map((cls) => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name} - {cls.stream?.name || 'No Stream'}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.classOnAdmission && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.classOnAdmission[0]}</p>
-                        )}
+                        <EnhancedDropdown
+                          label="Class On Admission"
+                          value={newStudent.classOnAdmission || ''}
+                          onChange={(value) => handleNewStudentInputChange('classOnAdmission', value)}
+                          options={classes}
+                          placeholder="Select a class"
+                          error={formErrors.classOnAdmission?.[0]}
+                          required={true}
+                          emptyMessage="No classes available"
+                          onCreateNew={() => setActiveTab('classes')}
+                          type="class"
+                          hasStreams={streams.length > 0}
+                        />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
-                          Current Class
-                        </label>
-                        <select
-                          value={newStudent.currentClass}
-                          onChange={(e) => handleNewStudentInputChange('currentClass', e.target.value)}
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-500 transition-all duration-200 bg-white ${
-                            formErrors.currentClass ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        >
-                          <option value="">Select a class</option>
-                          {classes.map((cls) => (
-                            <option key={cls.id} value={cls.id}>
-                              {cls.name} - {cls.stream?.name || 'No Stream'}
-                            </option>
-                          ))}
-                        </select>
-                        {formErrors.currentClass && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.currentClass[0]}</p>
-                        )}
+                        <EnhancedDropdown
+                          label="Current Class"
+                          value={newStudent.currentClass || ''}
+                          onChange={(value) => handleNewStudentInputChange('currentClass', value)}
+                          options={classes}
+                          placeholder="Select a class"
+                          error={formErrors.currentClass?.[0]}
+                          required={false}
+                          emptyMessage="No classes available"
+                          onCreateNew={() => setActiveTab('classes')}
+                          type="class"
+                          hasStreams={streams.length > 0}
+                        />
                       </div>
                     </div>
 
@@ -3031,23 +3351,189 @@ const Students: React.FC = () => {
                           <span className="w-1.5 h-1.5 bg-violet-500 rounded-full mr-1.5"></span>
                           Guardian Phone
                         </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <span className="text-gray-500 text-xs">+254</span>
+                        <div className="flex space-x-2">
+                          <div className="w-24">
+                            <select
+                              value={guardianCountryCode}
+                              onChange={(e) => {
+                                setGuardianCountryCode(e.target.value);
+                                const phoneNumber = extractPhoneNumber(newStudent.guardianPhone || '');
+                                const newPhoneNumber = `${e.target.value}${phoneNumber}`;
+                                handleNewStudentInputChange('guardianPhone', newPhoneNumber);
+                              }}
+                              className="w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white"
+                            >
+                              <option value="+254">+254 (KE)</option>
+                              <option value="+255">+255 (TZ)</option>
+                              <option value="+256">+256 (UG)</option>
+                              <option value="+250">+250 (RW)</option>
+                              <option value="+257">+257 (BI)</option>
+                              <option value="+1">+1 (US/CA)</option>
+                              <option value="+44">+44 (UK)</option>
+                              <option value="+91">+91 (IN)</option>
+                              <option value="+86">+86 (CN)</option>
+                              <option value="+81">+81 (JP)</option>
+                              <option value="+49">+49 (DE)</option>
+                              <option value="+33">+33 (FR)</option>
+                              <option value="+39">+39 (IT)</option>
+                              <option value="+34">+34 (ES)</option>
+                              <option value="+31">+31 (NL)</option>
+                              <option value="+46">+46 (SE)</option>
+                              <option value="+47">+47 (NO)</option>
+                              <option value="+45">+45 (DK)</option>
+                              <option value="+358">+358 (FI)</option>
+                              <option value="+48">+48 (PL)</option>
+                              <option value="+420">+420 (CZ)</option>
+                              <option value="+36">+36 (HU)</option>
+                              <option value="+40">+40 (RO)</option>
+                              <option value="+380">+380 (UA)</option>
+                              <option value="+7">+7 (RU)</option>
+                              <option value="+90">+90 (TR)</option>
+                              <option value="+966">+966 (SA)</option>
+                              <option value="+971">+971 (AE)</option>
+                              <option value="+972">+972 (IL)</option>
+                              <option value="+20">+20 (EG)</option>
+                              <option value="+27">+27 (ZA)</option>
+                              <option value="+234">+234 (NG)</option>
+                              <option value="+233">+233 (GH)</option>
+                              <option value="+237">+237 (CM)</option>
+                              <option value="+212">+212 (MA)</option>
+                              <option value="+216">+216 (TN)</option>
+                              <option value="+213">+213 (DZ)</option>
+                              <option value="+218">+218 (LY)</option>
+                              <option value="+249">+249 (SD)</option>
+                              <option value="+251">+251 (ET)</option>
+                              <option value="+252">+252 (SO)</option>
+                              <option value="+253">+253 (DJ)</option>
+                              <option value="+254">+254 (KE)</option>
+                              <option value="+255">+255 (TZ)</option>
+                              <option value="+256">+256 (UG)</option>
+                              <option value="+257">+257 (BI)</option>
+                              <option value="+258">+258 (MZ)</option>
+                              <option value="+260">+260 (ZM)</option>
+                              <option value="+261">+261 (MG)</option>
+                              <option value="+262">+262 (RE)</option>
+                              <option value="+263">+263 (ZW)</option>
+                              <option value="+264">+264 (NA)</option>
+                              <option value="+265">+265 (MW)</option>
+                              <option value="+266">+266 (LS)</option>
+                              <option value="+267">+267 (BW)</option>
+                              <option value="+268">+268 (SZ)</option>
+                              <option value="+269">+269 (KM)</option>
+                              <option value="+290">+290 (SH)</option>
+                              <option value="+291">+291 (ER)</option>
+                              <option value="+297">+297 (AW)</option>
+                              <option value="+298">+298 (FO)</option>
+                              <option value="+299">+299 (GL)</option>
+                              <option value="+500">+500 (FK)</option>
+                              <option value="+501">+501 (BZ)</option>
+                              <option value="+502">+502 (GT)</option>
+                              <option value="+503">+503 (SV)</option>
+                              <option value="+504">+504 (HN)</option>
+                              <option value="+505">+505 (NI)</option>
+                              <option value="+506">+506 (CR)</option>
+                              <option value="+507">+507 (PA)</option>
+                              <option value="+508">+508 (PM)</option>
+                              <option value="+509">+509 (HT)</option>
+                              <option value="+590">+590 (GP)</option>
+                              <option value="+591">+591 (BO)</option>
+                              <option value="+592">+592 (GY)</option>
+                              <option value="+593">+593 (EC)</option>
+                              <option value="+594">+594 (GF)</option>
+                              <option value="+595">+595 (PY)</option>
+                              <option value="+596">+596 (MQ)</option>
+                              <option value="+597">+597 (SR)</option>
+                              <option value="+598">+598 (UY)</option>
+                              <option value="+599">+599 (CW)</option>
+                              <option value="+670">+670 (TL)</option>
+                              <option value="+672">+672 (AU)</option>
+                              <option value="+673">+673 (BN)</option>
+                              <option value="+674">+674 (NR)</option>
+                              <option value="+675">+675 (PG)</option>
+                              <option value="+676">+676 (TO)</option>
+                              <option value="+677">+677 (SB)</option>
+                              <option value="+678">+678 (VU)</option>
+                              <option value="+679">+679 (FJ)</option>
+                              <option value="+680">+680 (PW)</option>
+                              <option value="+681">+681 (WF)</option>
+                              <option value="+682">+682 (CK)</option>
+                              <option value="+683">+683 (NU)</option>
+                              <option value="+685">+685 (WS)</option>
+                              <option value="+686">+686 (KI)</option>
+                              <option value="+687">+687 (NC)</option>
+                              <option value="+688">+688 (TV)</option>
+                              <option value="+689">+689 (PF)</option>
+                              <option value="+690">+690 (TK)</option>
+                              <option value="+691">+691 (FM)</option>
+                              <option value="+692">+692 (MH)</option>
+                              <option value="+850">+850 (KP)</option>
+                              <option value="+852">+852 (HK)</option>
+                              <option value="+853">+853 (MO)</option>
+                              <option value="+855">+855 (KH)</option>
+                              <option value="+856">+856 (LA)</option>
+                              <option value="+880">+880 (BD)</option>
+                              <option value="+886">+886 (TW)</option>
+                              <option value="+960">+960 (MV)</option>
+                              <option value="+961">+961 (LB)</option>
+                              <option value="+962">+962 (JO)</option>
+                              <option value="+963">+963 (SY)</option>
+                              <option value="+964">+964 (IQ)</option>
+                              <option value="+965">+965 (KW)</option>
+                              <option value="+966">+966 (SA)</option>
+                              <option value="+967">+967 (YE)</option>
+                              <option value="+968">+968 (OM)</option>
+                              <option value="+970">+970 (PS)</option>
+                              <option value="+971">+971 (AE)</option>
+                              <option value="+972">+972 (IL)</option>
+                              <option value="+973">+973 (BH)</option>
+                              <option value="+974">+974 (QA)</option>
+                              <option value="+975">+975 (BT)</option>
+                              <option value="+976">+976 (MN)</option>
+                              <option value="+977">+977 (NP)</option>
+                              <option value="+992">+992 (TJ)</option>
+                              <option value="+993">+993 (TM)</option>
+                              <option value="+994">+994 (AZ)</option>
+                              <option value="+995">+995 (GE)</option>
+                              <option value="+996">+996 (KG)</option>
+                              <option value="+998">+998 (UZ)</option>
+                              <option value="+999">+999 (Custom)</option>
+                            </select>
                           </div>
-                          <input
-                            type="tel"
-                            value={newStudent.guardianPhone?.replace('+254', '') || ''}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              const phoneWithPrefix = value.startsWith('+254') ? value : `+254${value}`;
-                              handleNewStudentInputChange('guardianPhone', phoneWithPrefix);
+                          {guardianCountryCode === '+999' && (
+                            <div className="w-20">
+                              <input
+                                type="text"
+                                value={customCountryCode}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setCustomCountryCode(value);
+                                  const phoneNumber = extractPhoneNumber(newStudent.guardianPhone || '');
+                                  const newPhoneNumber = `${value}${phoneNumber}`;
+                                  handleNewStudentInputChange('guardianPhone', newPhoneNumber);
                             }}
-                            placeholder="700000000"
-                            className={`w-full pl-12 pr-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
-                              formErrors.guardianPhone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                            }`}
-                          />
+                                placeholder="+XX"
+                                className="w-full px-2 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <input
+                              type="tel"
+                              value={extractPhoneNumber(newStudent.guardianPhone || '')}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                // Only allow digits
+                                const digitsOnly = value.replace(/\D/g, '');
+                                const phoneWithPrefix = `${guardianCountryCode}${digitsOnly}`;
+                                handleNewStudentInputChange('guardianPhone', phoneWithPrefix);
+                              }}
+                              placeholder="700000000"
+                              className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-100 focus:border-violet-500 transition-all duration-200 bg-white ${
+                                formErrors.guardianPhone ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                              }`}
+                            />
+
+                          </div>
                         </div>
                         {formErrors.guardianPhone && (
                           <p className="mt-1 text-xs text-red-600">{formErrors.guardianPhone[0]}</p>
@@ -3227,6 +3713,28 @@ const Students: React.FC = () => {
                       </label>
                     </div>
 
+                    {/* Conditional Special Need Text Input */}
+                    {newStudent.hasSpecialNeed && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
+                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
+                          Special Need Description
+                        </label>
+                        <textarea
+                          value={newStudent.specialNeed || ''}
+                          onChange={(e) => handleNewStudentInputChange('specialNeed', e.target.value)}
+                          placeholder="Please specify the special need"
+                          rows={3}
+                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white resize-none ${
+                            formErrors.specialNeed ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {formErrors.specialNeed && (
+                          <p className="mt-1 text-xs text-red-600">{formErrors.specialNeed[0]}</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                         <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
@@ -3271,6 +3779,22 @@ const Students: React.FC = () => {
               {/* Stream Form */}
               {activeTab === 'streams' && (
                 <div className="space-y-4">
+                  {/* Helpful message when no streams exist */}
+                  {streams.length === 0 && (
+                    <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        {FaInfoCircle({ className: "w-4 h-4 text-purple-600" })}
+                        <h3 className="text-sm font-semibold text-purple-900">Getting Started with Streams</h3>
+                      </div>
+                      <p className="text-xs text-purple-700 mb-3">
+                        Streams are the foundation of your school structure. They help organize students by academic focus areas.
+                      </p>
+                      <div className="text-xs text-purple-600">
+                        <strong>Examples:</strong> Science Stream, Arts Stream, Business Stream, Technical Stream, North, South, East, West
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -3335,6 +3859,37 @@ const Students: React.FC = () => {
               {/* Class Form */}
               {activeTab === 'classes' && (
                 <div className="space-y-4">
+                  {/* Helpful message when no classes exist */}
+                  {classes.length === 0 && (
+                    <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-4 mb-4">
+                      <div className="flex items-center space-x-2 mb-2">
+                        {FaInfoCircle({ className: "w-4 h-4 text-green-600" })}
+                        <h3 className="text-sm font-semibold text-green-900">Getting Started with Classes</h3>
+                      </div>
+                      <p className="text-xs text-green-700 mb-3">
+                        Classes are created within streams to organize students by grade level and academic focus.
+                      </p>
+                      <div className="text-xs text-green-600">
+                        <strong>Examples:</strong> Form 1A (Science), Form 2B (Arts), Form 3C (Business)
+                      </div>
+                      {streams.length === 0 && (
+                        <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center space-x-2 text-amber-700">
+                            {FaExclamationTriangle({ className: "w-3 h-3" })}
+                            <span className="text-xs font-medium">You need to create streams first!</span>
+                          </div>
+                          <button
+                            onClick={() => setActiveTab('streams')}
+                            className="mt-2 text-xs bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg transition-colors duration-200 flex items-center space-x-1"
+                          >
+                            {FaArrowRight({ className: "w-2 h-2" })}
+                            <span>Go to Streams</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -3375,27 +3930,19 @@ const Students: React.FC = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
-                        Stream *
-                      </label>
-                      <select
+                      <EnhancedDropdown
+                        label="Stream"
                         value={newClass.stream || ''}
-                        onChange={(e) => handleNewClassInputChange('stream', e.target.value)}
-                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
-                          formErrors.stream ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <option value="">Select a stream</option>
-                        {streams.map((stream) => (
-                          <option key={stream.id} value={stream.id}>
-                            {stream.name} - {stream.code}
-                          </option>
-                        ))}
-                      </select>
-                      {formErrors.stream && (
-                        <p className="mt-1 text-xs text-red-600">{formErrors.stream[0]}</p>
-                      )}
+                        onChange={(value) => handleNewClassInputChange('stream', value)}
+                        options={streams}
+                        placeholder="Select a stream"
+                        error={formErrors.stream?.[0]}
+                        required={true}
+                        emptyMessage="No streams available"
+                        onCreateNew={() => setActiveTab('streams')}
+                        type="stream"
+                        hasStreams={streams.length > 0}
+                      />
                     </div>
 
                     <div className="space-y-1">
@@ -3587,14 +4134,12 @@ const Students: React.FC = () => {
                     } else if (activeTab === 'classes') {
                       const classItem = classes.find(c => c.id === openDropdownId);
                       if (classItem) {
-                        // TODO: Handle delete class
-                        console.log('Delete class:', classItem);
+                        handleDeleteClass(classItem);
                       }
                     } else if (activeTab === 'streams') {
                       const stream = streams.find(s => s.id === openDropdownId);
                       if (stream) {
-                        // TODO: Handle delete stream
-                        console.log('Delete stream:', stream);
+                        handleDeleteStream(stream);
                       }
                     }
                   }}
@@ -3919,6 +4464,67 @@ const Students: React.FC = () => {
               >
                 Add Parent
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirmation.isOpen && deleteConfirmation.item && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+                              <div className="flex items-center mb-4">
+                  <div className="flex-shrink-0">
+                    {FaExclamationTriangle({ className: "w-6 h-6 text-red-600" })}
+                  </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Confirm Delete
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete this {deleteConfirmation.type}?
+                </p>
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <p className="text-sm font-medium text-gray-900">
+                    {deleteConfirmation.type === 'stream' && (deleteConfirmation.item as Stream).name}
+                    {deleteConfirmation.type === 'class' && (deleteConfirmation.item as Class).name}
+                    {deleteConfirmation.type === 'student' && ((deleteConfirmation.item as Student).fullName || (deleteConfirmation.item as Student).pupil_name)}
+                  </p>
+                  {deleteConfirmation.type === 'stream' && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Code: {(deleteConfirmation.item as Stream).code}
+                    </p>
+                  )}
+                  {deleteConfirmation.type === 'class' && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Code: {(deleteConfirmation.item as Class).code}
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-red-600 mt-2">
+                  This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelDelete}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
