@@ -31,6 +31,7 @@ export interface Student {
   nemisNumber?: string;
   assessmentNumber?: string;
   hasSpecialNeed?: boolean;
+  specialNeed?: string;
   preferredHospital?: string;
   healthInfo?: string;
   
@@ -97,6 +98,7 @@ export interface CreateStudentRequest {
   nemis_number?: string;
   assessment_number?: string;
   has_special_need?: boolean;
+  special_need?: string;
   preferred_hospital?: string;
   health_info?: string;
   address?: string;
