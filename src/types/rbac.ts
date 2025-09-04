@@ -15,6 +15,7 @@ export type Permission =
   | 'view_school_users'
   | 'manage_users'
   | 'access_reports'
+  | 'access_fees'
   | 'access_settings'
   | 'access_customer_support'
   | 'access_admin_panel'
@@ -41,6 +42,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'view_school_users',
     'manage_users',
     'access_reports',
+    'access_fees',
     'access_settings',
     'access_customer_support',
     'access_admin_panel',
@@ -60,6 +62,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'view_school_users',
     'manage_users',
     'access_reports',
+    'access_fees',
     'access_settings',
     'access_customer_support',
     'access_admin_panel',
@@ -76,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'student_crud',
     'view_students',
     'access_reports',
+    'access_fees',
     'access_settings'
   ],
   user: [

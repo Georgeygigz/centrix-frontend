@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends, FaCreditCard, FaChartLine, FaCogs } from 'react-icons/fa';
+import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends, FaCreditCard, FaChartLine, FaCogs, FaMoneyBillWave } from 'react-icons/fa';
 import { NavigationItem } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
 import { useRBAC } from '../../context/RBACContext';
@@ -21,6 +21,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       label: 'Students',
       icon: FaUserGraduate,
       requiredPermissions: ['view_students'],
+    },
+    {
+      id: 'fees',
+      label: 'Fees',
+      icon: FaMoneyBillWave,
+      requiredPermissions: ['access_fees'],
     },
     {
       id: 'reports',
