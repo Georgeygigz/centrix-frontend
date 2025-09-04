@@ -6,6 +6,7 @@ import SwitchBoard from '../components/SwitchBoard/SwitchBoard';
 import Users from '../components/Users/Users';
 import Schools from '../components/Schools/Schools';
 import Parents from '../components/Parents/Parents';
+import Fees from '../components/Fees';
 import { useRBAC } from '../context/RBACContext';
 import { 
   BillingDashboard, 
@@ -22,6 +23,7 @@ const Dashboard: React.FC = () => {
   const getPageTitle = (page: string): string => {
     const pageTitles: { [key: string]: string } = {
       'students': 'Students',
+      'fees': 'Fees',
       'ebook': 'EBook',
       'enrollments': 'Enrollments',
       'reports': 'Reports',
@@ -45,6 +47,8 @@ const Dashboard: React.FC = () => {
     switch (currentPage) {
       case 'students':
         return <Students />;
+      case 'fees':
+        return <Fees />;
       case 'ebook':
         return <div className="p-6 text-center text-gray-500">EBook page coming soon...</div>;
       case 'enrollments':

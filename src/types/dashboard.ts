@@ -162,6 +162,8 @@ export interface School {
   created_at: string;
   updated_at: string;
   number_of_students?: number; // This will be calculated/added for display purposes
+  total_students?: number; // From API response
+  current_students?: number; // From API response
 }
 
 export interface SchoolsResponse {

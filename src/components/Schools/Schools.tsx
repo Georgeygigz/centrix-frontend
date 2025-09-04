@@ -4,6 +4,7 @@ import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTra
 import { School } from '../../types/dashboard';
 import { apiService } from '../../services/api';
 import { PermissionGate } from '../RBAC';
+import SchoolDetailModal from './SchoolDetailModal';
 
 
 
@@ -20,6 +21,8 @@ const Schools: React.FC = () => {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [originalSchool, setOriginalSchool] = useState<School | null>(null);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string[] }>({});
@@ -245,6 +248,16 @@ const Schools: React.FC = () => {
     setIsEditDrawerOpen(true);
     setOpenDropdownId(null);
     setEditFormErrors({}); // Clear any previous errors
+  };
+
+  const handleViewSchool = (school: School) => {
+    setSelectedSchool(school);
+    setIsViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setSelectedSchool(null);
   };
 
   const closeEditDrawer = () => {
@@ -647,7 +660,7 @@ const Schools: React.FC = () => {
                         <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900 relative">
                           <div className="flex items-center space-x-1">
                             <button
-                              onClick={() => {/* View details */}}
+                              onClick={() => handleViewSchool(school)}
                               className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors duration-200"
                               title="View Details"
                             >
@@ -1743,6 +1756,14 @@ const Schools: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* School Detail Modal */}
+      <SchoolDetailModal
+        school={selectedSchool!}
+        isOpen={isViewModalOpen}
+        onClose={closeViewModal}
+        onEdit={handleEditSchool}
+      />
 
       {/* Portal-based Dropdown */}
       {openDropdownId && createPortal(
