@@ -44,6 +44,218 @@ const Fees: React.FC = () => {
     setIsAddDrawerOpen(false);
   };
 
+  // Helper functions for dynamic UI
+  const getSearchPlaceholder = () => {
+    switch (activeTab) {
+      case 'fee-structure':
+        return 'Search fee structures...';
+      case 'student-assignment':
+        return 'Search students...';
+      case 'fee-invoice':
+        return 'Search invoices...';
+      case 'fee-payment':
+        return 'Search payments...';
+      default:
+        return 'Search...';
+    }
+  };
+
+  const getAddButtonText = () => {
+    switch (activeTab) {
+      case 'fee-structure':
+        return '+ Add Fee Structure';
+      case 'student-assignment':
+        return '+ Add Assignment';
+      case 'fee-invoice':
+        return '+ Add Invoice';
+      case 'fee-payment':
+        return '+ Add Payment';
+      default:
+        return '+ Add';
+    }
+  };
+
+  const getFilterOptions = () => {
+    switch (activeTab) {
+      case 'fee-structure':
+        return (
+          <>
+            {/* Fee Type Filter */}
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Types</option>
+              <option value="tuition">Tuition</option>
+              <option value="development">Development</option>
+              <option value="library">Library</option>
+              <option value="laboratory">Laboratory</option>
+              <option value="sports">Sports</option>
+              <option value="transport">Transport</option>
+              <option value="hostel">Hostel</option>
+              <option value="exam">Exam</option>
+              <option value="miscellaneous">Miscellaneous</option>
+              <option value="fine">Fine</option>
+              <option value="discount">Discount</option>
+            </select>
+
+            {/* Category Filter */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Categories</option>
+              <option value="academic">Academic</option>
+              <option value="non_academic">Non-Academic</option>
+              <option value="fine">Fine</option>
+              <option value="discount">Discount</option>
+            </select>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </>
+        );
+      case 'student-assignment':
+        return (
+          <>
+            {/* Class Filter */}
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Classes</option>
+              <option value="class1">Class 1</option>
+              <option value="class2">Class 2</option>
+              <option value="class3">Class 3</option>
+            </select>
+
+            {/* Stream Filter */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Streams</option>
+              <option value="science">Science</option>
+              <option value="commerce">Commerce</option>
+              <option value="arts">Arts</option>
+            </select>
+
+            {/* Assignment Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Status</option>
+              <option value="assigned">Assigned</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+            </select>
+          </>
+        );
+      case 'fee-invoice':
+        return (
+          <>
+            {/* Invoice Status Filter */}
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Status</option>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+            </select>
+
+            {/* Fee Type Filter */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Types</option>
+              <option value="tuition">Tuition</option>
+              <option value="development">Development</option>
+              <option value="library">Library</option>
+              <option value="laboratory">Laboratory</option>
+            </select>
+
+            {/* Month Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Months</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march">March</option>
+              <option value="april">April</option>
+            </select>
+          </>
+        );
+      case 'fee-payment':
+        return (
+          <>
+            {/* Payment Status Filter */}
+            <select
+              value={feeTypeFilter}
+              onChange={(e) => setFeeTypeFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="refunded">Refunded</option>
+            </select>
+
+            {/* Payment Method Filter */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Methods</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+            </select>
+
+            {/* Amount Range Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+            >
+              <option value="">All Amounts</option>
+              <option value="0-1000">$0 - $1,000</option>
+              <option value="1000-5000">$1,000 - $5,000</option>
+              <option value="5000-10000">$5,000 - $10,000</option>
+              <option value="10000+">$10,000+</option>
+            </select>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   const tabs = [
     {
       id: 'fee-structure',
@@ -73,19 +285,73 @@ const Fees: React.FC = () => {
       id: 'student-assignment',
       label: 'Student Fee Assignment',
       icon: FaUserGraduate,
-      component: <StudentFeeAssignment />
+      component: <StudentFeeAssignment 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        debouncedSearchQuery={debouncedSearchQuery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortDirection={sortDirection}
+        setSortDirection={setSortDirection}
+        feeTypeFilter={feeTypeFilter}
+        setFeeTypeFilter={setFeeTypeFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        clearFilters={clearFilters}
+        isAddDrawerOpen={isAddDrawerOpen}
+        openAddDrawer={openAddDrawer}
+        closeAddDrawer={closeAddDrawer}
+      />
     },
     {
       id: 'fee-invoice',
       label: 'Fee Invoice',
       icon: FaFileAlt,
-      component: <FeeInvoice />
+      component: <FeeInvoice 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        debouncedSearchQuery={debouncedSearchQuery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortDirection={sortDirection}
+        setSortDirection={setSortDirection}
+        feeTypeFilter={feeTypeFilter}
+        setFeeTypeFilter={setFeeTypeFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        clearFilters={clearFilters}
+        isAddDrawerOpen={isAddDrawerOpen}
+        openAddDrawer={openAddDrawer}
+        closeAddDrawer={closeAddDrawer}
+      />
     },
     {
       id: 'fee-payment',
       label: 'Fee Payment',
       icon: FaCreditCard,
-      component: <FeePayment />
+      component: <FeePayment 
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        debouncedSearchQuery={debouncedSearchQuery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        sortDirection={sortDirection}
+        setSortDirection={setSortDirection}
+        feeTypeFilter={feeTypeFilter}
+        setFeeTypeFilter={setFeeTypeFilter}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        clearFilters={clearFilters}
+        isAddDrawerOpen={isAddDrawerOpen}
+        openAddDrawer={openAddDrawer}
+        closeAddDrawer={closeAddDrawer}
+      />
     }
   ];
 
@@ -125,84 +391,41 @@ const Fees: React.FC = () => {
             ))}
           </nav>
 
-          {/* Search, Filters, and Add Button - Only show for Fee Structure tab */}
-          {activeTab === 'fee-structure' && (
-            <div className="flex items-center space-x-3">
-              {/* Search */}
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search fee structures..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-48 pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  {FaSearch({ className: "w-3 h-3" })}
-                </div>
+          {/* Search, Filters, and Add Button - Show for all tabs */}
+          <div className="flex items-center space-x-3">
+            {/* Search */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={getSearchPlaceholder()}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48 pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <div className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400">
+                {FaSearch({ className: "w-3 h-3" })}
               </div>
-
-              {/* Fee Type Filter */}
-              <select
-                value={feeTypeFilter}
-                onChange={(e) => setFeeTypeFilter(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-              >
-                <option value="">All Types</option>
-                <option value="tuition">Tuition</option>
-                <option value="development">Development</option>
-                <option value="library">Library</option>
-                <option value="laboratory">Laboratory</option>
-                <option value="sports">Sports</option>
-                <option value="transport">Transport</option>
-                <option value="hostel">Hostel</option>
-                <option value="exam">Exam</option>
-                <option value="miscellaneous">Miscellaneous</option>
-                <option value="fine">Fine</option>
-                <option value="discount">Discount</option>
-              </select>
-
-              {/* Category Filter */}
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-              >
-                <option value="">All Categories</option>
-                <option value="academic">Academic</option>
-                <option value="non_academic">Non-Academic</option>
-                <option value="fine">Fine</option>
-                <option value="discount">Discount</option>
-              </select>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
-              >
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-
-              {/* Clear Filters */}
-              <button
-                onClick={clearFilters}
-                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 transition-colors duration-200"
-              >
-                Clear Filters
-              </button>
-
-              {/* Add Fee Structure Button */}
-              <button 
-                onClick={openAddDrawer}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
-              >
-                + Add Fee Structure
-              </button>
             </div>
-          )}
+
+            {/* Dynamic Filters based on active tab */}
+            {getFilterOptions()}
+
+            {/* Clear Filters */}
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 transition-colors duration-200"
+            >
+              Clear Filters
+            </button>
+
+            {/* Dynamic Add Button */}
+            <button 
+              onClick={openAddDrawer}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+            >
+              {getAddButtonText()}
+            </button>
+          </div>
         </div>
       </div>
 
