@@ -185,7 +185,6 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
         stream: cls.stream
       }));
       
-      console.log('Transformed classes:', transformedClasses);
       setClasses(transformedClasses);
     } catch (error) {
       console.error('Error fetching classes:', error);
@@ -324,7 +323,6 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
       fetchFeeStructures();
       
       // Show success message (you can add a toast here)
-      console.log('Fee structure created successfully!');
       
     } catch (error: any) {
       console.error('Error creating fee structure:', error);
@@ -455,10 +453,9 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
     setIsUpdating(true);
 
     try {
-      console.log('Updating fee structure:', editFormData);
       
       // Make API call to update the fee structure
-      const response = await apiService.authenticatedRequest(`/fees/structures/${editingFeeStructure.id}/`, {
+      await apiService.authenticatedRequest(`/fees/structures/${editingFeeStructure.id}/`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -466,7 +463,6 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
         body: JSON.stringify(editFormData)
       });
 
-      console.log('Update response:', response);
 
       // Update the fee structure in the list
       const updatedFeeStructure = { ...editingFeeStructure, ...editFormData };

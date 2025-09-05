@@ -1,5 +1,5 @@
 import { apiService } from './api';
-import { FeeStructure, FeeStructureResponse, PaginationParams } from '../types/fees';
+import { FeeStructure, FeeStructureResponse, PaginationParams, CreateFeeAssignmentRequest, StudentsResponse, FeeAssignmentsResponse } from '../types/fees';
 
 class FeesService {
   // Fee Structures
@@ -55,7 +55,12 @@ class FeesService {
   }
 
   // Student Fee Assignments
-  async getAllAssignments(params?: any): Promise<any> {
+  async getAllAssignments(params?: {
+    ordering?: string;
+    page?: number;
+    page_size?: number;
+    search?: string;
+  }): Promise<FeeAssignmentsResponse> {
     let url = '/fees/assignments/';
     if (params) {
       const searchParams = new URLSearchParams();
@@ -73,7 +78,7 @@ class FeesService {
     return response;
   }
 
-  async createAssignment(data: any): Promise<any> {
+  async createAssignment(data: CreateFeeAssignmentRequest): Promise<any> {
     const response = await apiService.authenticatedRequest('/fees/assignments/', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -192,6 +197,20 @@ class FeesService {
 
   async getOutstandingReport(academicYear: string, overdueOnly?: boolean): Promise<any> {
     const url = `/fees/reports/outstanding_report/?academic_year=${encodeURIComponent(academicYear)}&overdue_only=${overdueOnly?.toString() || 'false'}`;
+    const response = await apiService.authenticatedRequest(url, { method: 'GET' });
+    return response;
+  }
+
+  // Students API
+  async searchStudents(searchQuery: string): Promise<StudentsResponse> {
+    const url = `/students/admissions?search=${encodeURIComponent(searchQuery)}`;
+    const response = await apiService.authenticatedRequest(url, { method: 'GET' });
+    return response;
+  }
+
+  // Fee Structures with search
+  async searchFeeStructures(searchQuery: string): Promise<FeeStructureResponse> {
+    const url = `/fees/structures/?search=${encodeURIComponent(searchQuery)}`;
     const response = await apiService.authenticatedRequest(url, { method: 'GET' });
     return response;
   }

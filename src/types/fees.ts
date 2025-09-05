@@ -34,6 +34,94 @@ export interface StudentFeeAssignment {
   is_active: boolean;
 }
 
+export interface CreateFeeAssignmentRequest {
+  academic_year: string;
+  fee_structure: string;
+  student: string;
+  term: number;
+  custom_amount?: string | null;
+  is_waived: boolean;
+  waiver_reason?: string;
+  is_active: boolean;
+}
+
+export interface FeeAssignment {
+  id: string;
+  student_details: Student;
+  fee_structure_details: FeeStructure;
+  academic_year: string;
+  term: number;
+  custom_amount?: string | null;
+  is_waived: boolean;
+  waiver_reason?: string;
+  is_active: boolean;
+  start_date: string;
+  end_date?: string | null;
+  school: string;
+  student: string; // Student ID
+  fee_structure: string; // Fee structure ID
+  waiver_approved_by?: string | null;
+  approved_by_details?: any | null;
+  created_at: string;
+  updated_at: string;
+  deleted: boolean;
+}
+
+export interface FeeAssignmentsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: FeeAssignment[];
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface Student {
+  id: string;
+  admission_number: string;
+  pupil_name: string;
+  guardian_name: string;
+  guardian_phone: string;
+  guardian_relationship: string;
+  date_of_admission: string;
+  date_of_birth: string;
+  gender: string;
+  class_on_admission: {
+    id: string;
+    name: string;
+    code: string;
+    stream: {
+      id: string;
+      name: string;
+      code: string;
+      description: string;
+    };
+  };
+  current_class: {
+    id: string;
+    name: string;
+    code: string;
+    stream: {
+      id: string;
+      name: string;
+      code: string;
+      description: string;
+    };
+  };
+  is_current_student: boolean;
+}
+
+export interface StudentsResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Student[];
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
 export interface FeeInvoice {
   id: string;
   invoice_number: string;

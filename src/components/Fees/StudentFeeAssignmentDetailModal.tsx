@@ -1,86 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaEdit, FaSave } from 'react-icons/fa';
-import { FeeStructure } from '../../types/fees';
-import { Class, Stream } from '../../types/dashboard';
+import { FeeAssignment, FeeStructure } from '../../types/fees';
 import { apiService } from '../../services/api';
 
-interface FeeStructureDetailModalProps {
-  feeStructure: FeeStructure;
+interface StudentFeeAssignmentDetailModalProps {
+  assignment: FeeAssignment;
   isOpen: boolean;
   onClose: () => void;
-  onEdit?: (feeStructure: FeeStructure) => void;
-  onUpdate?: (updatedFeeStructure: FeeStructure) => void;
+  onEdit?: (assignment: FeeAssignment) => void;
+  onUpdate?: (updatedAssignment: FeeAssignment) => void;
   forceEditMode?: boolean;
 }
 
-const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({ 
-  feeStructure, 
+const StudentFeeAssignmentDetailModal: React.FC<StudentFeeAssignmentDetailModalProps> = ({ 
+  assignment, 
   isOpen, 
   onClose, 
   onEdit,
   onUpdate,
   forceEditMode = false
 }) => {
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [streams, setStreams] = useState<Stream[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [editData, setEditData] = useState<Partial<FeeStructure>>({});
+  const [editData, setEditData] = useState<Partial<FeeAssignment>>({});
+  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+  const [isLoadingFeeStructures, setIsLoadingFeeStructures] = useState(false);
 
-  // Load classes and streams data
+  // Load fee structures when modal opens
   useEffect(() => {
-    const loadData = async () => {
+    const loadFeeStructures = async () => {
       if (!isOpen) return;
       
-      setIsLoadingData(true);
+      setIsLoadingFeeStructures(true);
       try {
-        const [classesData, streamsData] = await Promise.all([
-          apiService.students.getClasses(),
-          apiService.students.getStreams()
-        ]);
+        const response = await apiService.authenticatedRequest('/fees/structures/', {
+          method: 'GET'
+        });
         
-        setClasses(classesData || []);
-        setStreams(streamsData || []);
+        if (response && Array.isArray(response.results)) {
+          setFeeStructures(response.results);
+        } else {
+          setFeeStructures([]);
+        }
       } catch (error) {
-        console.error('Error loading classes and streams:', error);
+        console.error('Error loading fee structures:', error);
+        setFeeStructures([]);
       } finally {
-        setIsLoadingData(false);
+        setIsLoadingFeeStructures(false);
       }
     };
 
-    loadData();
+    loadFeeStructures();
   }, [isOpen]);
 
   // Auto-enter edit mode when forceEditMode is true
   useEffect(() => {
     if (forceEditMode && isOpen) {
       setIsEditMode(true);
-      setEditData(feeStructure);
+      setEditData(assignment);
     }
-  }, [forceEditMode, isOpen, feeStructure]);
-
-  // Helper function to get class name by ID
-  const getClassNameById = (classId: string | null | undefined): string => {
-    if (!classId) return "All Classes";
-    const classItem = classes.find(c => c.id === classId);
-    return classItem ? classItem.name : `Class ID: ${classId}`;
-  };
-
-  // Helper function to get stream name by ID
-  const getStreamNameById = (streamId: string | null | undefined): string => {
-    if (!streamId) return "All Streams";
-    const streamItem = streams.find(s => s.id === streamId);
-    return streamItem ? streamItem.name : `Stream ID: ${streamId}`;
-  };
+  }, [forceEditMode, isOpen, assignment]);
 
   const formatCurrency = (amount: string) => {
     return `$${parseFloat(amount).toLocaleString()}`;
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
   // Initialize edit data when entering edit mode
   const handleEditClick = () => {
-    setEditData(feeStructure);
+    setEditData(assignment);
     setIsEditMode(true);
   };
 
@@ -98,19 +93,28 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
     
     setIsUpdating(true);
     try {
-      const response = await apiService.authenticatedRequest(`/fees/structures/${feeStructure.id}/`, {
+      const response = await apiService.authenticatedRequest(`/fees/assignments/${assignment.id}/`, {
         method: 'PUT',
         body: JSON.stringify(editData)
       });
       
       if (onUpdate) {
-        onUpdate(response);
+        // Merge the response with the original assignment data to ensure we have all fields
+        const updatedAssignment = {
+          ...assignment,
+          ...response,
+          // Ensure nested objects are properly merged
+          student_details: response.student_details || assignment.student_details,
+          fee_structure_details: response.fee_structure_details || assignment.fee_structure_details,
+          approved_by_details: response.approved_by_details || assignment.approved_by_details
+        };
+        onUpdate(updatedAssignment);
       }
       
       setIsEditMode(false);
       setEditData({});
     } catch (error) {
-      console.error('Error updating fee structure:', error);
+      console.error('Error updating fee assignment:', error);
     } finally {
       setIsUpdating(false);
     }
@@ -122,41 +126,57 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
     setEditData({});
   };
 
-  
   if (!isOpen) return null;
 
-  const feeStructureFeatures = [
+  const assignmentFeatures = [
     {
-      title: "Basic Information",
-      tag: "basic_info",
-      description: "Core fee structure identification and basic details",
+      title: "Assignment Information",
+      tag: "assignment_info",
+      description: "Core assignment identification and basic details",
       details: [
-        { label: "Fee ID", value: feeStructure.id, editable: false, field: "id" },
-        { label: "Name", value: isEditMode ? (editData.name || "") : (feeStructure.name || ""), editable: true, field: "name", type: "text" },
-        { label: "Description", value: isEditMode ? (editData.description || "") : (feeStructure.description || "Not provided"), editable: true, field: "description", type: "text" },
-        { label: "Status", value: isEditMode ? editData.is_active : feeStructure.is_active, editable: true, field: "is_active", type: "boolean" }
+        { label: "Assignment ID", value: assignment.id, editable: false, field: "id" },
+        { label: "Fee Structure", value: isEditMode ? (editData.fee_structure || "") : (assignment.fee_structure_details?.name || "Not provided"), editable: true, field: "fee_structure", type: "select", options: feeStructures.map(fs => ({ value: fs.id, label: fs.name })) },
+        { label: "Academic Year", value: isEditMode ? (editData.academic_year || "") : (assignment.academic_year || "Not provided"), editable: true, field: "academic_year", type: "text" },
+        { label: "Term", value: isEditMode ? (editData.term || "") : (assignment.term || 'N/A'), editable: true, field: "term", type: "select", options: [1, 2, 3] },
+        { label: "Status", value: isEditMode ? editData.is_active : assignment.is_active, editable: true, field: "is_active", type: "boolean" }
       ]
     },
     {
-      title: "Fee Configuration",
-      tag: "fee_config",
-      description: "Fee type, category, amount and frequency settings",
+      title: "Student Details",
+      tag: "student_details",
+      description: "Student information and current class details",
       details: [
-        { label: "Fee Type", value: isEditMode ? (editData.fee_type || "") : (feeStructure.fee_type || ""), editable: true, field: "fee_type", type: "select", options: ["tuition", "development", "transport", "library", "sports", "examination", "other"] },
-        { label: "Category", value: isEditMode ? (editData.category || "") : (feeStructure.category || ""), editable: true, field: "category", type: "select", options: ["academic", "non_academic", "administrative", "other"] },
-        { label: "Amount", value: isEditMode ? (editData.amount || "") : (feeStructure.amount || ""), editable: true, field: "amount", type: "number" },
-        { label: "Frequency", value: isEditMode ? (editData.frequency || "") : (feeStructure.frequency || ""), editable: true, field: "frequency", type: "select", options: ["monthly", "quarterly", "semester", "annual", "one_time"] }
+        { label: "Student Name", value: assignment.student_details?.pupil_name || "Not provided", editable: false, field: "student_name" },
+        { label: "Admission Number", value: assignment.student_details?.admission_number || "Not provided", editable: false, field: "admission_number" },
+        { label: "Current Class", value: assignment.student_details?.current_class?.name || "Not provided", editable: false, field: "current_class" },
+        { label: "Stream", value: assignment.student_details?.current_class?.stream?.name || "Not provided", editable: false, field: "stream" },
+        { label: "Guardian Name", value: assignment.student_details?.guardian_name || "Not provided", editable: false, field: "guardian_name" },
+        { label: "Guardian Phone", value: assignment.student_details?.guardian_phone || "Not provided", editable: false, field: "guardian_phone" }
       ]
     },
     {
-      title: "Applicability",
-      tag: "applicability",
-      description: "Class and stream applicability settings",
+      title: "Fee Structure Details",
+      tag: "fee_structure_details",
+      description: "Fee structure information and configuration",
       details: [
-        { label: "Applicable To All", value: isEditMode ? editData.applicable_to_all : feeStructure.applicable_to_all, editable: true, field: "applicable_to_all", type: "boolean" },
-        { label: "Applicable Class", value: isEditMode ? (editData.applicable_class || "") : (feeStructure.applicable_class || ""), editable: true, field: "applicable_class", type: "select", options: classes.map(c => ({ value: c.id, label: c.name })) },
-        { label: "Applicable Stream", value: isEditMode ? (editData.applicable_stream || "") : (feeStructure.applicable_stream || ""), editable: true, field: "applicable_stream", type: "select", options: streams.map(s => ({ value: s.id, label: s.name })) },
-        { label: "Due Date", value: isEditMode ? (editData.due_date || "") : (feeStructure.due_date || ""), editable: true, field: "due_date", type: "number" }
+        { label: "Fee Name", value: assignment.fee_structure_details?.name || "Not provided", editable: false, field: "fee_name" },
+        { label: "Fee Type", value: assignment.fee_structure_details?.fee_type || "Not provided", editable: false, field: "fee_type" },
+        { label: "Category", value: assignment.fee_structure_details?.category || "Not provided", editable: false, field: "category" },
+        { label: "Base Amount", value: assignment.fee_structure_details?.amount ? formatCurrency(assignment.fee_structure_details.amount) : "Not provided", editable: false, field: "base_amount" },
+        { label: "Frequency", value: assignment.fee_structure_details?.frequency || "Not provided", editable: false, field: "frequency" },
+        { label: "Due Date", value: assignment.fee_structure_details?.due_date ? `${assignment.fee_structure_details.due_date}th of month` : "Not provided", editable: false, field: "due_date" }
+      ]
+    },
+    {
+      title: "Assignment Configuration",
+      tag: "assignment_config",
+      description: "Assignment-specific settings and customizations",
+      details: [
+        { label: "Custom Amount", value: isEditMode ? (editData.custom_amount || "") : (assignment.custom_amount ? formatCurrency(assignment.custom_amount) : "Uses base amount"), editable: true, field: "custom_amount", type: "number" },
+        { label: "Is Waived", value: isEditMode ? editData.is_waived : assignment.is_waived, editable: true, field: "is_waived", type: "boolean" },
+        { label: "Waiver Reason", value: isEditMode ? (editData.waiver_reason || "") : (assignment.waiver_reason || "Not applicable"), editable: true, field: "waiver_reason", type: "text" },
+        { label: "Start Date", value: assignment.start_date ? formatDate(assignment.start_date) : "Not provided", editable: false, field: "start_date" },
+        { label: "End Date", value: assignment.end_date ? formatDate(assignment.end_date) : "Not set", editable: false, field: "end_date" }
       ]
     },
     {
@@ -164,19 +184,19 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
       tag: "late_fee_settings",
       description: "Late fee configuration and penalties",
       details: [
-        { label: "Late Fee Applicable", value: isEditMode ? editData.late_fee_applicable : feeStructure.late_fee_applicable, editable: true, field: "late_fee_applicable", type: "boolean" },
-        { label: "Late Fee Amount", value: isEditMode ? (editData.late_fee_amount || "") : (feeStructure.late_fee_amount || ""), editable: true, field: "late_fee_amount", type: "number" },
-        { label: "Late Fee Percentage", value: isEditMode ? (editData.late_fee_percentage || "") : (feeStructure.late_fee_percentage || ""), editable: true, field: "late_fee_percentage", type: "number" }
+        { label: "Late Fee Applicable", value: assignment.fee_structure_details?.late_fee_applicable, editable: false, field: "late_fee_applicable" },
+        { label: "Late Fee Amount", value: assignment.fee_structure_details?.late_fee_amount ? formatCurrency(assignment.fee_structure_details.late_fee_amount) : "N/A", editable: false, field: "late_fee_amount" },
+        { label: "Late Fee Percentage", value: assignment.fee_structure_details?.late_fee_percentage ? `${assignment.fee_structure_details.late_fee_percentage}%` : "N/A", editable: false, field: "late_fee_percentage" }
       ]
     },
     {
-      title: "Discount Settings",
-      tag: "discount_settings",
-      description: "Discount configuration and limits",
+      title: "System Information",
+      tag: "system_info",
+      description: "Creation and update timestamps",
       details: [
-        { label: "Is Discount", value: isEditMode ? editData.is_discount : feeStructure.is_discount, editable: true, field: "is_discount", type: "boolean" },
-        { label: "Discount Percentage", value: isEditMode ? (editData.discount_percentage || "") : (feeStructure.discount_percentage || ""), editable: true, field: "discount_percentage", type: "number" },
-        { label: "Max Discount Amount", value: isEditMode ? (editData.max_discount_amount || "") : (feeStructure.max_discount_amount || ""), editable: true, field: "max_discount_amount", type: "number" }
+        { label: "Created At", value: assignment.created_at ? formatDate(assignment.created_at) : "Not provided", editable: false, field: "created_at" },
+        { label: "Updated At", value: assignment.updated_at ? formatDate(assignment.updated_at) : "Not provided", editable: false, field: "updated_at" },
+        { label: "Waiver Approved By", value: assignment.approved_by_details?.name || "Not applicable", editable: false, field: "waiver_approved_by" }
       ]
     }
   ];
@@ -192,13 +212,15 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <h2 className="text-lg font-bold text-blue-900">{feeStructure.name}</h2>
+            <h2 className="text-lg font-bold text-blue-900">
+              {assignment.student_details?.pupil_name || 'Student'} - {assignment.fee_structure_details?.name || 'Fee Assignment'}
+            </h2>
           </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={handleEditClick}
               className="w-8 h-8 bg-white rounded-full flex items-center justify-center hover:bg-blue-50 transition-colors duration-200"
-              title="Edit Fee Structure"
+              title="Edit Assignment"
             >
               {FaEdit({ className: "w-4 h-4 text-blue-600" })}
             </button>
@@ -214,12 +236,12 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
 
         {/* Modal Content */}
         <div className="overflow-y-auto max-h-[calc(70vh-120px)] p-3 space-y-3">
-          {isLoadingData && (
+          {isLoadingFeeStructures && (
             <div className="flex items-center justify-center py-4">
-              <div className="text-sm text-gray-500">Loading class and stream data...</div>
+              <div className="text-sm text-gray-500">Loading fee structures...</div>
             </div>
           )}
-          {feeStructureFeatures.map((feature, index) => (
+          {assignmentFeatures.map((feature, index) => (
             <div key={feature.tag} className="bg-white rounded-lg p-3 shadow-sm">
               {/* Feature Header */}
               <div className="flex items-center space-x-2 mb-2">
@@ -236,12 +258,12 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
               <div className="space-y-0.5">
                 {feature.details.map((detail, detailIndex) => (
                   <div key={detailIndex} className="flex justify-between items-center py-1 border-b border-blue-200 last:border-b-0">
-                    <span className={`text-xs font-semibold text-gray-800 flex-shrink-0 px-2 py-1 ${detail.label === "Fee ID" ? "w-20" : "w-40"}`}>{detail.label}:</span>
-                    <div className={`text-xs text-gray-900 text-right ${detail.label === "Fee ID" ? "w-52" : "w-32"}`}>
+                    <span className={`text-xs font-semibold text-gray-800 flex-shrink-0 px-2 py-1 ${detail.label === "Assignment ID" ? "w-20" : "w-40"}`}>{detail.label}:</span>
+                    <div className={`text-xs text-gray-900 text-right ${detail.label === "Assignment ID" ? "w-52" : "w-32"}`}>
                       {isEditMode && detail.editable ? (
                         // Editable field
                         <div className="w-full">
-                          {detail.type === "boolean" ? (
+                          {(detail as any).type === "boolean" ? (
                             <select
                               value={detail.value ? "true" : "false"}
                               onChange={(e) => handleFieldChange(detail.field, e.target.value === "true")}
@@ -250,11 +272,12 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                               <option value="true">Yes</option>
                               <option value="false">No</option>
                             </select>
-                          ) : detail.type === "select" ? (
+                          ) : (detail as any).type === "select" ? (
                             <select
                               value={String(detail.value || "")}
                               onChange={(e) => handleFieldChange(detail.field!, e.target.value)}
                               className="w-full px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
+                              disabled={isLoadingFeeStructures && detail.field === "fee_structure"}
                             >
                               <option value="">Select...</option>
                               {(detail as any).options?.map((option: any) => (
@@ -263,7 +286,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                                 </option>
                               ))}
                             </select>
-                          ) : detail.type === "number" ? (
+                          ) : (detail as any).type === "number" ? (
                             <input
                               type="number"
                               value={String(detail.value || "")}
@@ -277,7 +300,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                               value={String(detail.value || "")}
                               onChange={(e) => handleFieldChange(detail.field!, e.target.value)}
                               className="w-full px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
-                              placeholder={detail.label === "Name" ? "Enter name" : detail.label === "Description" ? "Enter description" : "Enter value"}
+                              placeholder={detail.label === "Academic Year" ? "Enter academic year" : detail.label === "Waiver Reason" ? "Enter waiver reason" : "Enter value"}
                             />
                           )}
                         </div>
@@ -290,28 +313,18 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                             }`}>
                               {detail.value ? "Active" : "Inactive"}
                             </span>
-                          ) : detail.label === "Applicable To All" || detail.label === "Late Fee Applicable" || detail.label === "Is Discount" ? (
+                          ) : detail.label === "Is Waived" || detail.label === "Late Fee Applicable" ? (
                             <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
                               detail.value ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                             }`}>
                               {detail.value ? "Yes" : "No"}
                             </span>
-                          ) : detail.label === "Applicable Class" ? (
-                            getClassNameById(String(detail.value))
-                          ) : detail.label === "Applicable Stream" ? (
-                            getStreamNameById(String(detail.value))
-                          ) : detail.label === "Amount" ? (
-                            formatCurrency(String(detail.value))
-                          ) : detail.label === "Due Date" ? (
-                            `${detail.value}th of month`
-                          ) : detail.label === "Late Fee Amount" ? (
-                            detail.value ? formatCurrency(String(detail.value)) : "N/A"
-                          ) : detail.label === "Late Fee Percentage" ? (
-                            detail.value ? `${detail.value}%` : "N/A"
-                          ) : detail.label === "Discount Percentage" ? (
-                            detail.value ? `${detail.value}%` : "N/A"
-                          ) : detail.label === "Max Discount Amount" ? (
-                            detail.value ? formatCurrency(String(detail.value)) : "N/A"
+                          ) : detail.label === "Term" ? (
+                            `Term ${detail.value}`
+                          ) : detail.label === "Custom Amount" ? (
+                            detail.value ? formatCurrency(String(detail.value)) : "Uses base amount"
+                          ) : detail.label === "Fee Structure" ? (
+                            assignment.fee_structure_details?.name || "Not provided"
                           ) : (
                             String(detail.value || "Not provided")
                           )}
@@ -369,4 +382,4 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
   );
 };
 
-export default FeeStructureDetailModal;
+export default StudentFeeAssignmentDetailModal;
