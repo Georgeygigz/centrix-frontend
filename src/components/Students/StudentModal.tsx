@@ -179,7 +179,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, isOpen, onClose })
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-        <div className="bg-white shadow-xl max-w-2xl w-full max-h-[75vh] overflow-visible relative">
+        <div className="bg-white shadow-xl max-w-4xl w-full max-h-[85vh] overflow-visible relative">
           {/* Close Button - Top Right Corner */}
           <button
             onClick={onClose}

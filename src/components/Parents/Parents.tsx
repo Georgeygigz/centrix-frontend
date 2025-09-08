@@ -1378,7 +1378,7 @@ const Parents: React.FC = () => {
       {isViewModalOpen && viewingParent && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-            <div className="bg-white shadow-xl max-w-lg w-full max-h-[75vh] overflow-visible relative">
+            <div className="bg-white shadow-xl max-w-4xl w-full max-h-[85vh] overflow-visible relative">
               {/* Close Button - Top Right Corner */}
               <button
                 onClick={closeViewModal}
@@ -1425,7 +1425,7 @@ const Parents: React.FC = () => {
               </div>
 
               {/* Content */}
-              <div className="p-2 relative overflow-y-auto max-h-[50vh]">
+              <div className="p-2 relative overflow-y-auto max-h-[calc(85vh-200px)]">
                 <div className="space-y-2">
                   {/* Parent Info Section */}
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-2 border border-blue-200 shadow-sm">

@@ -621,7 +621,7 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                         {getCategoryBadge(fee.category)}
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                        ${parseFloat(fee.amount).toLocaleString()}
+                        KSh {parseFloat(fee.amount).toLocaleString()}
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                         {getFrequencyBadge(fee.frequency)}

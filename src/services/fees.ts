@@ -1,5 +1,5 @@
 import { apiService } from './api';
-import { FeeStructure, FeeStructureResponse, PaginationParams, CreateFeeAssignmentRequest, StudentsResponse, FeeAssignmentsResponse } from '../types/fees';
+import { FeeStructure, FeeStructureResponse, PaginationParams, CreateFeeAssignmentRequest, StudentsResponse, FeeAssignmentsResponse, FeeInvoicesResponse, InvoiceQueryParams, GenerateTermInvoicesRequest, GenerateTermInvoicesResponse, CreatePaymentRequest, FeePaymentsResponse, PaymentQueryParams } from '../types/fees';
 
 class FeesService {
   // Fee Structures
@@ -95,7 +95,7 @@ class FeesService {
   }
 
   // Fee Invoices
-  async getAllInvoices(params?: any): Promise<any> {
+  async getAllInvoices(params?: InvoiceQueryParams): Promise<FeeInvoicesResponse> {
     let url = '/fees/invoices/';
     if (params) {
       const searchParams = new URLSearchParams();
@@ -113,7 +113,7 @@ class FeesService {
     return response;
   }
 
-  async generateTermInvoices(data: any): Promise<any> {
+  async generateTermInvoices(data: GenerateTermInvoicesRequest): Promise<GenerateTermInvoicesResponse> {
     const response = await apiService.authenticatedRequest('/fees/invoices/generate_term_invoices/', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -129,7 +129,7 @@ class FeesService {
   }
 
   // Fee Payments
-  async getAllPayments(params?: any): Promise<any> {
+  async getAllPayments(params?: PaymentQueryParams): Promise<FeePaymentsResponse> {
     let url = '/fees/payments/';
     if (params) {
       const searchParams = new URLSearchParams();
@@ -147,7 +147,7 @@ class FeesService {
     return response;
   }
 
-  async createPayment(data: any): Promise<any> {
+  async createPayment(data: CreatePaymentRequest): Promise<any> {
     const response = await apiService.authenticatedRequest('/fees/payments/', {
       method: 'POST',
       body: JSON.stringify(data)

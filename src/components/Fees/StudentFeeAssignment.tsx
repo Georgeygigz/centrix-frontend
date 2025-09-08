@@ -584,7 +584,7 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                         </div>
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                        ${assignment.custom_amount ? 
+                        KSh {assignment.custom_amount ? 
                           parseFloat(assignment.custom_amount).toLocaleString() : 
                           (assignment.fee_structure_details?.amount ? parseFloat(assignment.fee_structure_details.amount).toLocaleString() : '0')
                         }
@@ -882,13 +882,13 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                                 key={structure.id}
                                 onClick={() => {
                                   setNewAssignment(prev => ({ ...prev, fee_structure: structure.id }));
-                                  setFeeStructureSearchQuery(`${structure.name} - $${structure.amount || '0'}`);
+                                  setFeeStructureSearchQuery(`${structure.name} - KSh ${structure.amount || '0'}`);
                                   setShowFeeStructureDropdown(false);
                                 }}
                                 className="w-full px-3 py-2 text-left text-xs hover:bg-indigo-50 border-b border-gray-100 last:border-b-0 focus:bg-indigo-50 focus:outline-none"
                               >
                                 <div className="font-medium text-gray-900">{structure.name}</div>
-                                <div className="text-gray-500">${structure.amount || '0'} • {structure.fee_type || 'N/A'}</div>
+                                <div className="text-gray-500">KSh {structure.amount || '0'} • {structure.fee_type || 'N/A'}</div>
                               </button>
                             ))
                         ) : (
@@ -1181,13 +1181,13 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                                 key={structure.id}
                                 onClick={() => {
                                   setEditFormData(prev => ({ ...prev, fee_structure: structure.id }));
-                                  setFeeStructureSearchQuery(`${structure.name} - $${structure.amount || '0'}`);
+                                  setFeeStructureSearchQuery(`${structure.name} - KSh ${structure.amount || '0'}`);
                                   setShowFeeStructureDropdown(false);
                                 }}
                                 className="w-full px-3 py-2 text-left text-xs hover:bg-indigo-50 border-b border-gray-100 last:border-b-0 focus:bg-indigo-50 focus:outline-none"
                               >
                                 <div className="font-medium text-gray-900">{structure.name}</div>
-                                <div className="text-gray-500">${structure.amount || '0'} • {structure.fee_type || 'N/A'}</div>
+                                <div className="text-gray-500">KSh {structure.amount || '0'} • {structure.fee_type || 'N/A'}</div>
                               </button>
                             ))
                         ) : (
