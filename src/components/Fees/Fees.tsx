@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaMoneyBillWave, FaList, FaUserGraduate, FaFileAlt, FaCreditCard, FaSearch } from 'react-icons/fa';
+import { FaList, FaUserGraduate, FaFileAlt, FaCreditCard, FaSearch, FaPlus } from 'react-icons/fa';
 import FeeStructure from './FeeStructure';
 import StudentFeeAssignment from './StudentFeeAssignment';
 import FeeInvoice from './FeeInvoice';
 import FeePayment from './FeePayment';
+import GenerateTermInvoicesDrawer from './GenerateTermInvoicesDrawer';
 
 const Fees: React.FC = () => {
   const [activeTab, setActiveTab] = useState('fee-structure');
@@ -14,6 +15,7 @@ const Fees: React.FC = () => {
   const [feeTypeFilter, setFeeTypeFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [methodFilter, setMethodFilter] = useState('');
 
   // Debounce search query
   useEffect(() => {
@@ -28,6 +30,7 @@ const Fees: React.FC = () => {
     setFeeTypeFilter('');
     setCategoryFilter('');
     setStatusFilter('');
+    setMethodFilter('');
     setSearchQuery('');
     setSortBy('');
     setSortDirection('asc');
@@ -42,6 +45,17 @@ const Fees: React.FC = () => {
 
   const closeAddDrawer = () => {
     setIsAddDrawerOpen(false);
+  };
+
+  // Generate Term Invoices drawer state
+  const [isGenerateDrawerOpen, setIsGenerateDrawerOpen] = useState(false);
+
+  const openGenerateDrawer = () => {
+    setIsGenerateDrawerOpen(true);
+  };
+
+  const closeGenerateDrawer = () => {
+    setIsGenerateDrawerOpen(false);
   };
 
   // Helper functions for dynamic UI
@@ -84,7 +98,7 @@ const Fees: React.FC = () => {
             <select
               value={feeTypeFilter}
               onChange={(e) => setFeeTypeFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Types</option>
               <option value="tuition">Tuition</option>
@@ -104,7 +118,7 @@ const Fees: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Categories</option>
               <option value="academic">Academic</option>
@@ -117,7 +131,7 @@ const Fees: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
@@ -132,7 +146,7 @@ const Fees: React.FC = () => {
             <select
               value={feeTypeFilter}
               onChange={(e) => setFeeTypeFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Classes</option>
               <option value="class1">Class 1</option>
@@ -144,7 +158,7 @@ const Fees: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Streams</option>
               <option value="science">Science</option>
@@ -156,7 +170,7 @@ const Fees: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
               <option value="assigned">Assigned</option>
@@ -172,7 +186,7 @@ const Fees: React.FC = () => {
             <select
               value={feeTypeFilter}
               onChange={(e) => setFeeTypeFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
               <option value="draft">Draft</option>
@@ -185,7 +199,7 @@ const Fees: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Types</option>
               <option value="tuition">Tuition</option>
@@ -198,7 +212,7 @@ const Fees: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Months</option>
               <option value="january">January</option>
@@ -215,7 +229,7 @@ const Fees: React.FC = () => {
             <select
               value={feeTypeFilter}
               onChange={(e) => setFeeTypeFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
               <option value="pending">Pending</option>
@@ -228,7 +242,7 @@ const Fees: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Methods</option>
               <option value="cash">Cash</option>
@@ -241,13 +255,13 @@ const Fees: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
+              className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Amounts</option>
-              <option value="0-1000">$0 - $1,000</option>
-              <option value="1000-5000">$1,000 - $5,000</option>
-              <option value="5000-10000">$5,000 - $10,000</option>
-              <option value="10000+">$10,000+</option>
+              <option value="0-1000">KSh 0 - KSh 1,000</option>
+              <option value="1000-5000">KSh 1,000 - KSh 5,000</option>
+              <option value="5000-10000">KSh 5,000 - KSh 10,000</option>
+              <option value="10000+">KSh 10,000+</option>
             </select>
           </>
         );
@@ -341,50 +355,35 @@ const Fees: React.FC = () => {
         setSortBy={setSortBy}
         sortDirection={sortDirection}
         setSortDirection={setSortDirection}
-        feeTypeFilter={feeTypeFilter}
-        setFeeTypeFilter={setFeeTypeFilter}
-        categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
+        methodFilter={methodFilter}
+        setMethodFilter={setMethodFilter}
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         clearFilters={clearFilters}
-        isAddDrawerOpen={isAddDrawerOpen}
-        openAddDrawer={openAddDrawer}
-        closeAddDrawer={closeAddDrawer}
       />
     }
   ];
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-            {FaMoneyBillWave({ className: "w-6 h-6 text-white" })}
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Fees Management</h1>
-        </div>
-        <p className="text-gray-600">Manage fee structures, assignments, invoices, and payments</p>
-      </div>
 
       {/* Tabs and Controls Row */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 mb-4">
         <div className="flex justify-between items-center">
           {/* Tabs */}
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-6">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
+                className={`py-1.5 px-1 border-b-2 font-medium text-sm transition-colors duration-200 ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
-                  {tab.icon({ className: "w-4 h-4" })}
+                <div className="flex items-center space-x-1.5">
+                  {tab.icon({ className: "w-3.5 h-3.5" })}
                   <span>{tab.label}</span>
                 </div>
               </button>
@@ -392,7 +391,7 @@ const Fees: React.FC = () => {
           </nav>
 
           {/* Search, Filters, and Add Button - Show for all tabs */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             {/* Search */}
             <div className="relative">
               <input
@@ -400,9 +399,9 @@ const Fees: React.FC = () => {
                 placeholder={getSearchPlaceholder()}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 pl-8 pr-3 py-1.5 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-32 pl-6 pr-2 py-1 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <div className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400">
                 {FaSearch({ className: "w-3 h-3" })}
               </div>
             </div>
@@ -413,7 +412,7 @@ const Fees: React.FC = () => {
             {/* Clear Filters */}
             <button
               onClick={clearFilters}
-              className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800 transition-colors duration-200"
+              className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 transition-colors duration-200"
             >
               Clear Filters
             </button>
@@ -421,10 +420,21 @@ const Fees: React.FC = () => {
             {/* Dynamic Add Button */}
             <button 
               onClick={openAddDrawer}
-              className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+              className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200"
             >
               {getAddButtonText()}
             </button>
+
+            {/* Generate Term Invoices Button - Only show for Fee Invoice tab */}
+            {activeTab === 'fee-invoice' && (
+              <button 
+                onClick={openGenerateDrawer}
+                className="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200"
+              >
+                {FaPlus({ className: "w-3 h-3 mr-1" })}
+                Generate Term Invoices
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -433,6 +443,18 @@ const Fees: React.FC = () => {
       <div className="bg-white rounded-lg shadow-sm">
         {tabs.find(tab => tab.id === activeTab)?.component}
       </div>
+
+      {/* Generate Term Invoices Drawer */}
+      <GenerateTermInvoicesDrawer
+        isOpen={isGenerateDrawerOpen}
+        onClose={closeGenerateDrawer}
+        onSuccess={() => {
+          // Refresh the current tab content if it's the fee-invoice tab
+          if (activeTab === 'fee-invoice') {
+            // The FeeInvoice component will handle its own refresh
+          }
+        }}
+      />
     </div>
   );
 };

@@ -1476,7 +1476,7 @@ const BillingPlans: React.FC = () => {
       {/* Features Modal */}
       {showFeaturesModal && selectedPlan && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10001]">
-          <div className="bg-purple-50 rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[70vh] overflow-hidden">
+          <div className="bg-purple-50 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-purple-200">
               <div className="flex items-center space-x-2">
@@ -1507,7 +1507,7 @@ const BillingPlans: React.FC = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-4 overflow-y-auto max-h-[calc(70vh-120px)]">
+            <div className="p-4 overflow-y-auto max-h-[calc(85vh-120px)]">
               {selectedPlan.features && selectedPlan.features.length > 0 ? (
                 <div className="space-y-3">
                   {selectedPlan.features.map((feature: any, index: number) => (
@@ -1543,14 +1543,14 @@ const BillingPlans: React.FC = () => {
                         <div className="flex justify-between items-center py-1 border-b border-purple-100">
                           <span className="text-xs font-medium text-purple-900">Price Per Unit:</span>
                           <span className="text-xs text-gray-700 font-semibold">
-                            ${feature.price_per_unit || '0.00'}
+                            KSh {feature.price_per_unit || '0.00'}
                           </span>
                         </div>
                         
                         <div className="flex justify-between items-center py-1">
                           <span className="text-xs font-medium text-purple-900">Overage Price:</span>
                           <span className="text-xs text-gray-700 font-semibold">
-                            ${feature.overage_price_per_unit || '0.00'}
+                            KSh {feature.overage_price_per_unit || '0.00'}
                           </span>
                         </div>
                       </div>
@@ -2386,7 +2386,7 @@ const BillingPlans: React.FC = () => {
       {/* Subscription Details Modal */}
       {showSubscriptionModal && selectedSubscription && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10001]">
-          <div className="bg-purple-50 rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[70vh] overflow-hidden">
+          <div className="bg-purple-50 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-purple-200">
               <div className="flex items-center space-x-2">
@@ -2417,7 +2417,7 @@ const BillingPlans: React.FC = () => {
             </div>
 
             {/* Modal Content */}
-            <div className="p-4 overflow-y-auto max-h-[calc(70vh-120px)] space-y-4">
+            <div className="p-4 overflow-y-auto max-h-[calc(85vh-120px)] space-y-4">
               {/* Card 1: School Details */}
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                 <div className="flex items-center justify-between mb-2">
@@ -2600,14 +2600,14 @@ const BillingPlans: React.FC = () => {
                   <div className="flex justify-between items-center py-1 border-b border-purple-100">
                     <span className="text-xs font-medium text-purple-900">Base Price:</span>
                     <span className="text-xs text-gray-700 font-semibold">
-                      ${selectedSubscription.base_price || '0.00'}
+                      KSh {selectedSubscription.base_price || '0.00'}
                     </span>
                   </div>
                   
                   <div className="flex justify-between items-center py-1">
                     <span className="text-xs font-medium text-purple-900">Custom Price:</span>
                     <span className="text-xs text-gray-700 font-semibold">
-                      ${selectedSubscription.custom_price || '0.00'}
+                      KSh {selectedSubscription.custom_price || '0.00'}
                     </span>
                   </div>
                 </div>
@@ -2657,14 +2657,14 @@ const BillingPlans: React.FC = () => {
                           <div className="flex justify-between items-center py-1 border-b border-orange-200">
                             <span className="text-xs font-medium text-orange-900">Price Per Unit:</span>
                             <span className="text-xs text-gray-900 font-semibold">
-                              ${feature.price_per_unit || '0.00'}
+                              KSh {feature.price_per_unit || '0.00'}
                             </span>
                           </div>
                           
                           <div className="flex justify-between items-center py-1">
                             <span className="text-xs font-medium text-orange-900">Overage Price:</span>
                             <span className="text-xs text-gray-900 font-semibold">
-                              ${feature.overage_price_per_unit || '0.00'}
+                              KSh {feature.overage_price_per_unit || '0.00'}
                             </span>
                           </div>
                         </div>

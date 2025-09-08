@@ -75,7 +75,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
   };
 
   const formatCurrency = (amount: string) => {
-    return `$${parseFloat(amount).toLocaleString()}`;
+    return `KSh ${parseFloat(amount).toLocaleString()}`;
   };
 
   // Initialize edit data when entering edit mode
@@ -183,7 +183,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10001]">
-      <div className="bg-blue-100 rounded-lg shadow-xl max-w-xl w-full mx-4 max-h-[70vh] overflow-hidden">
+      <div className="bg-blue-100 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[85vh] overflow-hidden">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b border-blue-200">
           <div className="flex items-center space-x-2">
@@ -213,7 +213,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
         </div>
 
         {/* Modal Content */}
-        <div className="overflow-y-auto max-h-[calc(70vh-120px)] p-3 space-y-3">
+        <div className="overflow-y-auto max-h-[calc(85vh-120px)] p-3 space-y-3">
           {isLoadingData && (
             <div className="flex items-center justify-center py-4">
               <div className="text-sm text-gray-500">Loading class and stream data...</div>
