@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaCopy, FaEyeSlash, FaKey } from 'react-icons/fa';
+import { FaSearch, FaEye, FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaCheckCircle, FaCopy, FaEyeSlash, FaKey, FaSignInAlt } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
 import { apiService } from '../../services/api';
 import { User, UpdateUserRequest, PaginationParams } from '../../types/users';
 import { useFeatureSwitch } from '../../hooks/useFeatureSwitch';
-import DisabledButtonWithTooltip from '../Students/DisabledButtonWithTooltip';
 import { useAuth } from '../../context/AuthContext';
+import DisabledButtonWithTooltip from '../Students/DisabledButtonWithTooltip';
 
 const Users: React.FC = () => {
   // Auth context
-  const { user } = useAuth();
+  const { user, signinAs } = useAuth();
   
   // Feature switch hook
   const {
@@ -82,6 +82,11 @@ const Users: React.FC = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(false);
+
+  // Signin as state
+  const [isSigninAsModalOpen, setIsSigninAsModalOpen] = useState(false);
+  const [signinAsUser, setSigninAsUser] = useState<User | null>(null);
+  const [isSigningInAs, setIsSigningInAs] = useState(false);
 
   // Generate a secure password
   const generatePassword = () => {
@@ -413,6 +418,51 @@ const Users: React.FC = () => {
     setShowResetPassword(false);
     setIsPasswordResetModalOpen(true);
     setOpenDropdownId(null);
+  };
+
+  const handleSigninAs = (user: User) => {
+    setSigninAsUser(user);
+    setIsSigninAsModalOpen(true);
+    setOpenDropdownId(null);
+  };
+
+  const handleConfirmSigninAs = async () => {
+    if (!signinAsUser) return;
+
+    try {
+      setIsSigningInAs(true);
+      
+      // Call the signinAs method from AuthContext
+      await signinAs(signinAsUser.id);
+      
+      setToast({
+        message: `Successfully signed in as ${signinAsUser.email}`,
+        type: 'success'
+      });
+      
+      closeSigninAsModal();
+      
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    } catch (error) {
+      console.error('Error signing in as user:', error);
+      setToast({
+        message: error instanceof Error ? error.message : 'Failed to signin as user',
+        type: 'error'
+      });
+      setTimeout(() => {
+        setToast(null);
+      }, 5000);
+    } finally {
+      setIsSigningInAs(false);
+    }
+  };
+
+  const closeSigninAsModal = () => {
+    setIsSigninAsModalOpen(false);
+    setSigninAsUser(null);
+    setIsSigningInAs(false);
   };
 
   const handleResetPasswordSubmit = async () => {
@@ -1099,10 +1149,10 @@ const Users: React.FC = () => {
       {/* Portal-based Dropdown */}
       {openDropdownId && createPortal(
         <div 
-          className="fixed w-32 bg-white rounded-md shadow-lg border border-gray-200 z-[9999]"
+          className="fixed w-48 bg-white rounded-md shadow-lg border border-gray-200 z-[9999]"
           data-portal-dropdown
           style={{
-            left: `${dropdownCoords.x}px`,
+            left: `${dropdownCoords.x - 192}px`, // 192px = w-48 (width) to position to the left
             top: `${dropdownCoords.y}px`
           }}
           onClick={(e) => e.stopPropagation()}
@@ -1138,6 +1188,21 @@ const Users: React.FC = () => {
                 Pass Reset
               </button>
             </PermissionGate>
+            {user?.role === 'root' && openDropdownId !== user?.id && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const targetUser = users.find(u => u.id === openDropdownId);
+                  if (targetUser) {
+                    handleSigninAs(targetUser);
+                  }
+                }}
+                className="flex items-center w-full px-3 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors duration-200"
+              >
+                {FaSignInAlt({ className: "w-3 h-3 mr-2" })}
+                Signin As
+              </button>
+            )}
             <PermissionGate permissions={['access_admin_panel']}>
               <button
                 onClick={(e) => {
@@ -2105,6 +2170,100 @@ const Users: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Signin As Confirmation Modal */}
+      {isSigninAsModalOpen && signinAsUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[10003] transition-all duration-300 ease-in-out">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all duration-300 ease-out">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-100 rounded-xl">
+                  {FaSignInAlt({ className: "w-5 h-5 text-green-600" })}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Sign In As User
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Confirm user impersonation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeSigninAsModal}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all duration-200"
+              >
+                {FaTimes({ className: "w-4 h-4" })}
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <div className="text-center">
+                <div className="mb-4">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span className="text-2xl font-semibold text-gray-600">
+                      {signinAsUser.first_name?.charAt(0) || signinAsUser.email?.charAt(0) || 'U'}
+                    </span>
+                  </div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-1">
+                    {signinAsUser.first_name && signinAsUser.last_name 
+                      ? `${signinAsUser.first_name} ${signinAsUser.last_name}`
+                      : signinAsUser.username || 'Unknown User'
+                    }
+                  </h4>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {signinAsUser.email}
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="text-left">
+                      <h5 className="text-sm font-medium text-yellow-800 mb-1">
+                        Warning
+                      </h5>
+                      <p className="text-sm text-yellow-700">
+                        You are about to sign in as this user. This action will switch your current session to this user's account. Are you sure you want to continue?
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end space-x-3 p-6 border-t border-gray-100">
+              <button
+                onClick={closeSigninAsModal}
+                className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-200 font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSigninAs}
+                disabled={isSigningInAs}
+                className="px-6 py-2.5 text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium text-sm shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+              >
+                {isSigningInAs ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Signing In...</span>
+                  </div>
+                ) : (
+                  'Sign In As User'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

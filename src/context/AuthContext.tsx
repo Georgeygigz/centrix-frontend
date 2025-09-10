@@ -7,6 +7,7 @@ interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
   logout: () => void;
+  signinAs: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -175,11 +176,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   };
 
+  const signinAs = async (userId: string) => {
+    setState(prev => ({ ...prev, isLoading: true, error: null }));
+    
+    try {
+      // Call the signin-as API endpoint
+      const response: LoginResponse = await apiService.users.signinAs(userId);
+      
+      // Clear any existing tokens first
+      sessionStorage.removeItem('authToken');
+      
+      // Store the new token in session storage
+      if (response && response.token) {
+        sessionStorage.setItem('authToken', response.token);
+      }
+      
+      // Fetch complete user information including school details
+      const userInfo = await apiService.getCurrentUser();
+      
+      // Create user object from complete user info with proper null checks
+      const user: AuthUser = {
+        id: userInfo.id || 'unknown',
+        email: userInfo.email || '',
+        username: userInfo.first_name || userInfo.username || 'user',
+        is_pin_set: userInfo.is_pin_set || false,
+        school_id: userInfo.school?.id || '',
+        school_name: userInfo.school?.name || '',
+        role: userInfo.role || 'user',
+      };
+      
+      setState({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error('Signin as error in AuthContext:', error);
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Signin as failed. Please try again.',
+      }));
+    }
+  };
+
   const value: AuthContextType = {
     ...state,
     login,
     register,
     logout,
+    signinAs,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

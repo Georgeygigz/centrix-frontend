@@ -635,6 +635,14 @@ export const apiService = {
         body: JSON.stringify({ password }),
       });
     },
+
+    // Sign in as another user
+    signinAs: async (userId: string) => {
+      return apiService.authenticatedRequest(`/users/signin-as`, {
+        method: 'POST',
+        body: JSON.stringify({ user_id: userId }),
+      });
+    },
   },
 
   // Parents API
