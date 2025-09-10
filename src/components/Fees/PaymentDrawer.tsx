@@ -58,6 +58,7 @@ const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string[] }>({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [overpaymentAmount, setOverpaymentAmount] = useState<number>(0);
 
   // Initialize form data when invoice changes
   React.useEffect(() => {
@@ -84,6 +85,14 @@ const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
       ...prev,
       [field]: value
     }));
+    
+    // Calculate overpayment when amount changes
+    if (field === 'amount' && invoice) {
+      const paymentAmount = parseFloat(value) || 0;
+      const balanceDue = parseFloat(invoice.balance_due) || 0;
+      const overpayment = paymentAmount > balanceDue ? paymentAmount - balanceDue : 0;
+      setOverpaymentAmount(overpayment);
+    }
     
     // Clear error for this field
     if (errors[field]) {
@@ -230,6 +239,15 @@ const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
                 Amount *
               </label>
+              
+              {/* Current Balance Display */}
+              <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-blue-700">Current Balance:</span>
+                  <span className="text-xs font-bold text-blue-900">{formatCurrency(invoice.balance_due)}</span>
+                </div>
+              </div>
+              
               <input
                 type="number"
                 step="0.01"
@@ -237,10 +255,28 @@ const PaymentDrawer: React.FC<PaymentDrawerProps> = ({
                 onChange={(e) => handleInputChange('amount', e.target.value)}
                 placeholder="Enter payment amount"
                 className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
-                  errors.amount ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                  errors.amount ? 'border-red-300 bg-red-50' : 
+                  overpaymentAmount > 0 ? 'border-yellow-300 bg-yellow-50' : 
+                  'border-gray-300 hover:border-gray-400'
                 }`}
                 required
               />
+              
+              {/* Overpayment Warning */}
+              {overpaymentAmount > 0 && (
+                <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-center space-x-2">
+                    {FaExclamationTriangle({ className: "w-3 h-3 text-yellow-600" })}
+                    <div>
+                      <p className="text-xs font-medium text-yellow-800">Overpayment Detected</p>
+                      <p className="text-xs text-yellow-700">
+                        You are paying {formatCurrency(overpaymentAmount.toString())} more than the balance due.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {errors.amount && (
                 <p className="mt-1 text-xs text-red-600">{errors.amount[0]}</p>
               )}

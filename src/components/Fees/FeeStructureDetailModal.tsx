@@ -145,7 +145,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
         { label: "Fee Type", value: isEditMode ? (editData.fee_type || "") : (feeStructure.fee_type || ""), editable: true, field: "fee_type", type: "select", options: ["tuition", "development", "transport", "library", "sports", "examination", "other"] },
         { label: "Category", value: isEditMode ? (editData.category || "") : (feeStructure.category || ""), editable: true, field: "category", type: "select", options: ["academic", "non_academic", "administrative", "other"] },
         { label: "Amount", value: isEditMode ? (editData.amount || "") : (feeStructure.amount || ""), editable: true, field: "amount", type: "number" },
-        { label: "Frequency", value: isEditMode ? (editData.frequency || "") : (feeStructure.frequency || ""), editable: true, field: "frequency", type: "select", options: ["monthly", "quarterly", "semester", "annual", "one_time"] }
+        { label: "Frequency", value: isEditMode ? (editData.frequency || "") : (feeStructure.frequency || ""), editable: true, field: "frequency", type: "select", options: ["monthly", "termly", "yearly", "one_time"] }
       ]
     },
     {
@@ -156,7 +156,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
         { label: "Applicable To All", value: isEditMode ? editData.applicable_to_all : feeStructure.applicable_to_all, editable: true, field: "applicable_to_all", type: "boolean" },
         { label: "Applicable Class", value: isEditMode ? (editData.applicable_class || "") : (feeStructure.applicable_class || ""), editable: true, field: "applicable_class", type: "select", options: classes.map(c => ({ value: c.id, label: c.name })) },
         { label: "Applicable Stream", value: isEditMode ? (editData.applicable_stream || "") : (feeStructure.applicable_stream || ""), editable: true, field: "applicable_stream", type: "select", options: streams.map(s => ({ value: s.id, label: s.name })) },
-        { label: "Due Date", value: isEditMode ? (editData.due_date || "") : (feeStructure.due_date || ""), editable: true, field: "due_date", type: "number" }
+        { label: "Due Date", value: isEditMode ? (editData.due_date || "") : (feeStructure.due_date || ""), editable: true, field: "due_date", type: "date" }
       ]
     },
     {
@@ -271,6 +271,13 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                               className="w-full px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                               placeholder="Enter amount"
                             />
+                          ) : detail.type === "date" ? (
+                            <input
+                              type="date"
+                              value={String(detail.value || "")}
+                              onChange={(e) => handleFieldChange(detail.field!, e.target.value)}
+                              className="w-full px-2 py-1.5 text-xs bg-white border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
+                            />
                           ) : (
                             <input
                               type="text"
@@ -303,7 +310,7 @@ const FeeStructureDetailModal: React.FC<FeeStructureDetailModalProps> = ({
                           ) : detail.label === "Amount" ? (
                             formatCurrency(String(detail.value))
                           ) : detail.label === "Due Date" ? (
-                            `${detail.value}th of month`
+                            detail.value && typeof detail.value === 'string' ? new Date(detail.value).toLocaleDateString() : "Not set"
                           ) : detail.label === "Late Fee Amount" ? (
                             detail.value ? formatCurrency(String(detail.value)) : "N/A"
                           ) : detail.label === "Late Fee Percentage" ? (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaTimes, FaDownload, FaEye, FaCreditCard } from 'react-icons/fa';
 import { feesService } from '../../services/fees';
 import { FeePayment as FeePaymentType, PaymentQueryParams } from '../../types/fees';
@@ -18,6 +18,11 @@ interface FeePaymentProps {
   statusFilter: string;
   setStatusFilter: (filter: string) => void;
   clearFilters: () => void;
+  onFilterOptionsUpdate?: (options: {
+    paymentStatuses: Array<{ value: string; label: string }>;
+    paymentMethods: Array<{ value: string; label: string }>;
+    amountRanges: Array<{ value: string; label: string }>;
+  }) => void;
 }
 
 
@@ -33,9 +38,11 @@ const FeePayment: React.FC<FeePaymentProps> = ({
   setMethodFilter,
   statusFilter,
   setStatusFilter,
-  clearFilters
+  clearFilters,
+  onFilterOptionsUpdate
 }) => {
   const [payments, setPayments] = useState<FeePaymentType[]>([]);
+  const allPaymentsRef = useRef<FeePaymentType[]>([]); // Store unfiltered data for filter options
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState(0);
@@ -45,18 +52,99 @@ const FeePayment: React.FC<FeePaymentProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [downloadingPaymentId, setDownloadingPaymentId] = useState<string | null>(null);
 
+  // Function to extract unique filter options from payments
+  const extractFilterOptions = (payments: FeePaymentType[]) => {
+    const paymentStatusesMap = new Map<string, { value: string; label: string }>();
+    const paymentMethodsMap = new Map<string, { value: string; label: string }>();
+    const amountRangesMap = new Map<string, { value: string; label: string }>();
+
+    payments.forEach(payment => {
+      // Extract unique payment statuses
+      if (payment.status) {
+        const label = payment.status.charAt(0).toUpperCase() + payment.status.slice(1);
+        paymentStatusesMap.set(payment.status, {
+          value: payment.status,
+          label: label
+        });
+      }
+
+      // Extract unique payment methods
+      if (payment.method) {
+        const label = payment.method.charAt(0).toUpperCase() + payment.method.slice(1).replace('_', ' ');
+        paymentMethodsMap.set(payment.method, {
+          value: payment.method,
+          label: label
+        });
+      }
+
+      // Extract unique amount ranges
+      if (payment.amount) {
+        const amount = parseFloat(payment.amount);
+        let range = '';
+        let rangeLabel = '';
+        
+        if (amount >= 0 && amount <= 1000) {
+          range = '0-1000';
+          rangeLabel = 'KSh 0 - KSh 1,000';
+        } else if (amount > 1000 && amount <= 5000) {
+          range = '1000-5000';
+          rangeLabel = 'KSh 1,000 - KSh 5,000';
+        } else if (amount > 5000 && amount <= 10000) {
+          range = '5000-10000';
+          rangeLabel = 'KSh 5,000 - KSh 10,000';
+        } else if (amount > 10000) {
+          range = '10000+';
+          rangeLabel = 'KSh 10,000+';
+        }
+        
+        if (range) {
+          amountRangesMap.set(range, {
+            value: range,
+            label: rangeLabel
+          });
+        }
+      }
+    });
+
+    const filterOptions = {
+      paymentStatuses: Array.from(paymentStatusesMap.values()),
+      paymentMethods: Array.from(paymentMethodsMap.values()),
+      amountRanges: Array.from(amountRangesMap.values())
+    };
+
+    // Call the callback to update parent component
+    if (onFilterOptionsUpdate) {
+      onFilterOptionsUpdate(filterOptions);
+    }
+
+    return filterOptions;
+  };
+
   const fetchPayments = async (params?: PaymentQueryParams) => {
     setLoading(true);
     setError(null);
     try {
       const response = await feesService.getAllPayments(params);
-      setPayments(response.results);
+      const paymentsData = response.results;
+      setPayments(paymentsData);
       setTotalCount(response.count);
       setCurrentPage(response.page);
       setTotalPages(response.total_pages);
+      
+      // If this is the first load (no filters applied), store all data for filter options
+      if (!methodFilter && !statusFilter && !debouncedSearchQuery) {
+        allPaymentsRef.current = paymentsData;
+        // Extract filter options from all unfiltered data
+        extractFilterOptions(paymentsData);
+      } else {
+        // Extract filter options from the stored unfiltered data
+        extractFilterOptions(allPaymentsRef.current);
+      }
     } catch (err) {
       setError('Failed to fetch payments');
       console.error('Error fetching payments:', err);
+      // Extract filter options from empty array on error
+      extractFilterOptions([]);
     } finally {
       setLoading(false);
     }
@@ -70,6 +158,7 @@ const FeePayment: React.FC<FeePaymentProps> = ({
       page_size: 20,
     };
     fetchPayments(params);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchQuery, sortBy, sortDirection, currentPage]);
 
   const getStatusColor = (status: string) => {
