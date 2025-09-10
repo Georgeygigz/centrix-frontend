@@ -135,10 +135,19 @@ const Users: React.FC = () => {
   const fetchSchools = async () => {
     try {
       setLoadingSchools(true);
-      const response = await apiService.authenticatedRequest('/schools', { method: 'GET' });
-      setSchools(response.results || []);
+      // Try the schools API first
+      try {
+        const response = await apiService.schools.getAll(1, 100); // Get first 100 schools
+        setSchools(response.results || []);
+      } catch (schoolsApiError) {
+        console.warn('Schools API failed, trying direct endpoint:', schoolsApiError);
+        // Fallback to direct endpoint
+        const response = await apiService.authenticatedRequest('/schools', { method: 'GET' });
+        setSchools(response.results || response || []);
+      }
     } catch (err) {
       console.error('Error fetching schools:', err);
+      setSchools([]); // Set empty array on error
     } finally {
       setLoadingSchools(false);
     }
@@ -1431,11 +1440,15 @@ const Users: React.FC = () => {
                         required
                       >
                         <option value="">Select a school</option>
-                        {schools.map((school) => (
-                          <option key={school.id} value={school.id}>
-                            {school.name}
-                          </option>
-                        ))}
+                        {schools.length > 0 ? (
+                          schools.map((school) => (
+                            <option key={school.id} value={school.id}>
+                              {school.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No schools available</option>
+                        )}
                       </select>
                     )}
                     {formErrors.school_id && (

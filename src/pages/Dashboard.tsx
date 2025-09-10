@@ -13,6 +13,7 @@ import {
   BillingPlans,
   SuperAdminBillingDashboard
 } from '../components/Billing';
+import { ActivityLog } from '../components/ActivityLog';
 
 
 const Dashboard: React.FC = () => {
@@ -34,6 +35,7 @@ const Dashboard: React.FC = () => {
       'admin-users': 'Admin - Users',
       'admin-parents': 'Admin - Parents',
       'admin-features': 'Admin - Switch Board',
+      'admin-activity-log': 'Admin - Activity Log',
       
       // Billing pages
       'admin-billing': 'Admin - Billing',
@@ -68,6 +70,8 @@ const Dashboard: React.FC = () => {
         return <Parents />;
       case 'admin-features':
         return <SwitchBoard />;
+      case 'admin-activity-log':
+        return <ActivityLog />;
 
       // Billing routes
       case 'admin-billing':

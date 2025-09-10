@@ -1,6 +1,6 @@
 import React from 'react';
-import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends, FaCreditCard, FaChartLine, FaCogs, FaMoneyBillWave } from 'react-icons/fa';
-import { NavigationItem } from '../../types/rbac';
+import { FaUserGraduate, FaChartBar, FaUsers, FaCog, FaChevronDown, FaBuilding, FaSchool, FaUserFriends, FaCreditCard, FaChartLine, FaCogs, FaMoneyBillWave, FaHistory } from 'react-icons/fa';
+import { NavigationItem, Permission } from '../../types/rbac';
 import { useAuth } from '../../context/AuthContext';
 import { useRBAC } from '../../context/RBACContext';
 
@@ -20,25 +20,25 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       id: 'students',
       label: 'Students',
       icon: FaUserGraduate,
-      requiredPermissions: ['view_students'],
+      requiredPermissions: ['view_students'] as Permission[],
     },
-    {
+    ...(userRole === 'root' || userRole === 'super_admin' ? [{
       id: 'fees',
       label: 'Fees',
       icon: FaMoneyBillWave,
-      requiredPermissions: ['access_fees'],
-    },
+      requiredPermissions: ['access_fees'] as Permission[],
+    }] : []),
     {
       id: 'reports',
       label: 'Reports',
       icon: FaChartBar,
-      requiredPermissions: ['access_reports'],
+      requiredPermissions: ['access_reports'] as Permission[],
     },
     {
       id: 'admin-panel',
       label: 'Admin Panel',
       icon: FaCog,
-      requiredPermissions: ['access_admin_panel'],
+      requiredPermissions: ['access_admin_panel'] as Permission[],
       children: [
         { id: 'admin-users', label: 'Users', icon: FaUsers },
         { id: 'admin-parents', label: 'Parents', icon: FaUserFriends },
@@ -48,6 +48,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
         ...(userRole !== 'super_admin' ? [
           { id: 'admin-features', label: 'Switch Board', icon: FaCog },
         ] : []),
+        { 
+          id: 'admin-activity-log', 
+          label: 'Activity Log', 
+          icon: FaHistory,
+          requiredPermissions: ['access_admin_panel'],
+        },
         { 
           id: 'admin-billing', 
           label: 'Billing', 

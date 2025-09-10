@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaTimes, FaCheckCircle, FaExclamationTriangle, FaFileAlt } from 'react-icons/fa';
 import { feesService } from '../../services/fees';
 import { GenerateTermInvoicesRequest, GenerateTermInvoicesResponse } from '../../types/fees';
+import YearPicker from './YearPicker';
 
 interface GenerateTermInvoicesDrawerProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
   const [formData, setFormData] = useState<GenerateTermInvoicesRequest>({
     academic_year: '',
     term: 1,
-    due_date_days: 30
+    due_date_days: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +29,7 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'term' || name === 'due_date_days' ? parseInt(value) || 0 : value
+      [name]: name === 'term' ? parseInt(value) || 0 : value
     }));
 
     // Clear error for this field
@@ -70,7 +71,7 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
     setFormData({
       academic_year: '',
       term: 1,
-      due_date_days: 30
+      due_date_days: ''
     });
     setError(null);
     setSuccess(null);
@@ -78,11 +79,6 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
     onClose();
   };
 
-  const getCurrentAcademicYear = () => {
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    return `${currentYear}-${nextYear}`;
-  };
 
   if (!isOpen) return null;
 
@@ -164,17 +160,13 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
                     Academic Year *
                   </label>
-                  <input
-                    type="text"
-                    name="academic_year"
+                  <YearPicker
                     value={formData.academic_year}
-                    onChange={handleInputChange}
-                    placeholder={getCurrentAcademicYear()}
-                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
-                      formErrors.academic_year ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onChange={(value) => handleInputChange({ target: { name: 'academic_year', value } } as any)}
+                    placeholder="Select academic year (e.g., 2024-2025)"
+                    error={!!formErrors.academic_year}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Format: YYYY-YYYY (e.g., 2024-2025)</p>
+                  <p className="text-xs text-gray-500 mt-1">Select the academic year for the invoices</p>
                   {formErrors.academic_year && (
                     <p className="mt-1 text-xs text-red-600">{formErrors.academic_year[0]}</p>
                   )}
@@ -203,24 +195,22 @@ const GenerateTermInvoicesDrawer: React.FC<GenerateTermInvoicesDrawerProps> = ({
                   )}
                 </div>
 
-                {/* Due Date Days */}
+                {/* Due Date */}
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                     <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mr-1.5"></span>
-                    Due Date (Days from Today) *
+                    Due Date *
                   </label>
                   <input
-                    type="number"
+                    type="date"
                     name="due_date_days"
                     value={formData.due_date_days}
                     onChange={handleInputChange}
-                    min="1"
-                    max="365"
                     className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-500 transition-all duration-200 bg-white ${
                       formErrors.due_date_days ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                     }`}
                   />
-                  <p className="text-xs text-gray-500 mt-1">Number of days from today when invoices are due</p>
+                  <p className="text-xs text-gray-500 mt-1">Date when invoices are due</p>
                   {formErrors.due_date_days && (
                     <p className="mt-1 text-xs text-red-600">{formErrors.due_date_days[0]}</p>
                   )}

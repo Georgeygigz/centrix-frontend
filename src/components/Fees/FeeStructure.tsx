@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaPlus, FaList, FaEye, FaCheckCircle } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
@@ -26,6 +26,11 @@ interface FeeStructureProps {
   isAddDrawerOpen: boolean;
   openAddDrawer: () => void;
   closeAddDrawer: () => void;
+  onFilterOptionsUpdate?: (options: {
+    feeTypes: Array<{ value: string; label: string }>;
+    categories: Array<{ value: string; label: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }) => void;
 }
 
 const FeeStructureComponent: React.FC<FeeStructureProps> = ({
@@ -45,11 +50,13 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
   clearFilters,
   isAddDrawerOpen,
   openAddDrawer,
-  closeAddDrawer
+  closeAddDrawer,
+  onFilterOptionsUpdate
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+  const allFeeStructuresRef = useRef<FeeStructure[]>([]); // Store unfiltered data for filter options
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -73,7 +80,7 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
     amount: '',
     frequency: 'monthly' as const,
     applicable_to_all: true,
-    due_date: 5,
+    due_date: '',
     late_fee_applicable: false,
     late_fee_amount: '0',
     late_fee_percentage: '0',
@@ -118,13 +125,57 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
   const frequencies = [
     { value: 'one_time', label: 'One Time' },
     { value: 'monthly', label: 'Monthly' },
-    { value: 'quarterly', label: 'Quarterly' },
     { value: 'termly', label: 'Termly' },
     { value: 'yearly', label: 'Yearly' },
     { value: 'custom', label: 'Custom' }
   ];
 
 
+
+  // Function to extract unique filter options from fee structures
+  const extractFilterOptions = (feeStructures: FeeStructure[]) => {
+    const feeTypesMap = new Map<string, { value: string; label: string }>();
+    const categoriesMap = new Map<string, { value: string; label: string }>();
+    const statusesMap = new Map<string, { value: string; label: string }>();
+
+    feeStructures.forEach(feeStructure => {
+      // Extract unique fee types
+      if (feeStructure.fee_type) {
+        const label = feeStructure.fee_type.charAt(0).toUpperCase() + feeStructure.fee_type.slice(1).replace('_', ' ');
+        feeTypesMap.set(feeStructure.fee_type, {
+          value: feeStructure.fee_type,
+          label: label
+        });
+      }
+
+      // Extract unique categories
+      if (feeStructure.category) {
+        const label = feeStructure.category.charAt(0).toUpperCase() + feeStructure.category.slice(1).replace('_', ' ');
+        categoriesMap.set(feeStructure.category, {
+          value: feeStructure.category,
+          label: label
+        });
+      }
+
+      // Extract unique statuses
+      const status = feeStructure.is_active ? 'active' : 'inactive';
+      const statusLabel = feeStructure.is_active ? 'Active' : 'Inactive';
+      statusesMap.set(status, { value: status, label: statusLabel });
+    });
+
+    const filterOptions = {
+      feeTypes: Array.from(feeTypesMap.values()),
+      categories: Array.from(categoriesMap.values()),
+      statuses: Array.from(statusesMap.values())
+    };
+
+    // Call the callback to update parent component
+    if (onFilterOptionsUpdate) {
+      onFilterOptionsUpdate(filterOptions);
+    }
+
+    return filterOptions;
+  };
 
   const fetchFeeStructures = useCallback(async (page = 1) => {
     try {
@@ -144,13 +195,27 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
       
       const response = await feesService.getAllFeeStructures(params);
       
-      setFeeStructures(response.results || []);
+      const feeStructuresData = response.results || [];
+      setFeeStructures(feeStructuresData);
+      
+      // If this is the first load (no filters applied), store all data for filter options
+      if (!feeTypeFilter && !categoryFilter && !statusFilter && !debouncedSearchQuery) {
+        allFeeStructuresRef.current = feeStructuresData;
+        // Extract filter options from all unfiltered data
+        extractFilterOptions(feeStructuresData);
+      } else {
+        // Extract filter options from the stored unfiltered data
+        extractFilterOptions(allFeeStructuresRef.current);
+      }
     } catch (err) {
       console.error('Error fetching fee structures:', err);
       setError('Failed to fetch fee structures');
+      // Extract filter options from empty array on error
+      extractFilterOptions([]);
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageSize, debouncedSearchQuery, sortBy, sortDirection, feeTypeFilter, categoryFilter, statusFilter]);
 
   // Fetch fee structures
@@ -365,7 +430,7 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
       amount: '',
       frequency: 'monthly',
       applicable_to_all: true,
-      due_date: 5,
+      due_date: '',
       late_fee_applicable: false,
       late_fee_amount: '0',
       late_fee_percentage: '0',
@@ -924,14 +989,12 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                   <div className="space-y-1">
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
-                      Due Date (Day of Month)
+                      Due Date
                     </label>
                     <input
-                      type="number"
-                      min="1"
-                      max="31"
+                      type="date"
                       value={newFeeStructure.due_date}
-                      onChange={(e) => handleFormInputChange('due_date', parseInt(e.target.value))}
+                      onChange={(e) => handleFormInputChange('due_date', e.target.value)}
                       className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-100 focus:border-cyan-500 transition-all duration-200 bg-white ${
                         formErrors.due_date ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                       }`}
@@ -1332,7 +1395,6 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                     >
                       <option value="one_time">One Time</option>
                       <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
                       <option value="termly">Termly</option>
                       <option value="yearly">Yearly</option>
                       <option value="custom">Custom</option>
@@ -1345,14 +1407,12 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                   <div className="space-y-1">
                     <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
                       <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span>
-                      Due Date (Day of Month)
+                      Due Date
                     </label>
                     <input
-                      type="number"
-                      min="1"
-                      max="31"
+                      type="date"
                       value={editFormData.due_date || ''}
-                      onChange={(e) => handleEditFormInputChange('due_date', parseInt(e.target.value))}
+                      onChange={(e) => handleEditFormInputChange('due_date', e.target.value)}
                       disabled={!isEditMode}
                       className={`w-full px-3 py-2 text-xs border rounded-lg transition-all duration-200 ${
                         isEditMode 

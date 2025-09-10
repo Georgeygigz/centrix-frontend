@@ -114,9 +114,16 @@ class FeesService {
   }
 
   async generateTermInvoices(data: GenerateTermInvoicesRequest): Promise<GenerateTermInvoicesResponse> {
+    // Transform the data to match API expectations
+    const apiData = {
+      academic_year: data.academic_year,
+      term: data.term,
+      due_date: data.due_date_days // Transform due_date_days to due_date
+    };
+    
     const response = await apiService.authenticatedRequest('/fees/invoices/generate_term_invoices/', {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(apiData)
     });
     return response;
   }

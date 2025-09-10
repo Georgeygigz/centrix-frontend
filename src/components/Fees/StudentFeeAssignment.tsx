@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { FaChevronUp, FaChevronDown, FaEllipsisV, FaEdit, FaTrash, FaTimes, FaPlus, FaUserGraduate, FaEye, FaCheckCircle, FaUser, FaMoneyBillWave } from 'react-icons/fa';
 import { PermissionGate } from '../RBAC';
@@ -6,6 +6,7 @@ import { feesService } from '../../services/fees';
 import { apiService } from '../../services/api';
 import { Student, FeeStructure, CreateFeeAssignmentRequest, FeeAssignment } from '../../types/fees';
 import StudentFeeAssignmentDetailModal from './StudentFeeAssignmentDetailModal';
+import YearPicker from './YearPicker';
 
 interface StudentFeeAssignmentProps {
   searchQuery: string;
@@ -25,6 +26,11 @@ interface StudentFeeAssignmentProps {
   isAddDrawerOpen: boolean;
   openAddDrawer: () => void;
   closeAddDrawer: () => void;
+  onFilterOptionsUpdate?: (options: {
+    classes: Array<{ id: string; name: string }>;
+    streams: Array<{ id: string; name: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }) => void;
 }
 
 
@@ -46,11 +52,13 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
   clearFilters,
   isAddDrawerOpen,
   openAddDrawer,
-  closeAddDrawer
+  closeAddDrawer,
+  onFilterOptionsUpdate
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null);
   const [assignments, setAssignments] = useState<FeeAssignment[]>([]);
+  const allAssignmentsRef = useRef<FeeAssignment[]>([]); // Store unfiltered data for filter options
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -91,8 +99,48 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState(false);
   const [editFormErrors, setEditFormErrors] = useState<{ [key: string]: string[] }>({});
 
+  // Function to extract unique filter options from assignments
+  const extractFilterOptions = (assignments: FeeAssignment[]) => {
+    const classesMap = new Map<string, { id: string; name: string }>();
+    const streamsMap = new Map<string, { id: string; name: string }>();
+    const statusesMap = new Map<string, { value: string; label: string }>();
 
+    assignments.forEach(assignment => {
+      // Extract unique classes
+      if (assignment.student_details?.current_class?.id && assignment.student_details?.current_class?.name) {
+        classesMap.set(assignment.student_details.current_class.id, {
+          id: assignment.student_details.current_class.id,
+          name: assignment.student_details.current_class.name
+        });
+      }
 
+      // Extract unique streams
+      if (assignment.student_details?.current_class?.stream?.id && assignment.student_details?.current_class?.stream?.name) {
+        streamsMap.set(assignment.student_details.current_class.stream.id, {
+          id: assignment.student_details.current_class.stream.id,
+          name: assignment.student_details.current_class.stream.name
+        });
+      }
+
+      // Extract unique statuses
+      const status = assignment.is_active ? 'active' : 'inactive';
+      const statusLabel = assignment.is_active ? 'Active' : 'Inactive';
+      statusesMap.set(status, { value: status, label: statusLabel });
+    });
+
+    const filterOptions = {
+      classes: Array.from(classesMap.values()),
+      streams: Array.from(streamsMap.values()),
+      statuses: Array.from(statusesMap.values())
+    };
+
+    // Call the callback to update parent component
+    if (onFilterOptionsUpdate) {
+      onFilterOptionsUpdate(filterOptions);
+    }
+
+    return filterOptions;
+  };
 
   const fetchAssignments = useCallback(async () => {
     try {
@@ -117,18 +165,33 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
         );
         
         setAssignments(validAssignments);
+        
+        // If this is the first load (no filters applied), store all data for filter options
+        if (!feeTypeFilter && !categoryFilter && !statusFilter && !debouncedSearchQuery) {
+          allAssignmentsRef.current = validAssignments;
+          // Extract filter options from all unfiltered data
+          extractFilterOptions(validAssignments);
+        } else {
+          // Extract filter options from the stored unfiltered data
+          extractFilterOptions(allAssignmentsRef.current);
+        }
       } else {
         setAssignments([]);
+        // Extract filter options from empty array
+        extractFilterOptions([]);
       }
       
     } catch (err) {
       console.error('Error fetching assignments:', err);
       setError('Failed to fetch fee assignments');
       setAssignments([]);
+      // Extract filter options from empty array on error
+      extractFilterOptions([]);
     } finally {
       setLoading(false);
     }
-  }, [sortBy, sortDirection, debouncedSearchQuery]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy, sortDirection, debouncedSearchQuery, feeTypeFilter, categoryFilter, statusFilter]);
 
   // Search students function
   const searchStudents = useCallback(async (query: string) => {
@@ -221,11 +284,12 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
       [field]: value
     }));
 
-    // Clear error for this field
-    if (formErrors[field]) {
+    // Clear error for this field and non_field_errors
+    if (formErrors[field] || formErrors.non_field_errors) {
       setFormErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[field];
+        delete newErrors.non_field_errors;
         return newErrors;
       });
     }
@@ -274,7 +338,14 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
       console.error('Error creating assignment:', error);
       
       if (error.response?.data?.errors) {
-        setFormErrors(error.response.data.errors);
+        const apiErrors = error.response.data.errors;
+        
+        // Handle non_field_errors (general validation errors)
+        if (apiErrors.non_field_errors) {
+          setFormErrors({ non_field_errors: apiErrors.non_field_errors });
+        } else {
+          setFormErrors(apiErrors);
+        }
       } else {
         setFormErrors({ general: ['Failed to create fee assignment. Please try again.'] });
       }
@@ -383,11 +454,12 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
       [field]: value
     }));
 
-    // Clear error for this field
-    if (editFormErrors[field]) {
+    // Clear error for this field and non_field_errors
+    if (editFormErrors[field] || editFormErrors.non_field_errors) {
       setEditFormErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[field];
+        delete newErrors.non_field_errors;
         return newErrors;
       });
     }
@@ -433,7 +505,14 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
       console.error('Error updating assignment:', error);
       
       if (error.response?.data?.errors) {
-        setEditFormErrors(error.response.data.errors);
+        const apiErrors = error.response.data.errors;
+        
+        // Handle non_field_errors (general validation errors)
+        if (apiErrors.non_field_errors) {
+          setEditFormErrors({ non_field_errors: apiErrors.non_field_errors });
+        } else {
+          setEditFormErrors(apiErrors);
+        }
       } else {
         setEditFormErrors({ general: ['Failed to update fee assignment. Please try again.'] });
       }
@@ -741,6 +820,16 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                       </div>
                       <div className="ml-3">
                         <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                        {/* Display non_field_errors (general validation errors) */}
+                        {formErrors.non_field_errors && (
+                          <div className="mt-2">
+                            {formErrors.non_field_errors.map((error: string, index: number) => (
+                              <p key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded-md mt-1">
+                                {error}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -752,14 +841,11 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
                     Academic Year *
                   </label>
-                  <input
-                    type="text"
+                  <YearPicker
                     value={newAssignment.academic_year}
-                    onChange={(e) => handleFormInputChange('academic_year', e.target.value)}
-                    placeholder="e.g., 2024-2025"
-                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
-                      formErrors.academic_year ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onChange={(value) => handleFormInputChange('academic_year', value)}
+                    placeholder="Select academic year (e.g., 2024-2025)"
+                    error={!!formErrors.academic_year}
                   />
                   {formErrors.academic_year && (
                     <p className="mt-1 text-xs text-red-600">{formErrors.academic_year[0]}</p>
@@ -1110,6 +1196,16 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                       </div>
                       <div className="ml-3">
                         <p className="text-sm font-medium text-red-800">Please fix the errors below</p>
+                        {/* Display non_field_errors (general validation errors) */}
+                        {editFormErrors.non_field_errors && (
+                          <div className="mt-2">
+                            {editFormErrors.non_field_errors.map((error: string, index: number) => (
+                              <p key={index} className="text-sm text-red-700 bg-red-100 px-2 py-1 rounded-md mt-1">
+                                {error}
+                              </p>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1121,14 +1217,11 @@ const StudentFeeAssignment: React.FC<StudentFeeAssignmentProps> = ({
                     <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>
                     Academic Year *
                   </label>
-                  <input
-                    type="text"
+                  <YearPicker
                     value={editFormData.academic_year || ""}
-                    onChange={(e) => handleEditFormInputChange('academic_year', e.target.value)}
-                    placeholder="e.g., 2024-2025"
-                    className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 bg-white ${
-                      editFormErrors.academic_year ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onChange={(value) => handleEditFormInputChange('academic_year', value)}
+                    placeholder="Select academic year (e.g., 2024-2025)"
+                    error={!!editFormErrors.academic_year}
                   />
                   {editFormErrors.academic_year && (
                     <p className="mt-1 text-xs text-red-600">{editFormErrors.academic_year[0]}</p>

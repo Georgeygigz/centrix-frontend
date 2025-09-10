@@ -17,6 +17,50 @@ const Fees: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
 
+  // Dynamic filter options for student assignment tab
+  const [studentAssignmentFilterOptions, setStudentAssignmentFilterOptions] = useState<{
+    classes: Array<{ id: string; name: string }>;
+    streams: Array<{ id: string; name: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }>({
+    classes: [],
+    streams: [],
+    statuses: []
+  });
+
+  // Dynamic filter options for fee structure tab
+  const [feeStructureFilterOptions, setFeeStructureFilterOptions] = useState<{
+    feeTypes: Array<{ value: string; label: string }>;
+    categories: Array<{ value: string; label: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }>({
+    feeTypes: [],
+    categories: [],
+    statuses: []
+  });
+
+  // Dynamic filter options for fee invoice tab
+  const [feeInvoiceFilterOptions, setFeeInvoiceFilterOptions] = useState<{
+    invoiceStatuses: Array<{ value: string; label: string }>;
+    feeTypes: Array<{ value: string; label: string }>;
+    months: Array<{ value: string; label: string }>;
+  }>({
+    invoiceStatuses: [],
+    feeTypes: [],
+    months: []
+  });
+
+  // Dynamic filter options for fee payment tab
+  const [feePaymentFilterOptions, setFeePaymentFilterOptions] = useState<{
+    paymentStatuses: Array<{ value: string; label: string }>;
+    paymentMethods: Array<{ value: string; label: string }>;
+    amountRanges: Array<{ value: string; label: string }>;
+  }>({
+    paymentStatuses: [],
+    paymentMethods: [],
+    amountRanges: []
+  });
+
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -34,6 +78,42 @@ const Fees: React.FC = () => {
     setSearchQuery('');
     setSortBy('');
     setSortDirection('asc');
+  };
+
+  // Handle filter options update from StudentFeeAssignment
+  const handleStudentAssignmentFilterOptionsUpdate = (options: {
+    classes: Array<{ id: string; name: string }>;
+    streams: Array<{ id: string; name: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }) => {
+    setStudentAssignmentFilterOptions(options);
+  };
+
+  // Handle filter options update from FeeStructure
+  const handleFeeStructureFilterOptionsUpdate = (options: {
+    feeTypes: Array<{ value: string; label: string }>;
+    categories: Array<{ value: string; label: string }>;
+    statuses: Array<{ value: string; label: string }>;
+  }) => {
+    setFeeStructureFilterOptions(options);
+  };
+
+  // Handle filter options update from FeeInvoice
+  const handleFeeInvoiceFilterOptionsUpdate = (options: {
+    invoiceStatuses: Array<{ value: string; label: string }>;
+    feeTypes: Array<{ value: string; label: string }>;
+    months: Array<{ value: string; label: string }>;
+  }) => {
+    setFeeInvoiceFilterOptions(options);
+  };
+
+  // Handle filter options update from FeePayment
+  const handleFeePaymentFilterOptionsUpdate = (options: {
+    paymentStatuses: Array<{ value: string; label: string }>;
+    paymentMethods: Array<{ value: string; label: string }>;
+    amountRanges: Array<{ value: string; label: string }>;
+  }) => {
+    setFeePaymentFilterOptions(options);
   };
 
   // Add Fee Structure drawer state
@@ -101,17 +181,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Types</option>
-              <option value="tuition">Tuition</option>
-              <option value="development">Development</option>
-              <option value="library">Library</option>
-              <option value="laboratory">Laboratory</option>
-              <option value="sports">Sports</option>
-              <option value="transport">Transport</option>
-              <option value="hostel">Hostel</option>
-              <option value="exam">Exam</option>
-              <option value="miscellaneous">Miscellaneous</option>
-              <option value="fine">Fine</option>
-              <option value="discount">Discount</option>
+              {feeStructureFilterOptions.feeTypes.map((feeType) => (
+                <option key={feeType.value} value={feeType.value}>
+                  {feeType.label}
+                </option>
+              ))}
             </select>
 
             {/* Category Filter */}
@@ -121,10 +195,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Categories</option>
-              <option value="academic">Academic</option>
-              <option value="non_academic">Non-Academic</option>
-              <option value="fine">Fine</option>
-              <option value="discount">Discount</option>
+              {feeStructureFilterOptions.categories.map((category) => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
+                </option>
+              ))}
             </select>
 
             {/* Status Filter */}
@@ -134,8 +209,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              {feeStructureFilterOptions.statuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
           </>
         );
@@ -149,9 +227,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Classes</option>
-              <option value="class1">Class 1</option>
-              <option value="class2">Class 2</option>
-              <option value="class3">Class 3</option>
+              {studentAssignmentFilterOptions.classes.map((classOption) => (
+                <option key={classOption.id} value={classOption.id}>
+                  {classOption.name}
+                </option>
+              ))}
             </select>
 
             {/* Stream Filter */}
@@ -161,9 +241,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Streams</option>
-              <option value="science">Science</option>
-              <option value="commerce">Commerce</option>
-              <option value="arts">Arts</option>
+              {studentAssignmentFilterOptions.streams.map((streamOption) => (
+                <option key={streamOption.id} value={streamOption.id}>
+                  {streamOption.name}
+                </option>
+              ))}
             </select>
 
             {/* Assignment Status Filter */}
@@ -173,9 +255,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
-              <option value="assigned">Assigned</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
+              {studentAssignmentFilterOptions.statuses.map((statusOption) => (
+                <option key={statusOption.value} value={statusOption.value}>
+                  {statusOption.label}
+                </option>
+              ))}
             </select>
           </>
         );
@@ -189,10 +273,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
-              <option value="draft">Draft</option>
-              <option value="sent">Sent</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
+              {feeInvoiceFilterOptions.invoiceStatuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
 
             {/* Fee Type Filter */}
@@ -202,10 +287,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Types</option>
-              <option value="tuition">Tuition</option>
-              <option value="development">Development</option>
-              <option value="library">Library</option>
-              <option value="laboratory">Laboratory</option>
+              {feeInvoiceFilterOptions.feeTypes.map((feeType) => (
+                <option key={feeType.value} value={feeType.value}>
+                  {feeType.label}
+                </option>
+              ))}
             </select>
 
             {/* Month Filter */}
@@ -215,10 +301,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Months</option>
-              <option value="january">January</option>
-              <option value="february">February</option>
-              <option value="march">March</option>
-              <option value="april">April</option>
+              {feeInvoiceFilterOptions.months.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
             </select>
           </>
         );
@@ -232,10 +319,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
+              {feePaymentFilterOptions.paymentStatuses.map((status) => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
             </select>
 
             {/* Payment Method Filter */}
@@ -245,10 +333,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Methods</option>
-              <option value="cash">Cash</option>
-              <option value="card">Card</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="cheque">Cheque</option>
+              {feePaymentFilterOptions.paymentMethods.map((method) => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
             </select>
 
             {/* Amount Range Filter */}
@@ -258,10 +347,11 @@ const Fees: React.FC = () => {
               className="px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent transition-colors duration-200"
             >
               <option value="">All Amounts</option>
-              <option value="0-1000">KSh 0 - KSh 1,000</option>
-              <option value="1000-5000">KSh 1,000 - KSh 5,000</option>
-              <option value="5000-10000">KSh 5,000 - KSh 10,000</option>
-              <option value="10000+">KSh 10,000+</option>
+              {feePaymentFilterOptions.amountRanges.map((range) => (
+                <option key={range.value} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
             </select>
           </>
         );
@@ -293,6 +383,7 @@ const Fees: React.FC = () => {
         isAddDrawerOpen={isAddDrawerOpen}
         openAddDrawer={openAddDrawer}
         closeAddDrawer={closeAddDrawer}
+        onFilterOptionsUpdate={handleFeeStructureFilterOptionsUpdate}
       />
     },
     {
@@ -317,6 +408,7 @@ const Fees: React.FC = () => {
         isAddDrawerOpen={isAddDrawerOpen}
         openAddDrawer={openAddDrawer}
         closeAddDrawer={closeAddDrawer}
+        onFilterOptionsUpdate={handleStudentAssignmentFilterOptionsUpdate}
       />
     },
     {
@@ -341,6 +433,7 @@ const Fees: React.FC = () => {
         isAddDrawerOpen={isAddDrawerOpen}
         openAddDrawer={openAddDrawer}
         closeAddDrawer={closeAddDrawer}
+        onFilterOptionsUpdate={handleFeeInvoiceFilterOptionsUpdate}
       />
     },
     {
@@ -360,6 +453,7 @@ const Fees: React.FC = () => {
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
         clearFilters={clearFilters}
+        onFilterOptionsUpdate={handleFeePaymentFilterOptionsUpdate}
       />
     }
   ];

@@ -5,7 +5,7 @@ export interface FeeStructure {
   category: 'academic' | 'non_academic' | 'fine' | 'discount';
   description?: string;
   amount: string;
-  frequency: 'one_time' | 'monthly' | 'quarterly' | 'termly' | 'yearly' | 'custom';
+  frequency: 'one_time' | 'monthly' | 'termly' | 'yearly' | 'custom';
   applicable_class?: string | null;
   applicable_stream?: string | null;
   applicable_to_all: boolean;
@@ -13,7 +13,7 @@ export interface FeeStructure {
   is_discount: boolean;
   discount_percentage: string;
   max_discount_amount?: string | null;
-  due_date: number;
+  due_date: string;
   late_fee_applicable: boolean;
   late_fee_amount: string;
   late_fee_percentage: string;
@@ -145,7 +145,7 @@ export interface FeeInvoiceItem {
     is_discount: boolean;
     discount_percentage: string;
     max_discount_amount: string | null;
-    due_date: number;
+    due_date: string;
     late_fee_applicable: boolean;
     late_fee_amount: string;
     late_fee_percentage: string;
@@ -346,7 +346,7 @@ export interface FeeStructureResponse {
 export interface GenerateTermInvoicesRequest {
   academic_year: string;
   term: number;
-  due_date_days: number;
+  due_date_days: string;
 }
 
 export interface GenerateTermInvoicesResponse {

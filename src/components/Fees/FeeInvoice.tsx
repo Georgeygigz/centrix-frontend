@@ -25,6 +25,11 @@ interface FeeInvoiceProps {
   isAddDrawerOpen: boolean;
   openAddDrawer: () => void;
   closeAddDrawer: () => void;
+  onFilterOptionsUpdate?: (options: {
+    invoiceStatuses: Array<{ value: string; label: string }>;
+    feeTypes: Array<{ value: string; label: string }>;
+    months: Array<{ value: string; label: string }>;
+  }) => void;
 }
 
 const FeeInvoice: React.FC<FeeInvoiceProps> = ({
@@ -44,9 +49,11 @@ const FeeInvoice: React.FC<FeeInvoiceProps> = ({
   clearFilters,
   isAddDrawerOpen,
   openAddDrawer,
-  closeAddDrawer
+  closeAddDrawer,
+  onFilterOptionsUpdate
 }) => {
   const [invoices, setInvoices] = useState<FeeInvoiceType[]>([]);
+  const allInvoicesRef = useRef<FeeInvoiceType[]>([]); // Store unfiltered data for filter options
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<FeeInvoiceType | null>(null);
@@ -58,15 +65,84 @@ const FeeInvoice: React.FC<FeeInvoiceProps> = ({
   const [paymentInvoice, setPaymentInvoice] = useState<FeeInvoiceType | null>(null);
   const dropdownRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
+  // Function to extract unique filter options from invoices
+  const extractFilterOptions = (invoices: FeeInvoiceType[]) => {
+    const invoiceStatusesMap = new Map<string, { value: string; label: string }>();
+    const feeTypesMap = new Map<string, { value: string; label: string }>();
+    const monthsMap = new Map<string, { value: string; label: string }>();
+
+    invoices.forEach(invoice => {
+      // Extract unique invoice statuses
+      if (invoice.status) {
+        const label = invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1).replace('_', ' ');
+        invoiceStatusesMap.set(invoice.status, {
+          value: invoice.status,
+          label: label
+        });
+      }
+
+      // Extract unique fee types from invoice items
+      if (invoice.items && Array.isArray(invoice.items)) {
+        invoice.items.forEach(item => {
+          if (item.fee_structure_details?.fee_type) {
+            const feeType = item.fee_structure_details.fee_type;
+            const label = feeType.charAt(0).toUpperCase() + feeType.slice(1).replace('_', ' ');
+            feeTypesMap.set(feeType, {
+              value: feeType,
+              label: label
+            });
+          }
+        });
+      }
+
+      // Extract unique months from issue_date
+      if (invoice.issue_date) {
+        const date = new Date(invoice.issue_date);
+        const month = date.toLocaleString('default', { month: 'long' }).toLowerCase();
+        const monthLabel = date.toLocaleString('default', { month: 'long' });
+        monthsMap.set(month, {
+          value: month,
+          label: monthLabel
+        });
+      }
+    });
+
+    const filterOptions = {
+      invoiceStatuses: Array.from(invoiceStatusesMap.values()),
+      feeTypes: Array.from(feeTypesMap.values()),
+      months: Array.from(monthsMap.values())
+    };
+
+    // Call the callback to update parent component
+    if (onFilterOptionsUpdate) {
+      onFilterOptionsUpdate(filterOptions);
+    }
+
+    return filterOptions;
+  };
+
   const fetchInvoices = async (params?: InvoiceQueryParams) => {
     setLoading(true);
     setError(null);
     try {
       const response = await feesService.getAllInvoices(params);
-      setInvoices(response.results);
+      const invoicesData = response.results;
+      setInvoices(invoicesData);
+      
+      // If this is the first load (no filters applied), store all data for filter options
+      if (!feeTypeFilter && !categoryFilter && !statusFilter && !debouncedSearchQuery) {
+        allInvoicesRef.current = invoicesData;
+        // Extract filter options from all unfiltered data
+        extractFilterOptions(invoicesData);
+      } else {
+        // Extract filter options from the stored unfiltered data
+        extractFilterOptions(allInvoicesRef.current);
+      }
     } catch (err) {
       setError('Failed to fetch invoices');
       console.error('Error fetching invoices:', err);
+      // Extract filter options from empty array on error
+      extractFilterOptions([]);
     } finally {
       setLoading(false);
     }
@@ -78,6 +154,7 @@ const FeeInvoice: React.FC<FeeInvoiceProps> = ({
       ordering: sortBy ? `${sortDirection === 'desc' ? '-' : ''}${sortBy}` : undefined,
     };
     fetchInvoices(params);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearchQuery, sortBy, sortDirection]);
 
   // Close dropdown when clicking outside

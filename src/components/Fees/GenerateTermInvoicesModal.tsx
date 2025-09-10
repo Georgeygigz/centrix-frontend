@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FaTimes, FaSpinner, FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
 import { feesService } from '../../services/fees';
 import { GenerateTermInvoicesRequest, GenerateTermInvoicesResponse } from '../../types/fees';
+import YearPicker from './YearPicker';
 
 interface GenerateTermInvoicesModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const GenerateTermInvoicesModal: React.FC<GenerateTermInvoicesModalProps> = ({
   const [formData, setFormData] = useState<GenerateTermInvoicesRequest>({
     academic_year: '',
     term: 1,
-    due_date_days: 30
+    due_date_days: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,7 @@ const GenerateTermInvoicesModal: React.FC<GenerateTermInvoicesModalProps> = ({
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'term' || name === 'due_date_days' ? parseInt(value) || 0 : value
+      [name]: name === 'term' ? parseInt(value) || 0 : value
     }));
   };
 
@@ -54,18 +55,13 @@ const GenerateTermInvoicesModal: React.FC<GenerateTermInvoicesModalProps> = ({
     setFormData({
       academic_year: '',
       term: 1,
-      due_date_days: 30
+      due_date_days: ''
     });
     setError(null);
     setSuccess(null);
     onClose();
   };
 
-  const getCurrentAcademicYear = () => {
-    const currentYear = new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    return `${currentYear}-${nextYear}`;
-  };
 
   if (!isOpen) return null;
 
@@ -129,17 +125,12 @@ const GenerateTermInvoicesModal: React.FC<GenerateTermInvoicesModalProps> = ({
                 <label htmlFor="academic_year" className="block text-sm font-medium text-gray-700 mb-1">
                   Academic Year
                 </label>
-                <input
-                  type="text"
-                  id="academic_year"
-                  name="academic_year"
+                <YearPicker
                   value={formData.academic_year}
-                  onChange={handleInputChange}
-                  placeholder={getCurrentAcademicYear()}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
+                  onChange={(value) => handleInputChange({ target: { name: 'academic_year', value } } as any)}
+                  placeholder="Select academic year (e.g., 2024-2025)"
                 />
-                <p className="text-xs text-gray-500 mt-1">Format: YYYY-YYYY (e.g., 2024-2025)</p>
+                <p className="text-xs text-gray-500 mt-1">Select the academic year for the invoices</p>
               </div>
 
               {/* Term */}
@@ -161,23 +152,21 @@ const GenerateTermInvoicesModal: React.FC<GenerateTermInvoicesModalProps> = ({
                 </select>
               </div>
 
-              {/* Due Date Days */}
+              {/* Due Date */}
               <div>
                 <label htmlFor="due_date_days" className="block text-sm font-medium text-gray-700 mb-1">
-                  Due Date (Days from Today)
+                  Due Date
                 </label>
                 <input
-                  type="number"
+                  type="date"
                   id="due_date_days"
                   name="due_date_days"
                   value={formData.due_date_days}
                   onChange={handleInputChange}
-                  min="1"
-                  max="365"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Number of days from today when invoices are due</p>
+                <p className="text-xs text-gray-500 mt-1">Date when invoices are due</p>
               </div>
 
               {/* Submit Button */}
