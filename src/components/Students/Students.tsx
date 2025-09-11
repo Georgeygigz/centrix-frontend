@@ -9,6 +9,7 @@ import { PermissionGate } from '../RBAC';
 import { useFeatureSwitch } from '../../hooks/useFeatureSwitch';
 import DisabledButtonWithTooltip from './DisabledButtonWithTooltip';
 import { useAuth } from '../../context/AuthContext';
+import { useRBAC } from '../../context/RBACContext';
 import EnhancedDropdown from './EnhancedDropdown';
 
 
@@ -16,6 +17,9 @@ import EnhancedDropdown from './EnhancedDropdown';
 const Students: React.FC = () => {
   // Auth context
   const { user } = useAuth();
+  
+  // RBAC context
+  const { userRole } = useRBAC();
   
   // Feature switch hook
   const {
@@ -35,6 +39,14 @@ const Students: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('admission');
+  
+  // Force parent users to only see admission tab
+  useEffect(() => {
+    if (userRole === 'parent' && activeTab !== 'admission') {
+      setActiveTab('admission');
+    }
+  }, [userRole, activeTab]);
+  
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [dropdownCoords, setDropdownCoords] = useState({ x: 0, y: 0 });
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -1562,56 +1574,60 @@ const Students: React.FC = () => {
                 >
                   Admission
                 </button>
-                <button 
-                  onClick={() => setActiveTab('classes')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'classes' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Classes
-                </button>
-                <button 
-                  onClick={() => setActiveTab('streams')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'streams' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Streams
-                </button>
-                <button 
-                  onClick={() => setActiveTab('academic')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'academic' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Academic
-                </button>
-                <button 
-                  onClick={() => setActiveTab('financial')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'financial' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Financial
-                </button>
-                <button 
-                  onClick={() => setActiveTab('attendance')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'attendance' 
-                      ? 'border-blue-500 text-blue-600' 
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  Attendance
-                </button>
+                {userRole !== 'parent' && (
+                  <>
+                    <button 
+                      onClick={() => setActiveTab('classes')}
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                        activeTab === 'classes' 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Classes
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('streams')}
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                        activeTab === 'streams' 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Streams
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('academic')}
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                        activeTab === 'academic' 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Academic
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('financial')}
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                        activeTab === 'financial' 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Financial
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('attendance')}
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
+                        activeTab === 'attendance' 
+                          ? 'border-blue-500 text-blue-600' 
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      Attendance
+                    </button>
+                  </>
+                )}
               </nav>
 
               {/* Search, Filter, and Sort Controls */}

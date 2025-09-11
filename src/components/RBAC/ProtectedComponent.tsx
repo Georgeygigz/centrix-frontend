@@ -5,7 +5,7 @@ import { Permission } from '../../types/rbac';
 interface ProtectedComponentProps {
   children: ReactNode;
   requiredPermissions?: Permission[];
-  requiredRole?: 'root' | 'super_admin' | 'admin' | 'user';
+  requiredRole?: 'root' | 'super_admin' | 'admin' | 'user' | 'parent';
   fallback?: ReactNode;
   showFallback?: boolean;
   mode?: 'any' | 'all'; // 'any' = has any permission, 'all' = has all permissions
@@ -27,6 +27,7 @@ const ProtectedComponent: React.FC<ProtectedComponentProps> = ({
     
     const roleHierarchy = {
       'user': 1,
+      'parent': 1,
       'admin': 2,
       'super_admin': 3,
       'root': 4

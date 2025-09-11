@@ -29,7 +29,7 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
     if (!user?.role) return 'user';
     
     // Ensure the role is valid
-    const validRoles: UserRole[] = ['root', 'super_admin', 'admin', 'user'];
+    const validRoles: UserRole[] = ['root', 'super_admin', 'admin', 'user', 'parent'];
     return validRoles.includes(user.role as UserRole) ? user.role as UserRole : 'user';
   }, [user?.role]);
 
@@ -57,7 +57,7 @@ export const RBACProvider: React.FC<RBACProviderProps> = ({ children }) => {
 
   // Get the minimum role required for a specific permission
   const getRequiredRole = (permission: Permission): UserRole | null => {
-    const roles: UserRole[] = ['root', 'super_admin', 'admin', 'user'];
+    const roles: UserRole[] = ['root', 'super_admin', 'admin', 'user', 'parent'];
     
     for (const role of roles) {
       if (ROLE_PERMISSIONS[role].includes(permission)) {
