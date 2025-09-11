@@ -4,6 +4,8 @@ export interface Parent {
   relationship: string;
   phone: string;
   email: string;
+  has_user_account?: boolean;
+  user_account_id?: string;
   created_at: string;
 }
 
@@ -136,4 +138,23 @@ export interface AssociateParentRequest {
   is_emergency_contact: boolean;
   can_pick_up: boolean;
   notes: string;
+}
+
+export interface ParentLoginCredentials {
+  id: string;
+  email: string;
+  username: string;
+  password: string;
+  token: string;
+}
+
+export interface ParentLoginCredentialsResponse {
+  data: ParentLoginCredentials;
+  status: string;
+  message: string;
+}
+
+export interface ParentPasswordResetRequest {
+  parent_id: string;
+  password: string;
 }

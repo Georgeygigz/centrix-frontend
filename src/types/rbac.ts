@@ -1,5 +1,5 @@
 // Role types based on your backend implementation
-export type UserRole = 'root' | 'super_admin' | 'admin' | 'user';
+export type UserRole = 'root' | 'super_admin' | 'admin' | 'user' | 'parent';
 
 // Permission types for different operations
 export type Permission = 
@@ -84,6 +84,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   user: [
     'view_own_school',
+    'view_students'
+  ],
+  parent: [
     'view_students'
   ]
 };

@@ -5,7 +5,7 @@ import { Permission } from '../../types/rbac';
 interface PermissionGateProps {
   children: ReactNode;
   permissions?: Permission[];
-  roles?: ('root' | 'super_admin' | 'admin' | 'user')[];
+  roles?: ('root' | 'super_admin' | 'admin' | 'user' | 'parent')[];
   fallback?: ReactNode;
   errorMessage?: string;
   showError?: boolean;

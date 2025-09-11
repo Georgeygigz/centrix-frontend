@@ -693,6 +693,22 @@ export const apiService = {
     getStudents: async (parentId: string) => {
       return apiService.authenticatedRequest(`/students/parents/${parentId}/students`, { method: 'GET' });
     },
+
+    // Generate parent login credentials
+    generateLoginCredentials: async (parentId: string) => {
+      return apiService.authenticatedRequest('/users/register/parent', {
+        method: 'POST',
+        body: JSON.stringify({ parent_id: parentId }),
+      });
+    },
+
+    // Reset parent password
+    resetPassword: async (parentId: string, password: string) => {
+      return apiService.authenticatedRequest(`/users/password/reset/${parentId}`, {
+        method: 'POST',
+        body: JSON.stringify({ password }),
+      });
+    },
   },
 };
 
