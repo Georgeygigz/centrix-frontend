@@ -14,6 +14,7 @@ import {
   SuperAdminBillingDashboard
 } from '../components/Billing';
 import { ActivityLog } from '../components/ActivityLog';
+import { Assessments } from '../components/Assessments';
 
 
 const Dashboard: React.FC = () => {
@@ -27,7 +28,7 @@ const Dashboard: React.FC = () => {
       'fees': 'Fees',
       'ebook': 'EBook',
       'enrollments': 'Enrollments',
-      'reports': 'Reports',
+      'assessments': 'Assessments',
 
       'profile': 'Manage Profile',
       'admin-panel': 'Admin Panel',
@@ -55,8 +56,8 @@ const Dashboard: React.FC = () => {
         return <div className="p-6 text-center text-gray-500">EBook page coming soon...</div>;
       case 'enrollments':
         return <div className="p-6 text-center text-gray-500">Enrollments page coming soon...</div>;
-      case 'reports':
-        return <div className="p-6 text-center text-gray-500">Reports page coming soon...</div>;
+      case 'assessments':
+        return <Assessments />;
 
       case 'profile':
         return <div className="p-6 text-center text-gray-500">Profile page coming soon...</div>;

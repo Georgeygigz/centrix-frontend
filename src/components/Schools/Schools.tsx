@@ -471,8 +471,7 @@ const Schools: React.FC = () => {
       <div className="p-4">
         {/* Header with tabs, search and filters */}
         <div className="bg-white rounded-md shadow-sm p-4 mb-4">
-          <div className="mb-4">
-            {/* Tabs and Controls Row */}
+          {/* Tabs and Controls Row */}
             <div className="flex items-center justify-between">
               {/* Tabs */}
               <nav className="flex space-x-6">
@@ -553,7 +552,6 @@ const Schools: React.FC = () => {
                 </PermissionGate>
               </div>
             </div>
-          </div>
         </div>
 
                 {/* Tab Content */}

@@ -29,10 +29,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, onPageChange }) => {
       requiredPermissions: ['access_fees'] as Permission[],
     }] : []),
     {
-      id: 'reports',
-      label: 'Reports',
+      id: 'assessments',
+      label: 'Assessments',
       icon: FaChartBar,
-      requiredPermissions: ['access_reports'] as Permission[],
+      requiredPermissions: ['access_assessments'] as Permission[],
     },
     {
       id: 'admin-panel',
