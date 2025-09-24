@@ -11,6 +11,7 @@ import DisabledButtonWithTooltip from './DisabledButtonWithTooltip';
 import { useAuth } from '../../context/AuthContext';
 import { useRBAC } from '../../context/RBACContext';
 import EnhancedDropdown from './EnhancedDropdown';
+import WorkflowGuide from './WorkflowGuide';
 
 
 
@@ -1564,37 +1565,52 @@ const Students: React.FC = () => {
             <div className="flex items-center justify-between">
               {/* Tabs */}
               <nav className="flex space-x-6">
-                <button 
+                <button
                   onClick={() => setActiveTab('admission')}
-                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                    activeTab === 'admission' 
-                      ? 'border-blue-500 text-blue-600' 
+                  className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 flex items-center space-x-1 ${
+                    activeTab === 'admission'
+                      ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
-                  Admission
+                  <span>Admission</span>
+                  {streams.length > 0 && classes.length > 0 && (
+                    FaCheckCircle({ className: "w-3 h-3 text-green-500", title: "Ready for admissions" })
+                  )}
+                  {(streams.length === 0 || classes.length === 0) && userRole !== 'parent' && (
+                    FaExclamationTriangle({ className: "w-3 h-3 text-amber-500", title: "Setup required" })
+                  )}
                 </button>
                 {userRole !== 'parent' && (
                   <>
-                    <button 
+                    <button
                       onClick={() => setActiveTab('classes')}
-                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                        activeTab === 'classes' 
-                          ? 'border-blue-500 text-blue-600' 
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 flex items-center space-x-1 ${
+                        activeTab === 'classes'
+                          ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      Classes
+                      <span>Classes</span>
+                      {classes.length > 0 && (
+                        FaCheckCircle({ className: "w-3 h-3 text-green-500", title: "Classes created" })
+                      )}
+                      {streams.length === 0 && (
+                        FaExclamationTriangle({ className: "w-3 h-3 text-amber-500", title: "Create streams first" })
+                      )}
                     </button>
-                    <button 
+                    <button
                       onClick={() => setActiveTab('streams')}
-                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 ${
-                        activeTab === 'streams' 
-                          ? 'border-blue-500 text-blue-600' 
+                      className={`border-b-2 py-1 px-1 text-xs font-medium transition-colors duration-200 flex items-center space-x-1 ${
+                        activeTab === 'streams'
+                          ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      Streams
+                      <span>Streams</span>
+                      {streams.length > 0 && (
+                        FaCheckCircle({ className: "w-3 h-3 text-green-500", title: "Streams created" })
+                      )}
                     </button>
                     <button 
                       onClick={() => setActiveTab('academic')}
@@ -1775,7 +1791,7 @@ const Students: React.FC = () => {
           <div className="bg-white rounded-md shadow-sm relative">
             {/* Grey overlay when admission is blocked */}
             {!featureSwitchLoading && isStudentAdmissionBlocked && (
-              <div 
+              <div
                 className="absolute inset-0 bg-gray-500 bg-opacity-15 z-10 flex items-center justify-center"
                 title={blockMessage}
               >
@@ -1790,11 +1806,57 @@ const Students: React.FC = () => {
                 </div>
               </div>
             )}
-            
+
+            {/* Workflow Guide - Show when setup is incomplete */}
+            {userRole !== 'parent' && (streams.length === 0 || classes.length === 0) && (
+              <div className="p-4 border-b border-gray-200">
+                <WorkflowGuide
+                  hasStreams={streams.length > 0}
+                  hasClasses={classes.length > 0}
+                  onSwitchToStreams={() => setActiveTab('streams')}
+                  onSwitchToClasses={() => setActiveTab('classes')}
+                />
+              </div>
+            )}
+
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p className="mt-2 text-sm text-gray-600">Loading students...</p>
+              </div>
+            ) : paginatedStudents.length === 0 ? (
+              <div className="p-12 text-center">
+                {streams.length === 0 || classes.length === 0 ? (
+                  <div className="max-w-md mx-auto">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      {FaInfoCircle({ className: "w-8 h-8 text-blue-600" })}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Setup Required</h3>
+                    <p className="text-gray-600 mb-4">
+                      Before you can admit students, you need to set up your academic structure.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      The workflow guide above will help you get started.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="max-w-md mx-auto">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      {FaCheckCircle({ className: "w-8 h-8 text-green-600" })}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Ready for Students!</h3>
+                    <p className="text-gray-600 mb-6">
+                      Your streams and classes are set up. You can now start admitting students.
+                    </p>
+                    <button
+                      onClick={openAddDrawer}
+                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                    >
+                      <span className="mr-2">+</span>
+                      Admit Your First Student
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
