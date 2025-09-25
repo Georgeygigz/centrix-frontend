@@ -194,7 +194,6 @@ export interface CreateSchoolRequest {
 export interface Stream {
   id: string;
   name: string;
-  code: string;
   description: string;
   created_at: string;
   updated_at: string;
@@ -204,11 +203,8 @@ export interface Stream {
 export interface Class {
   id: string;
   name: string;
-  code: string;
   stream: Stream;
   description?: string;
-  level: number;
-  capacity: number;
   created_at: string;
   updated_at: string;
   deleted: boolean;

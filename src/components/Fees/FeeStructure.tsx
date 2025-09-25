@@ -246,7 +246,6 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
       const transformedClasses = classesData.map((cls: any) => ({
         id: cls.id,
         name: cls.name,
-        code: cls.code,
         stream: cls.stream
       }));
       
@@ -1064,7 +1063,7 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                           <option value="">Select a class</option>
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.code} - {cls.stream?.name || 'No Stream'}
+                              {cls.name} - {cls.stream?.name || 'No Stream'}
                             </option>
                           ))}
                         </select>
@@ -1476,7 +1475,7 @@ const FeeStructureComponent: React.FC<FeeStructureProps> = ({
                       <option value="">Select a class</option>
                       {classes.map((cls) => (
                         <option key={cls.id} value={cls.id}>
-                          {cls.code} - {cls.stream?.name || 'No Stream'}
+                          {cls.name} - {cls.stream?.name || 'No Stream'}
                         </option>
                       ))}
                     </select>

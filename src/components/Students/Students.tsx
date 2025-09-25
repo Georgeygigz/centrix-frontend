@@ -188,25 +188,18 @@ const Students: React.FC = () => {
 
   const [newStream, setNewStream] = useState<Partial<Stream>>({
     name: '',
-    code: '',
     description: ''
   });
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [newClass, setNewClass] = useState<{
     name: string;
-    code: string;
     stream: string;
     description: string;
-    level: number;
-    capacity: number;
   }>({
     name: '',
-    code: '',
     stream: '',
-    description: '',
-    level: 0,
-    capacity: 0
+    description: ''
   });
 
   const [students, setStudents] = useState<Student[]>([]);
@@ -442,17 +435,13 @@ const Students: React.FC = () => {
     });
     setNewStream({
       name: '',
-      code: '',
       description: ''
     });
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     setNewClass({
       name: '',
-      code: '',
       stream: '',
-      description: '',
-      level: 0,
-      capacity: 0
+      description: ''
     });
   };
 
@@ -461,7 +450,6 @@ const Students: React.FC = () => {
       // Create stream via API
       await apiService.students.createStream({
         name: newStream.name || '',
-        code: newStream.code || '',
         description: newStream.description || ''
       });
       
@@ -479,7 +467,6 @@ const Students: React.FC = () => {
       // Clear the form
       setNewStream({
         name: '',
-        code: '',
         description: ''
       });
       
@@ -519,11 +506,8 @@ const Students: React.FC = () => {
       // Create class via API
       await apiService.students.createClass({
         name: newClass.name || '',
-        code: newClass.code || '',
         stream: newClass.stream || '',
-        description: newClass.description || '',
-        level: newClass.level || undefined,
-        capacity: newClass.capacity || undefined
+        description: newClass.description || ''
       });
       
       // Re-fetch the classes list to get the updated data
@@ -540,11 +524,8 @@ const Students: React.FC = () => {
       // Clear the form
       setNewClass({
         name: '',
-        code: '',
         stream: '',
-        description: '',
-        level: 0,
-        capacity: 0
+        description: ''
       });
       
       // Close drawer after a short delay to ensure form is cleared
@@ -629,18 +610,14 @@ const Students: React.FC = () => {
       
       setNewStream({
         name: '',
-        code: '',
         description: ''
       });
       
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       setNewClass({
         name: '',
-        code: '',
         stream: '',
-        description: '',
-        level: 0,
-        capacity: 0
+        description: ''
       });
       
       // Close drawer after a short delay to ensure form is cleared
@@ -882,16 +859,15 @@ const Students: React.FC = () => {
     if (!editingStream || !originalStream) return false;
     
     const nameChanged = editingStream.name !== originalStream.name;
-    const codeChanged = editingStream.code !== originalStream.code;
     const descriptionChanged = editingStream.description !== originalStream.description;
     
     console.log('Stream modification check:', {
-      editingStream: { name: editingStream.name, code: editingStream.code, description: editingStream.description },
-      originalStream: { name: originalStream.name, code: originalStream.code, description: originalStream.description },
-      changes: { nameChanged, codeChanged, descriptionChanged }
+      editingStream: { name: editingStream.name, description: editingStream.description },
+      originalStream: { name: originalStream.name, description: originalStream.description },
+      changes: { nameChanged, descriptionChanged }
     });
     
-    return nameChanged || codeChanged || descriptionChanged;
+    return nameChanged || descriptionChanged;
   };
 
   // Check if class has been modified
@@ -899,14 +875,11 @@ const Students: React.FC = () => {
     if (!editingClass || !originalClass) return false;
     
     const nameChanged = editingClass.name !== originalClass.name;
-    const codeChanged = editingClass.code !== originalClass.code;
     const streamChanged = (typeof editingClass.stream === 'string' ? editingClass.stream : editingClass.stream?.id) !== 
                          (typeof originalClass.stream === 'string' ? originalClass.stream : originalClass.stream?.id);
     const descriptionChanged = editingClass.description !== originalClass.description;
-    const levelChanged = editingClass.level !== originalClass.level;
-    const capacityChanged = editingClass.capacity !== originalClass.capacity;
     
-    return nameChanged || codeChanged || streamChanged || descriptionChanged || levelChanged || capacityChanged;
+    return nameChanged || streamChanged || descriptionChanged;
   };
 
   // Check if student has been modified
@@ -1312,9 +1285,6 @@ const Students: React.FC = () => {
         if (editingStream.name !== originalStream.name) {
           streamChangedFields.name = editingStream.name;
         }
-        if (editingStream.code !== originalStream.code) {
-          streamChangedFields.code = editingStream.code;
-        }
         if (editingStream.description !== originalStream.description) {
           streamChangedFields.description = editingStream.description;
         }
@@ -1391,9 +1361,6 @@ const Students: React.FC = () => {
         
         if (editingClass.name !== originalClass.name) {
           apiData.name = editingClass.name;
-        }
-        if (editingClass.code !== originalClass.code) {
-          apiData.code = editingClass.code;
         }
         if (editingClass.stream !== originalClass.stream) {
           apiData.stream = typeof editingClass.stream === 'string' ? editingClass.stream : editingClass.stream?.id || '';
@@ -1722,16 +1689,13 @@ const Students: React.FC = () => {
                   {activeTab === 'classes' && (
                     <>
                       <option value="name">Class Name</option>
-                      <option value="code">Class Code</option>
                       <option value="stream.name">Stream</option>
-                      <option value="capacity">Capacity</option>
                       <option value="created_at">Created At</option>
                     </>
                   )}
                   {activeTab === 'streams' && (
                     <>
                       <option value="name">Stream Name</option>
-                      <option value="code">Stream Code</option>
                       <option value="description">Description</option>
                       <option value="created_at">Created At</option>
                     </>
@@ -2003,28 +1967,10 @@ const Students: React.FC = () => {
                           {getSortIcon('name')}
                         </div>
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>
-                        <div className="flex items-center space-x-1">
-                          <span>Class Code</span>
-                          {getSortIcon('code')}
-                        </div>
-                      </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('stream.name')}>
                         <div className="flex items-center space-x-1">
                           <span>Stream</span>
                           {getSortIcon('stream.name')}
-                        </div>
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('level')}>
-                        <div className="flex items-center space-x-1">
-                          <span>Level</span>
-                          {getSortIcon('level')}
-                        </div>
-                      </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('capacity')}>
-                        <div className="flex items-center space-x-1">
-                          <span>Capacity</span>
-                          {getSortIcon('capacity')}
                         </div>
                       </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('created_at')}>
@@ -2041,7 +1987,7 @@ const Students: React.FC = () => {
                   <tbody className="bg-white divide-y divide-gray-100">
                     {classes.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-3 py-6 text-center text-xs text-gray-500">
+                        <td colSpan={4} className="px-3 py-6 text-center text-xs text-gray-500">
                           No classes found
                         </td>
                       </tr>
@@ -2052,16 +1998,7 @@ const Students: React.FC = () => {
                             {classItem.name}
                           </td>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                            {classItem.code}
-                          </td>
-                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {classItem.stream?.name || 'N/A'}
-                          </td>
-                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                            {classItem.level || 'N/A'}
-                          </td>
-                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                            {classItem.capacity || 'N/A'}
                           </td>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {new Date(classItem.created_at).toLocaleDateString()}
@@ -2144,12 +2081,6 @@ const Students: React.FC = () => {
                           {getSortIcon('name')}
                         </div>
                       </th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>
-                        <div className="flex items-center space-x-1">
-                          <span>Stream Code</span>
-                          {getSortIcon('code')}
-                        </div>
-                      </th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => handleSort('description')}>
                         <div className="flex items-center space-x-1">
                           <span>Description</span>
@@ -2170,7 +2101,7 @@ const Students: React.FC = () => {
                   <tbody className="bg-white divide-y divide-gray-100">
                     {streams.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-3 py-6 text-center text-xs text-gray-500">
+                        <td colSpan={4} className="px-3 py-6 text-center text-xs text-gray-500">
                           No streams found
                         </td>
                       </tr>
@@ -2179,9 +2110,6 @@ const Students: React.FC = () => {
                         <tr key={stream.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-25'}>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs font-medium text-gray-900">
                             {stream.name}
-                          </td>
-                          <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
-                            {stream.code}
                           </td>
                           <td className="px-3 py-1.5 whitespace-nowrap text-xs text-gray-900">
                             {stream.description}
@@ -2997,24 +2925,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                        Stream Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingStream.code}
-                        onChange={(e) => handleStreamInputChange('code', e.target.value)}
-                        placeholder="Enter stream code"
-                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
-                          editFormErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      />
-                      {editFormErrors.code && (
-                        <p className="mt-1 text-xs text-red-600">{editFormErrors.code[0]}</p>
-                      )}
-                    </div>
 
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -3061,24 +2971,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                        Class Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={editingClass.code}
-                        onChange={(e) => handleClassInputChange('code', e.target.value)}
-                        placeholder="Enter class code"
-                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
-                          editFormErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      />
-                      {editFormErrors.code && (
-                        <p className="mt-1 text-xs text-red-600">{editFormErrors.code[0]}</p>
-                      )}
-                    </div>
 
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -3095,7 +2987,7 @@ const Students: React.FC = () => {
                         <option value="">Select a stream</option>
                         {streams.map((stream) => (
                           <option key={stream.id} value={stream.id}>
-                            {stream.name} - {stream.code}
+                            {stream.name}
                           </option>
                         ))}
                       </select>
@@ -3123,45 +3015,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
-                          Level (Optional)
-                        </label>
-                        <input
-                          type="number"
-                          value={editingClass.level || ''}
-                          onChange={(e) => handleClassInputChange('level', parseInt(e.target.value) || 0)}
-                          placeholder="Enter class level"
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
-                            editFormErrors.level ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        />
-                        {editFormErrors.level && (
-                          <p className="mt-1 text-xs text-red-600">{editFormErrors.level[0]}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
-                          Capacity (Optional)
-                        </label>
-                        <input
-                          type="number"
-                          value={editingClass.capacity || ''}
-                          onChange={(e) => handleClassInputChange('capacity', parseInt(e.target.value) || 0)}
-                          placeholder="Enter class capacity"
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
-                            editFormErrors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        />
-                        {editFormErrors.capacity && (
-                          <p className="mt-1 text-xs text-red-600">{editFormErrors.capacity[0]}</p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -3893,24 +3746,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                        Stream Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={newStream.code}
-                        onChange={(e) => handleNewStreamInputChange('code', e.target.value)}
-                        placeholder="Enter stream code"
-                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
-                          formErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      />
-                      {formErrors.code && (
-                        <p className="mt-1 text-xs text-red-600">{formErrors.code[0]}</p>
-                      )}
-                    </div>
 
                     <div className="space-y-1">
                       <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
@@ -3988,24 +3823,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
-                        Class Code *
-                      </label>
-                      <input
-                        type="text"
-                        value={newClass.code}
-                        onChange={(e) => handleNewClassInputChange('code', e.target.value)}
-                        placeholder="Enter class code"
-                        className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-100 focus:border-green-500 transition-all duration-200 bg-white ${
-                          formErrors.code ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      />
-                      {formErrors.code && (
-                        <p className="mt-1 text-xs text-red-600">{formErrors.code[0]}</p>
-                      )}
-                    </div>
 
                     <div className="space-y-1">
                       <EnhancedDropdown
@@ -4042,45 +3859,6 @@ const Students: React.FC = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span>
-                          Level (Optional)
-                        </label>
-                        <input
-                          type="number"
-                          value={newClass.level || ''}
-                          onChange={(e) => handleNewClassInputChange('level', parseInt(e.target.value) || 0)}
-                          placeholder="Enter class level"
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all duration-200 bg-white ${
-                            formErrors.level ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        />
-                        {formErrors.level && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.level[0]}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center">
-                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mr-1.5"></span>
-                          Capacity (Optional)
-                        </label>
-                        <input
-                          type="number"
-                          value={newClass.capacity || ''}
-                          onChange={(e) => handleNewClassInputChange('capacity', parseInt(e.target.value) || 0)}
-                          placeholder="Enter class capacity"
-                          className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-100 focus:border-pink-500 transition-all duration-200 bg-white ${
-                            formErrors.capacity ? 'border-red-300 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                          }`}
-                        />
-                        {formErrors.capacity && (
-                          <p className="mt-1 text-xs text-red-600">{formErrors.capacity[0]}</p>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -4110,9 +3888,9 @@ const Students: React.FC = () => {
                     !newStudent.dateOfAdmission ||
                     !newStudent.classOnAdmission
                   ) : activeTab === 'streams' ? (
-                    !newStream.name || !newStream.code
+                    !newStream.name
                   ) : activeTab === 'classes' ? (
-                    !newClass.name || !newClass.code || !newClass.stream
+                    !newClass.name || !newClass.stream
                   ) : false
                 }
                 className="px-4 py-2 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-semibold shadow-sm hover:shadow-md"
@@ -4575,12 +4353,12 @@ const Students: React.FC = () => {
                   </p>
                   {deleteConfirmation.type === 'stream' && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Code: {(deleteConfirmation.item as Stream).code}
+                      Name: {(deleteConfirmation.item as Stream).name}
                     </p>
                   )}
                   {deleteConfirmation.type === 'class' && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Code: {(deleteConfirmation.item as Class).code}
+                      Name: {(deleteConfirmation.item as Class).name}
                     </p>
                   )}
                 </div>

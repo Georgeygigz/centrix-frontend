@@ -324,7 +324,7 @@ export const apiService = {
     },
 
     // Create a new stream
-    createStream: async (streamData: { name: string; code: string; description?: string }) => {
+    createStream: async (streamData: { name: string; description?: string }) => {
       return apiService.authenticatedRequest('/students/streams/', {
         method: 'POST',
         body: JSON.stringify(streamData)
@@ -332,7 +332,7 @@ export const apiService = {
     },
 
     // Create a new class
-    createClass: async (classData: { name: string; code: string; stream: string; description?: string; level?: number; capacity?: number }) => {
+    createClass: async (classData: { name: string; stream: string; description?: string }) => {
       // Transform stream to stream_id for API compatibility
       const apiData: any = {
         ...classData,
